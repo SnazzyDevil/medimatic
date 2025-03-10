@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   AlertCircle,
@@ -429,7 +428,7 @@ const PatientDetail = () => {
                             <li key={index} className="p-3 bg-healthcare-secondary rounded-md">
                               <div className="flex justify-between">
                                 <div className="font-medium">{visit.date}</div>
-                                <Badge variant="outline" size="sm">Completed</Badge>
+                                <Badge variant="outline">Completed</Badge>
                               </div>
                               <div className="text-sm">{visit.type}</div>
                               <div className="text-sm text-healthcare-gray">{visit.doctor}</div>
