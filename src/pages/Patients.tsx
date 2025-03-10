@@ -1,11 +1,14 @@
 
 import { UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PatientList } from "@/components/patients/PatientList";
 
 const Patients = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -20,7 +23,7 @@ const Patients = () => {
             </Button>
           </div>
           
-          <PatientList />
+          <PatientList onPatientSelect={(id) => navigate(`/patients/${id}`)} />
         </main>
       </div>
     </div>

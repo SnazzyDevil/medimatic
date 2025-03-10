@@ -85,7 +85,7 @@ const patients = [
   },
 ];
 
-export function PatientList() {
+export function PatientList({ onPatientSelect }) {
   const [searchQuery, setSearchQuery] = useState("");
   
   const filteredPatients = patients.filter(patient => 
@@ -133,7 +133,11 @@ export function PatientList() {
           </TableHeader>
           <TableBody>
             {filteredPatients.map((patient) => (
-              <TableRow key={patient.id} className="group hover:bg-healthcare-secondary">
+              <TableRow 
+                key={patient.id} 
+                className="group hover:bg-healthcare-secondary cursor-pointer"
+                onClick={() => onPatientSelect(patient.id)}
+              >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 h-9 w-9 rounded-full bg-healthcare-primary text-white flex items-center justify-center">
@@ -191,7 +195,7 @@ export function PatientList() {
                     {patient.status}
                   </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -201,7 +205,7 @@ export function PatientList() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onPatientSelect(patient.id)}>
                         <User className="h-4 w-4 mr-2" />
                         View Profile
                       </DropdownMenuItem>
@@ -223,4 +227,4 @@ export function PatientList() {
       </div>
     </div>
   );
-}
+};

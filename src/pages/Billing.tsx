@@ -1,5 +1,5 @@
 
-import { FileText } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -14,10 +14,16 @@ const Billing = () => {
         <main className="page-container">
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Billing</h1>
-            <Button className="btn-hover">
-              <FileText className="h-4 w-4 mr-2" />
-              Create Invoice
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="btn-hover">
+                <Download className="h-4 w-4 mr-2" />
+                Download Reports
+              </Button>
+              <Button className="btn-hover">
+                <FileText className="h-4 w-4 mr-2" />
+                Create Invoice
+              </Button>
+            </div>
           </div>
           
           <BillingOverview />
