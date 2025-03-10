@@ -1,8 +1,11 @@
 
-import { PlusCircle, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
-import { UpcomingAppointments } from "@/components/dashboard/UpcomingAppointments";
+import { InventoryLevels } from "@/components/dashboard/InventoryLevels";
+import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
+import { UpcomingDispensing } from "@/components/dashboard/UpcomingDispensing";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
@@ -20,10 +23,6 @@ const Dashboard = () => {
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
-              <Button className="btn-hover">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create New
-              </Button>
             </div>
           </div>
           
@@ -31,25 +30,24 @@ const Dashboard = () => {
             <DashboardStats />
           </section>
           
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Today's Schedule</h2>
+          <section className="mb-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <UpcomingAppointments />
+                <InventoryLevels />
               </div>
               <div className="lg:col-span-1">
-                <div className="h-full bg-healthcare-highlight rounded-xl p-6 flex flex-col justify-center items-center text-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                    <PlusCircle className="h-8 w-8 text-healthcare-primary" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">
-                    Ready to streamline your practice?
-                  </h3>
-                  <p className="text-healthcare-gray mb-4 max-w-xs">
-                    Explore our AI-powered tools for predictive diagnostics and advanced patient analytics.
-                  </p>
-                  <Button className="btn-hover">Learn More</Button>
-                </div>
+                <RecentAlerts />
+              </div>
+            </div>
+          </section>
+          
+          <section>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <UpcomingDispensing />
+              </div>
+              <div className="lg:col-span-1">
+                <QuickActions />
               </div>
             </div>
           </section>
