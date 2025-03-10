@@ -1,5 +1,5 @@
 
-import { Pill, UserPlus, Package, FileText } from "lucide-react";
+import { Pill, UserPlus, Package, FileText, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -11,22 +11,26 @@ export function QuickActions() {
         <p className="text-sm text-muted-foreground">Common tasks</p>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-3">
-          <Button className="justify-start h-12 bg-blue-500 hover:bg-blue-600">
-            <Pill className="mr-2 h-5 w-5" />
-            New Dispensing
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <Button className="justify-center flex-col h-24 px-2 bg-blue-500 hover:bg-blue-600">
+            <Pill className="h-6 w-6 mb-2" />
+            <span>New Dispensing</span>
           </Button>
-          <Button className="justify-start h-12 bg-blue-500 hover:bg-blue-600">
-            <UserPlus className="mr-2 h-5 w-5" />
-            New Patient
+          <Button className="justify-center flex-col h-24 px-2 bg-blue-500 hover:bg-blue-600">
+            <UserPlus className="h-6 w-6 mb-2" />
+            <span>New Patient</span>
           </Button>
-          <Button className="justify-start h-12 bg-blue-500 hover:bg-blue-600">
-            <Package className="mr-2 h-5 w-5" />
-            Add Inventory
+          <Button className="justify-center flex-col h-24 px-2 bg-blue-500 hover:bg-blue-600">
+            <Package className="h-6 w-6 mb-2" />
+            <span>Add Inventory</span>
           </Button>
-          <Button className="justify-start h-12 bg-blue-500 hover:bg-blue-600">
-            <FileText className="mr-2 h-5 w-5" />
-            Reports
+          <Button className="justify-center flex-col h-24 px-2 bg-blue-500 hover:bg-blue-600">
+            <FileText className="h-6 w-6 mb-2" />
+            <span>Reports</span>
+          </Button>
+          <Button className="justify-center flex-col h-24 px-2 bg-blue-500 hover:bg-blue-600">
+            <Calendar className="h-6 w-6 mb-2" />
+            <span>Schedule</span>
           </Button>
         </div>
       </CardContent>

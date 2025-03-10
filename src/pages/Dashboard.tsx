@@ -5,6 +5,8 @@ import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { InventoryLevels } from "@/components/dashboard/InventoryLevels";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { UpcomingDispensing } from "@/components/dashboard/UpcomingDispensing";
+import { UpcomingAppointments } from "@/components/dashboard/UpcomingAppointments";
+import { PaymentSummary } from "@/components/dashboard/PaymentSummary";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -41,13 +43,27 @@ const Dashboard = () => {
             </div>
           </section>
           
-          <section>
+          <section className="mb-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-1">
                 <UpcomingDispensing />
               </div>
               <div className="lg:col-span-1">
+                <UpcomingAppointments />
+              </div>
+              <div className="lg:col-span-1">
+                <PaymentSummary />
+              </div>
+            </div>
+          </section>
+          
+          <section>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
                 <QuickActions />
+              </div>
+              <div className="lg:col-span-1">
+                {/* This space is now available for future components */}
               </div>
             </div>
           </section>
