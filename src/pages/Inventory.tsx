@@ -1,4 +1,3 @@
-
 import { AlertTriangle, Clock, Filter, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
 
-// Sample inventory data
 const medications = [
   {
     id: 1,
@@ -129,6 +137,71 @@ const equipment = [
 ];
 
 const Inventory = () => {
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("medications");
+  const [newItem, setNewItem] = useState({
+    name: "",
+    category: "",
+    stock: "",
+    threshold: "",
+    expiryDate: "",
+  });
+  
+  const [medicationsData, setMedicationsData] = useState(medications);
+  const [suppliesData, setSuppliesData] = useState(supplies);
+  const [equipmentData, setEquipmentData] = useState(equipment);
+  
+  const handleAddItem = () => {
+    if (!newItem.name || !newItem.category || !newItem.stock || !newItem.threshold) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const stock = parseInt(newItem.stock);
+    const threshold = parseInt(newItem.threshold);
+    const status = stock < threshold ? "low" : "normal";
+    
+    const itemToAdd = {
+      id: Date.now(),
+      name: newItem.name,
+      category: newItem.category,
+      stock,
+      threshold,
+      expiryDate: newItem.expiryDate || new Date().toISOString().split('T')[0],
+      status,
+      ...(activeTab === "equipment" && {
+        lastService: new Date().toISOString().split('T')[0],
+        nextService: new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+      }),
+    };
+    
+    if (activeTab === "medications") {
+      setMedicationsData([...medicationsData, itemToAdd]);
+    } else if (activeTab === "supplies") {
+      setSuppliesData([...suppliesData, itemToAdd]);
+    } else if (activeTab === "equipment") {
+      setEquipmentData([...equipmentData, itemToAdd]);
+    }
+    
+    setNewItem({
+      name: "",
+      category: "",
+      stock: "",
+      threshold: "",
+      expiryDate: "",
+    });
+    setOpenAddDialog(false);
+    
+    toast({
+      title: "Item added",
+      description: `${itemToAdd.name} has been added to inventory.`,
+    });
+  };
+  
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -137,7 +210,7 @@ const Inventory = () => {
         <main className="page-container">
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Inventory Management</h1>
-            <Button className="btn-hover">
+            <Button className="btn-hover" onClick={() => setOpenAddDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add New Item
             </Button>
@@ -193,7 +266,7 @@ const Inventory = () => {
             </Button>
           </div>
 
-          <Tabs defaultValue="medications" className="w-full">
+          <Tabs defaultValue="medications" className="w-full" onValueChange={setActiveTab} value={activeTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="medications">Medications</TabsTrigger>
               <TabsTrigger value="supplies">Supplies</TabsTrigger>
@@ -213,7 +286,7 @@ const Inventory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {medications.map((item) => (
+                    {medicationsData.map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -275,7 +348,7 @@ const Inventory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {supplies.map((item) => (
+                    {suppliesData.map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -323,7 +396,7 @@ const Inventory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {equipment.map((item) => (
+                    {equipmentData.map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -358,6 +431,70 @@ const Inventory = () => {
               </div>
             </TabsContent>
           </Tabs>
+          
+          <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Item to Inventory</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">Name</Label>
+                  <Input
+                    id="name"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">Category</Label>
+                  <Input
+                    id="category"
+                    value={newItem.category}
+                    onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="stock" className="text-right">Current Stock</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    value={newItem.stock}
+                    onChange={(e) => setNewItem({...newItem, stock: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="threshold" className="text-right">Threshold</Label>
+                  <Input
+                    id="threshold"
+                    type="number"
+                    value={newItem.threshold}
+                    onChange={(e) => setNewItem({...newItem, threshold: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                {activeTab !== "equipment" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
+                    <Input
+                      id="expiryDate"
+                      type="date"
+                      value={newItem.expiryDate}
+                      onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
+                      className="col-span-3"
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpenAddDialog(false)}>Cancel</Button>
+                <Button onClick={handleAddItem}>Add Item</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
