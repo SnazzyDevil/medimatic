@@ -16,6 +16,30 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
+// Define TypeScript interface for invoice items
+interface InvoiceItem {
+  id: number;
+  description: string;
+  quantity: number;
+  price: string;
+  amount: number;
+}
+
+// Define TypeScript interface for the new invoice
+interface NewInvoice {
+  patientName: string;
+  invoiceNumber: string;
+  poNumber: string;
+  invoiceDate: string;
+  paymentDueDate: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  currency: string;
+  notes: string;
+}
+
 const Billing = () => {
   const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
   const [patientsData, setPatientsData] = useState([]);
@@ -24,11 +48,11 @@ const Billing = () => {
   
   const currentDate = new Date().toISOString().split('T')[0];
   
-  const [invoiceItems, setInvoiceItems] = useState([
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
     { id: 1, description: "", quantity: 1, price: "", amount: 0 }
   ]);
   
-  const [newInvoice, setNewInvoice] = useState({
+  const [newInvoice, setNewInvoice] = useState<NewInvoice>({
     patientName: "",
     invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
     poNumber: "",
@@ -66,23 +90,23 @@ const Billing = () => {
     calculateTotals();
   };
 
-  const handleRemoveItem = (id) => {
+  const handleRemoveItem = (id: number) => {
     if (invoiceItems.length > 1) {
       setInvoiceItems(invoiceItems.filter(item => item.id !== id));
       calculateTotals();
     }
   };
   
-  const handleItemChange = (id, field, value) => {
+  const handleItemChange = (id: number, field: keyof InvoiceItem, value: string | number) => {
     const updatedItems = invoiceItems.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
         
         // Recalculate amount if quantity or price changes
         if (field === 'quantity' || field === 'price') {
-          const quantity = field === 'quantity' ? parseFloat(value) || 0 : parseFloat(item.quantity) || 0;
-          const price = field === 'price' ? parseFloat(value) || 0 : parseFloat(item.price) || 0;
-          updatedItem.amount = quantity * price;
+          const quantity = field === 'quantity' ? Number(value) : item.quantity;
+          const price = field === 'price' ? value : item.price;
+          updatedItem.amount = quantity * parseFloat(price.toString() || "0");
         }
         
         return updatedItem;
@@ -95,8 +119,8 @@ const Billing = () => {
   };
   
   const calculateTotals = (items = invoiceItems) => {
-    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-    const discountAmount = parseFloat(newInvoice.discount) || 0;
+    const subtotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const discountAmount = newInvoice.discount || 0;
     const total = subtotal - discountAmount;
     
     setNewInvoice(prev => ({
