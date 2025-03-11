@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { FileText, Download, Calendar, User, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
+import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { CustomerSection, type Patient } from "@/components/billing/CustomerSection";
 
 // Define TypeScript interface for invoice items
 interface InvoiceItem {
@@ -28,6 +28,7 @@ interface InvoiceItem {
 // Define TypeScript interface for the new invoice
 interface NewInvoice {
   patientName: string;
+  patientId?: string;
   invoiceNumber: string;
   poNumber: string;
   invoiceDate: string;
@@ -42,7 +43,7 @@ interface NewInvoice {
 
 const Billing = () => {
   const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
-  const [patientsData, setPatientsData] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
@@ -69,21 +70,6 @@ const Billing = () => {
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [paymentDueDate, setPaymentDueDate] = useState<Date>(new Date());
 
-  const fetchPatients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*');
-      
-      if (error) throw error;
-      
-      setPatientsData(data || []);
-    } catch (error) {
-      console.error("Error fetching patients:", error);
-      setPatientsData([]);
-    }
-  };
-  
   const handleAddItem = () => {
     const newId = invoiceItems.length ? Math.max(...invoiceItems.map(item => item.id)) + 1 : 1;
     setInvoiceItems([...invoiceItems, { id: newId, description: "", quantity: 1, price: "", amount: 0 }]);
@@ -128,6 +114,23 @@ const Billing = () => {
       subtotal,
       total
     }));
+  };
+
+  const handlePatientSelect = (patient: Patient | null) => {
+    setSelectedPatient(patient);
+    if (patient) {
+      setNewInvoice(prev => ({
+        ...prev,
+        patientName: `${patient.first_name} ${patient.last_name}`,
+        patientId: patient.id
+      }));
+    } else {
+      setNewInvoice(prev => ({
+        ...prev,
+        patientName: "",
+        patientId: undefined
+      }));
+    }
   };
 
   const handleCreateInvoice = async () => {
@@ -178,6 +181,7 @@ const Billing = () => {
     setInvoiceItems([{ id: 1, description: "", quantity: 1, price: "", amount: 0 }]);
     setInvoiceDate(new Date());
     setPaymentDueDate(new Date());
+    setSelectedPatient(null);
     
     setNewInvoice({
       patientName: "",
@@ -210,7 +214,6 @@ const Billing = () => {
               <Button 
                 className="btn-hover"
                 onClick={() => {
-                  fetchPatients();
                   setOpenInvoiceDialog(true);
                 }}
               >
@@ -231,20 +234,14 @@ const Billing = () => {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="mt-4 border rounded-md p-4 mb-4">
-                <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Business address and contact details</h3>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <div className="flex gap-2 items-center mb-2">
-                      <User className="h-12 w-12 text-muted-foreground p-2 border rounded-full" />
-                      <Button variant="ghost" size="sm" className="text-primary">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add a customer
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 flex-1">
+              <CustomerSection 
+                selectedPatient={selectedPatient} 
+                onPatientSelect={handlePatientSelect} 
+              />
+              
+              <div className="space-y-4">
+                <div className="flex-1">
+                  <div className="space-y-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="invoiceNumber" className="text-right">Invoice number</Label>
                       <Input
@@ -287,7 +284,7 @@ const Billing = () => {
                               mode="single"
                               selected={invoiceDate}
                               onSelect={(date) => {
-                                setInvoiceDate(date);
+                                setInvoiceDate(date || new Date());
                                 setNewInvoice({
                                   ...newInvoice, 
                                   invoiceDate: date ? format(date, "yyyy-MM-dd") : currentDate
@@ -322,7 +319,7 @@ const Billing = () => {
                               mode="single"
                               selected={paymentDueDate}
                               onSelect={(date) => {
-                                setPaymentDueDate(date);
+                                setPaymentDueDate(date || new Date());
                                 setNewInvoice({
                                   ...newInvoice, 
                                   paymentDueDate: date ? format(date, "yyyy-MM-dd") : currentDate
@@ -345,9 +342,7 @@ const Billing = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="space-y-4">
+                
                 <div className="flex justify-between items-center">
                   <Button variant="outline" size="sm" className="text-primary flex items-center">
                     <Edit2 className="h-4 w-4 mr-1" />
@@ -424,25 +419,7 @@ const Billing = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-between items-start">
-                  <div className="w-1/2">
-                    <Select
-                      value={newInvoice.patientName}
-                      onValueChange={(value) => setNewInvoice({...newInvoice, patientName: value})}
-                    >
-                      <SelectTrigger className="w-full" id="patientName">
-                        <SelectValue placeholder="Select patient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {patientsData.map(patient => (
-                          <SelectItem key={patient.id} value={`${patient.first_name} ${patient.last_name}`}>
-                            {patient.first_name} {patient.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
+                <div className="flex justify-end">
                   <div className="w-1/2 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
