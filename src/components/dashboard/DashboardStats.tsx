@@ -60,9 +60,10 @@ export function DashboardStats() {
           className="bg-gradient-to-r rounded-xl p-5 shadow-md transform transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg"
           style={{ 
             backgroundImage: `linear-gradient(to right, var(--tw-gradient-stops))`,
+            // Fix: use proper CSS variable syntax with the 'as any' type assertion
             "--tw-gradient-from": stat.bgColor.split(" ")[0].replace("from-", ""),
             "--tw-gradient-to": stat.bgColor.split(" ")[1].replace("to-", "")
-          }}
+          } as React.CSSProperties}
         >
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
