@@ -43,6 +43,7 @@ const Billing = () => {
   const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const { toast } = useToast();
   
   const currentDate = new Date().toISOString().split('T')[0];
@@ -208,6 +209,55 @@ const Billing = () => {
     });
   };
 
+  const handleDownloadReports = async () => {
+    setDownloadingReport(true);
+    try {
+      const headers = [
+        "Invoice Number",
+        "Patient Name",
+        "Issue Date",
+        "Due Date",
+        "Amount",
+        "Status"
+      ].join(",");
+      
+      const sampleData = [
+        ["INV-2025-001", "Sarah Johnson", "2025-03-01", "2025-03-15", "$250.00", "Paid"],
+        ["INV-2025-002", "Michael Smith", "2025-03-03", "2025-03-18", "$175.50", "Pending"],
+        ["INV-2025-003", "Emma Davis", "2025-03-05", "2025-03-20", "$320.75", "Overdue"],
+        ["INV-2025-004", "Uven Rampersad", "2025-03-08", "2025-03-23", "$195.25", "Paid"],
+      ].map(row => row.join(",")).join("\n");
+      
+      const csvContent = `${headers}\n${sampleData}`;
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `billing_report_${format(new Date(), "yyyy-MM-dd")}.csv`);
+      link.style.visibility = "hidden";
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Report Downloaded",
+        description: "Billing report has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error generating the report. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -217,9 +267,14 @@ const Billing = () => {
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Billing</h1>
             <div className="flex gap-2">
-              <Button variant="outline" className="btn-hover">
+              <Button 
+                variant="outline" 
+                className="btn-hover"
+                onClick={handleDownloadReports}
+                disabled={downloadingReport}
+              >
                 <Download className="h-4 w-4 mr-2" />
-                Download Reports
+                {downloadingReport ? "Downloading..." : "Download Reports"}
               </Button>
               <Button 
                 className="btn-hover"
