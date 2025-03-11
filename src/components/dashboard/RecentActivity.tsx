@@ -2,6 +2,7 @@
 import { Activity, Calendar, Clock, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const activityItems = [
   {
@@ -65,10 +66,12 @@ export function RecentActivity() {
             </div>
           ))}
           
-          <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50">
-            View all activity
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
+          <Link to="/reports">
+            <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50">
+              View all activity
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>

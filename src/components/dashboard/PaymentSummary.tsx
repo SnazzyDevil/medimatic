@@ -2,6 +2,7 @@
 import { ArrowRight, CreditCard, DollarSign, Receipt, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export function PaymentSummary() {
   return (
@@ -65,10 +66,12 @@ export function PaymentSummary() {
                 <div className="font-medium text-gray-800">$220.00</div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-              View all payments
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
+            <Link to="/billing">
+              <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                View all payments
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </CardContent>
