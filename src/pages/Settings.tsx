@@ -927,3 +927,9 @@ const Settings = () => {
             </TabsContent>
           </Tabs>
         </main>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
