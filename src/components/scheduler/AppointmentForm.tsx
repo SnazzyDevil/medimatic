@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
@@ -49,7 +48,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
 
-  // Fetch patients data from Supabase
   useEffect(() => {
     async function fetchPatients() {
       setIsLoading(true);
@@ -77,14 +75,12 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     fetchPatients();
   }, []);
 
-  // Check for booked appointments when date changes
   useEffect(() => {
     if (date) {
       checkBookedTimeSlots(date);
     }
   }, [date]);
 
-  // Function to check which time slots are already booked for a selected date
   const checkBookedTimeSlots = async (selectedDate: Date) => {
     setIsCheckingAvailability(true);
     setValidationError(null);
@@ -101,13 +97,11 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         throw error;
       }
       
-      // Filter out the booked times from available time slots
       const bookedTimes = data?.map(appointment => appointment.appointment_time) || [];
       const available = TIME_SLOTS.filter(slot => !bookedTimes.includes(slot));
       
       setAvailableTimeSlots(available);
       
-      // If the currently selected time is now booked, reset it
       if (time && bookedTimes.includes(time)) {
         setTime("");
         setValidationError("Your previously selected time is no longer available");
@@ -129,7 +123,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       return;
     }
     
-    // Additional validation - check one more time if the slot is available
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
       
@@ -146,22 +139,19 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         return;
       }
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned, which is what we want
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
     } catch (err) {
       console.error('Error during final availability check:', err);
-      // Continue with submission if it's just a "no rows returned" error
       if (err.code !== 'PGRST116') {
         setValidationError("Failed to verify appointment availability. Please try again.");
         return;
       }
     }
     
-    // Find the selected patient from the list
     const selectedPatient = patients.find(p => p.id === patientId);
     
-    // Create appointment data
     const appointmentData = {
       date,
       time,
@@ -171,7 +161,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       formattedDate: format(date, 'yyyy-MM-dd')
     };
     
-    // Insert into database
     try {
       const { error } = await supabase
         .from('appointments')
@@ -183,7 +172,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         });
       
       if (error) {
-        if (error.code === '23505') { // Unique violation
+        if (error.code === '23505') {
           setValidationError("This time slot has just been booked. Please select another time.");
           await checkBookedTimeSlots(date);
           return;
@@ -191,7 +180,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         throw error;
       }
       
-      // If insert successful, pass data to parent component
       onSubmit(appointmentData);
     } catch (err) {
       console.error('Error saving appointment:', err);
