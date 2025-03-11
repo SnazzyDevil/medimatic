@@ -69,7 +69,11 @@ const APPOINTMENTS = [
   },
 ];
 
-export function SchedulerCalendar() {
+interface SchedulerCalendarProps {
+  onNewAppointment?: () => void;
+}
+
+export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps = {}) {
   const [currentWeek, setCurrentWeek] = useState("June 12 - 18, 2023");
   
   // Function to get appointments for a specific day and time
@@ -95,7 +99,11 @@ export function SchedulerCalendar() {
           <Button variant="outline" size="sm">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button size="sm" className="ml-2 btn-hover">
+          <Button 
+            size="sm" 
+            className="ml-2 btn-hover"
+            onClick={onNewAppointment}
+          >
             <Plus className="h-4 w-4 mr-1" />
             New Appointment
           </Button>
@@ -173,6 +181,7 @@ export function SchedulerCalendar() {
                           variant="ghost" 
                           size="icon" 
                           className="h-6 w-6 absolute right-1 top-1 opacity-0 hover:opacity-100 transition-opacity"
+                          onClick={onNewAppointment}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
