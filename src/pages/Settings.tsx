@@ -1,4 +1,4 @@
-import { Save, Lock } from "lucide-react";
+import { Save, Lock, Key, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
   const [notificationSettings, setNotificationSettings] = useState({
@@ -31,6 +33,25 @@ const Settings = () => {
     activityLogging: true,
     passwordComplexity: "medium"
   });
+
+  const [apiKeys, setApiKeys] = useState({
+    ehrApiKey: "••••••••••••••••",
+    pharmacyApiKey: "••••••••••••••••",
+    billingApiKey: "••••••••••••••••",
+    analyticsApiKey: "••••••••••••••••"
+  });
+
+  const [integrations, setIntegrations] = useState({
+    ehr: true,
+    pharmacy: true,
+    insurance: false,
+    labSystem: false,
+    telemedicine: true,
+    patientPortal: true
+  });
+
+  const [webhookUrl, setWebhookUrl] = useState('https://api.example.com/webhook');
+  const [webhookEvents, setWebhookEvents] = useState('all');
 
   const handleNotificationChange = (key: string) => {
     setNotificationSettings(prev => ({
@@ -57,6 +78,34 @@ const Settings = () => {
     toast({
       title: "Security settings saved",
       description: "Your security preferences have been updated successfully.",
+    });
+  };
+
+  const handleIntegrationChange = (key: string) => {
+    setIntegrations(prev => ({
+      ...prev,
+      [key]: !prev[key as keyof typeof prev]
+    }));
+  };
+
+  const saveApiSettings = () => {
+    toast({
+      title: "API settings saved",
+      description: "Your API and integration preferences have been updated successfully.",
+    });
+  };
+
+  const regenerateApiKey = (keyType: string) => {
+    const newKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    
+    setApiKeys(prev => ({
+      ...prev,
+      [keyType]: newKey
+    }));
+
+    toast({
+      title: "API key regenerated",
+      description: `Your ${keyType.replace('ApiKey', '')} API key has been successfully regenerated.`,
     });
   };
 
@@ -490,17 +539,267 @@ const Settings = () => {
               </Card>
             </TabsContent>
             <TabsContent value="api">
-              <Card className="border border-healthcare-gray-light">
-                <CardHeader>
-                  <CardTitle>API & Integrations</CardTitle>
-                  <CardDescription>
-                    Connect with third-party services and manage API access
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-healthcare-gray">API and integration settings will appear here.</p>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <Card className="border border-healthcare-gray-light">
+                  <CardHeader>
+                    <CardTitle>API Keys</CardTitle>
+                    <CardDescription>
+                      Manage your API keys for third-party integrations
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">EHR System API Key</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Used for connecting to your electronic health record system
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            value={apiKeys.ehrApiKey} 
+                            readOnly 
+                            className="w-64 font-mono text-sm bg-slate-50"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => regenerateApiKey('ehrApiKey')}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Pharmacy Integration API Key</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Used for connecting to pharmacy systems
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            value={apiKeys.pharmacyApiKey} 
+                            readOnly 
+                            className="w-64 font-mono text-sm bg-slate-50"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => regenerateApiKey('pharmacyApiKey')}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Billing System API Key</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Used for connecting to your billing and insurance systems
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            value={apiKeys.billingApiKey} 
+                            readOnly 
+                            className="w-64 font-mono text-sm bg-slate-50"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => regenerateApiKey('billingApiKey')}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Analytics API Key</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Used for connecting to analytics and reporting tools
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            value={apiKeys.analyticsApiKey} 
+                            readOnly 
+                            className="w-64 font-mono text-sm bg-slate-50"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => regenerateApiKey('analyticsApiKey')}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border border-healthcare-gray-light">
+                  <CardHeader>
+                    <CardTitle>Third-Party Integrations</CardTitle>
+                    <CardDescription>
+                      Enable or disable connections with external healthcare systems
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="ehr-integration" className="font-medium">EHR System Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with your electronic health record system
+                          </p>
+                        </div>
+                        <Switch 
+                          id="ehr-integration" 
+                          checked={integrations.ehr}
+                          onCheckedChange={() => handleIntegrationChange('ehr')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="pharmacy-integration" className="font-medium">Pharmacy System Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with pharmacy systems for prescription management
+                          </p>
+                        </div>
+                        <Switch 
+                          id="pharmacy-integration" 
+                          checked={integrations.pharmacy}
+                          onCheckedChange={() => handleIntegrationChange('pharmacy')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="insurance-integration" className="font-medium">Insurance Provider Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with insurance providers for coverage verification
+                          </p>
+                        </div>
+                        <Switch 
+                          id="insurance-integration" 
+                          checked={integrations.insurance}
+                          onCheckedChange={() => handleIntegrationChange('insurance')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="lab-integration" className="font-medium">Laboratory System Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with laboratory systems for test ordering and results
+                          </p>
+                        </div>
+                        <Switch 
+                          id="lab-integration" 
+                          checked={integrations.labSystem}
+                          onCheckedChange={() => handleIntegrationChange('labSystem')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="telemedicine-integration" className="font-medium">Telemedicine Platform Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with telemedicine platforms for virtual appointments
+                          </p>
+                        </div>
+                        <Switch 
+                          id="telemedicine-integration" 
+                          checked={integrations.telemedicine}
+                          onCheckedChange={() => handleIntegrationChange('telemedicine')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="portal-integration" className="font-medium">Patient Portal Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect with patient portal systems for seamless data sharing
+                          </p>
+                        </div>
+                        <Switch 
+                          id="portal-integration" 
+                          checked={integrations.patientPortal}
+                          onCheckedChange={() => handleIntegrationChange('patientPortal')}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border border-healthcare-gray-light">
+                  <CardHeader>
+                    <CardTitle>Webhook Configuration</CardTitle>
+                    <CardDescription>
+                      Set up webhooks to notify external systems of events
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="webhook-url" className="font-medium">Webhook URL</Label>
+                        <Input 
+                          id="webhook-url"
+                          placeholder="https://api.yoursystem.com/webhook"
+                          value={webhookUrl}
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="webhook-events" className="font-medium">Webhook Events</Label>
+                        <Select 
+                          value={webhookEvents} 
+                          onValueChange={(value) => setWebhookEvents(value)}
+                        >
+                          <SelectTrigger id="webhook-events" className="w-full">
+                            <SelectValue placeholder="Select events to trigger webhooks" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Events</SelectItem>
+                            <SelectItem value="appointments">Appointments Only</SelectItem>
+                            <SelectItem value="billing">Billing Only</SelectItem>
+                            <SelectItem value="prescriptions">Prescriptions Only</SelectItem>
+                            <SelectItem value="patients">Patient Records Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="pt-4">
+                        <Button variant="outline" size="sm">
+                          <Download className="h-4 w-4 mr-2" />
+                          Test Webhook
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <div className="flex justify-end pt-4">
+                  <Button onClick={saveApiSettings} className="btn-hover">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save API Settings
+                  </Button>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </main>
