@@ -45,7 +45,11 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
 
+  // Fetch patients data from Supabase
   useEffect(() => {
     async function fetchPatients() {
       setIsLoading(true);
@@ -73,21 +77,126 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     fetchPatients();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check for booked appointments when date changes
+  useEffect(() => {
+    if (date) {
+      checkBookedTimeSlots(date);
+    }
+  }, [date]);
+
+  // Function to check which time slots are already booked for a selected date
+  const checkBookedTimeSlots = async (selectedDate: Date) => {
+    setIsCheckingAvailability(true);
+    setValidationError(null);
+    
+    try {
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('appointment_time')
+        .eq('appointment_date', formattedDate);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Filter out the booked times from available time slots
+      const bookedTimes = data?.map(appointment => appointment.appointment_time) || [];
+      const available = TIME_SLOTS.filter(slot => !bookedTimes.includes(slot));
+      
+      setAvailableTimeSlots(available);
+      
+      // If the currently selected time is now booked, reset it
+      if (time && bookedTimes.includes(time)) {
+        setTime("");
+        setValidationError("Your previously selected time is no longer available");
+      }
+    } catch (err) {
+      console.error('Error checking appointment availability:', err);
+      setError('Failed to check appointment availability. Please try again.');
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
+    
+    if (!date || !time || !patientId || !appointmentType) {
+      setValidationError("Please fill in all required fields");
+      return;
+    }
+    
+    // Additional validation - check one more time if the slot is available
+    try {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('appointment_date', formattedDate)
+        .eq('appointment_time', time)
+        .single();
+      
+      if (data) {
+        setValidationError("This time slot has just been booked. Please select another time.");
+        await checkBookedTimeSlots(date);
+        return;
+      }
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned, which is what we want
+        throw error;
+      }
+    } catch (err) {
+      console.error('Error during final availability check:', err);
+      // Continue with submission if it's just a "no rows returned" error
+      if (err.code !== 'PGRST116') {
+        setValidationError("Failed to verify appointment availability. Please try again.");
+        return;
+      }
+    }
     
     // Find the selected patient from the list
     const selectedPatient = patients.find(p => p.id === patientId);
     
+    // Create appointment data
     const appointmentData = {
       date,
       time,
       patientId,
       patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
-      appointmentType
+      appointmentType,
+      formattedDate: format(date, 'yyyy-MM-dd')
     };
     
-    onSubmit(appointmentData);
+    // Insert into database
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: patientId,
+          appointment_date: format(date, 'yyyy-MM-dd'),
+          appointment_time: time,
+          appointment_type: appointmentType
+        });
+      
+      if (error) {
+        if (error.code === '23505') { // Unique violation
+          setValidationError("This time slot has just been booked. Please select another time.");
+          await checkBookedTimeSlots(date);
+          return;
+        }
+        throw error;
+      }
+      
+      // If insert successful, pass data to parent component
+      onSubmit(appointmentData);
+    } catch (err) {
+      console.error('Error saving appointment:', err);
+      setValidationError("Failed to save appointment. Please try again.");
+    }
   };
 
   return (
@@ -121,7 +230,12 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       
       <div className="space-y-2">
         <Label htmlFor="time">Time</Label>
-        <Select onValueChange={setTime} defaultValue={time}>
+        {isCheckingAvailability && (
+          <div className="text-sm text-muted-foreground">
+            Checking available time slots...
+          </div>
+        )}
+        <Select onValueChange={setTime} value={time} disabled={isCheckingAvailability}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select time">
               {time ? (
@@ -135,11 +249,17 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {TIME_SLOTS.map((slot) => (
-              <SelectItem key={slot} value={slot}>
-                {slot}
-              </SelectItem>
-            ))}
+            {availableTimeSlots.length > 0 ? (
+              availableTimeSlots.map((slot) => (
+                <SelectItem key={slot} value={slot}>
+                  {slot}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-4 text-center text-sm">
+                No available time slots for this date
+              </div>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -152,7 +272,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
             {error}
           </div>
         )}
-        <Select onValueChange={setPatientId} defaultValue={patientId}>
+        <Select onValueChange={setPatientId} value={patientId}>
           <SelectTrigger className="w-full" disabled={isLoading}>
             <SelectValue placeholder={isLoading ? "Loading patients..." : "Select patient"} />
           </SelectTrigger>
@@ -168,7 +288,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       
       <div className="space-y-2">
         <Label htmlFor="appointmentType">Type of Visit</Label>
-        <Select onValueChange={setAppointmentType} defaultValue={appointmentType}>
+        <Select onValueChange={setAppointmentType} value={appointmentType}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select appointment type" />
           </SelectTrigger>
@@ -182,6 +302,13 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         </Select>
       </div>
       
+      {validationError && (
+        <div className="flex items-center text-destructive text-sm">
+          <AlertCircle className="h-4 w-4 mr-1" />
+          {validationError}
+        </div>
+      )}
+      
       <div className="flex justify-end space-x-2 pt-4">
         <Button 
           type="button" 
@@ -193,7 +320,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         <Button 
           type="submit"
           className="btn-hover"
-          disabled={isLoading || !patientId || !time || !appointmentType}
+          disabled={isLoading || isCheckingAvailability || !patientId || !time || !appointmentType}
         >
           Create Appointment
         </Button>

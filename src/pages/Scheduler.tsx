@@ -24,8 +24,7 @@ const Scheduler = () => {
   const handleFormSubmit = (data: any) => {
     console.log("New appointment data:", data);
     
-    // Here you would normally save the appointment to your database
-    // For now, we'll just show a success message
+    // Show a success message
     toast({
       title: "Appointment Scheduled",
       description: `Appointment for ${data.patientName} on ${data.date.toDateString()} at ${data.time} has been scheduled.`,

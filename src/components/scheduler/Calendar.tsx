@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { format, parseISO, addDays, startOfWeek } from "date-fns";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = [
@@ -20,66 +22,121 @@ const HOURS = [
   "4:00 PM", "5:00 PM"
 ];
 
-// Sample appointments
-const APPOINTMENTS = [
-  { 
-    id: 1, 
-    patientName: "Sarah Johnson", 
-    time: "9:00 AM", 
-    duration: 30, 
-    day: 0, // Monday
-    type: "Check-up",
-    color: "bg-blue-100 border-blue-300 text-blue-800"
-  },
-  { 
-    id: 2, 
-    patientName: "Michael Chen", 
-    time: "11:00 AM", 
-    duration: 45, 
-    day: 0, // Monday
-    type: "Follow-up",
-    color: "bg-violet-100 border-violet-300 text-violet-800"
-  },
-  { 
-    id: 3, 
-    patientName: "Emma Wilson", 
-    time: "2:00 PM", 
-    duration: 60, 
-    day: 1, // Tuesday
-    type: "Consultation",
-    color: "bg-emerald-100 border-emerald-300 text-emerald-800"
-  },
-  { 
-    id: 4, 
-    patientName: "David Miller", 
-    time: "10:00 AM", 
-    duration: 30, 
-    day: 2, // Wednesday
-    type: "Physical",
-    color: "bg-amber-100 border-amber-300 text-amber-800"
-  },
-  { 
-    id: 5, 
-    patientName: "Olivia Davis", 
-    time: "3:00 PM", 
-    duration: 30, 
-    day: 4, // Friday
-    type: "Check-up",
-    color: "bg-blue-100 border-blue-300 text-blue-800"
-  },
-];
+// Color mapping for appointment types
+const APPOINTMENT_TYPE_COLORS = {
+  "Check-up": "bg-blue-100 border-blue-300 text-blue-800",
+  "Follow-up": "bg-violet-100 border-violet-300 text-violet-800",
+  "Consultation": "bg-emerald-100 border-emerald-300 text-emerald-800",
+  "Physical": "bg-amber-100 border-amber-300 text-amber-800",
+  "Vaccination": "bg-pink-100 border-pink-300 text-pink-800",
+  "Other": "bg-gray-100 border-gray-300 text-gray-800"
+};
+
+interface Appointment {
+  id: string;
+  patient_id: string;
+  appointment_date: string;
+  appointment_time: string;
+  appointment_type: string;
+  patientName?: string;
+  color?: string;
+  day?: number;
+}
 
 interface SchedulerCalendarProps {
   onNewAppointment?: () => void;
 }
 
 export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps = {}) {
-  const [currentWeek, setCurrentWeek] = useState("June 12 - 18, 2023");
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [formattedWeek, setFormattedWeek] = useState("");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Get current week's start and end dates
+  useEffect(() => {
+    const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday
+    const weekEnd = addDays(weekStart, 6); // Sunday
+    
+    setFormattedWeek(`${format(weekStart, "MMMM d")} - ${format(weekEnd, "d, yyyy")}`);
+    
+    fetchAppointments(weekStart, weekEnd);
+  }, [currentWeek]);
+  
+  // Fetch appointments for current week
+  const fetchAppointments = async (startDate: Date, endDate: Date) => {
+    setLoading(true);
+    
+    try {
+      // Format dates to ISO string for database query
+      const startDateStr = format(startDate, "yyyy-MM-dd");
+      const endDateStr = format(endDate, "yyyy-MM-dd");
+      
+      // Fetch appointments
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('id, patient_id, appointment_date, appointment_time, appointment_type')
+        .gte('appointment_date', startDateStr)
+        .lte('appointment_date', endDateStr);
+      
+      if (appointmentsError) {
+        throw appointmentsError;
+      }
+      
+      // Get patient IDs to fetch patient names
+      const patientIds = [...new Set(appointmentsData.map(app => app.patient_id))];
+      
+      // Fetch patient details
+      const { data: patientsData, error: patientsError } = await supabase
+        .from('patients')
+        .select('id, first_name, last_name')
+        .in('id', patientIds);
+      
+      if (patientsError) {
+        throw patientsError;
+      }
+      
+      // Create a map of patient IDs to patient names
+      const patientMap = patientsData.reduce((acc, patient) => {
+        acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
+        return acc;
+      }, {});
+      
+      // Create a new array with processed appointment data
+      const processedAppointments = appointmentsData.map(app => {
+        const appointmentDate = parseISO(app.appointment_date);
+        const dayIndex = (appointmentDate.getDay() === 0) ? 6 : appointmentDate.getDay() - 1; // Adjust Sunday (0) to be 6
+        
+        return {
+          ...app,
+          patientName: patientMap[app.patient_id] || "Unknown Patient",
+          color: APPOINTMENT_TYPE_COLORS[app.appointment_type] || APPOINTMENT_TYPE_COLORS.Other,
+          day: dayIndex,
+        };
+      });
+      
+      setAppointments(processedAppointments);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Navigate to previous week
+  const previousWeek = () => {
+    setCurrentWeek(prev => addDays(prev, -7));
+  };
+  
+  // Navigate to next week
+  const nextWeek = () => {
+    setCurrentWeek(prev => addDays(prev, 7));
+  };
   
   // Function to get appointments for a specific day and time
   const getAppointmentForTime = (day: number, time: string) => {
-    return APPOINTMENTS.find(
-      app => app.day === day && app.time === time
+    return appointments.find(
+      app => app.day === day && app.appointment_time === time
     );
   };
   
@@ -92,11 +149,11 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={previousWeek}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="font-medium px-2">{currentWeek}</div>
-          <Button variant="outline" size="sm">
+          <div className="font-medium px-2">{formattedWeek}</div>
+          <Button variant="outline" size="sm" onClick={nextWeek}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button 
@@ -114,21 +171,25 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         <CardContent className="p-0">
           <div className="grid grid-cols-8 border-b">
             <div className="p-3 border-r bg-healthcare-secondary"></div>
-            {DAYS.map((day, index) => (
-              <div 
-                key={day} 
-                className={cn(
-                  "p-3 text-center font-medium border-r last:border-r-0",
-                  index === 0 && "bg-healthcare-highlight text-healthcare-primary"
-                )}
-              >
-                {day}
-                <div className="text-sm font-normal text-healthcare-gray">
-                  {/* This would normally be calculated based on the current week */}
-                  June {12 + index}
+            {DAYS.map((day, index) => {
+              const date = addDays(startOfWeek(currentWeek, { weekStartsOn: 1 }), index);
+              const isToday = format(new Date(), "yyyy-MM-dd") === format(date, "yyyy-MM-dd");
+              
+              return (
+                <div 
+                  key={day} 
+                  className={cn(
+                    "p-3 text-center font-medium border-r last:border-r-0",
+                    isToday && "bg-healthcare-highlight text-healthcare-primary"
+                  )}
+                >
+                  {day}
+                  <div className="text-sm font-normal text-healthcare-gray">
+                    {format(date, "MMM d")}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           <div className="grid grid-cols-8">
@@ -144,53 +205,58 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
             </div>
             
             {/* Days columns */}
-            {DAYS.map((_, dayIndex) => (
-              <div key={dayIndex} className="border-r last:border-r-0">
-                {HOURS.map((hour) => {
-                  const appointment = getAppointmentForTime(dayIndex, hour);
-                  
-                  return (
-                    <div 
-                      key={hour} 
-                      className={cn(
-                        "border-b last:border-b-0 h-20 p-1 relative",
-                        dayIndex === 0 && "bg-healthcare-highlight/20"
-                      )}
-                    >
-                      {appointment ? (
-                        <div 
-                          className={cn(
-                            "absolute inset-1 rounded-md p-2 border card-hover cursor-pointer",
-                            appointment.color
-                          )}
-                        >
-                          <div className="font-medium text-sm truncate">{appointment.patientName}</div>
-                          <div className="flex items-center text-xs mt-1">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {appointment.time} ({appointment.duration} min)
+            {DAYS.map((_, dayIndex) => {
+              const date = addDays(startOfWeek(currentWeek, { weekStartsOn: 1 }), dayIndex);
+              const isToday = format(new Date(), "yyyy-MM-dd") === format(date, "yyyy-MM-dd");
+              
+              return (
+                <div key={dayIndex} className="border-r last:border-r-0">
+                  {HOURS.map((hour) => {
+                    const appointment = getAppointmentForTime(dayIndex, hour);
+                    
+                    return (
+                      <div 
+                        key={hour} 
+                        className={cn(
+                          "border-b last:border-b-0 h-20 p-1 relative",
+                          isToday && "bg-healthcare-highlight/20"
+                        )}
+                      >
+                        {appointment ? (
+                          <div 
+                            className={cn(
+                              "absolute inset-1 rounded-md p-2 border card-hover cursor-pointer",
+                              appointment.color
+                            )}
+                          >
+                            <div className="font-medium text-sm truncate">{appointment.patientName}</div>
+                            <div className="flex items-center text-xs mt-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {appointment.appointment_time} (30 min)
+                            </div>
+                            <div className="flex items-center text-xs mt-0.5">
+                              <User className="h-3 w-3 mr-1" />
+                              <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                {appointment.appointment_type}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center text-xs mt-0.5">
-                            <User className="h-3 w-3 mr-1" />
-                            <Badge variant="outline" className="text-[10px] py-0 h-4">
-                              {appointment.type}
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 absolute right-1 top-1 opacity-0 hover:opacity-100 transition-opacity"
-                          onClick={onNewAppointment}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 absolute right-1 top-1 opacity-0 hover:opacity-100 transition-opacity"
+                            onClick={onNewAppointment}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
