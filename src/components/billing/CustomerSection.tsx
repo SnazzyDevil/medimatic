@@ -72,6 +72,11 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
     onPatientSelect(null);
   };
 
+  const handlePatientSelect = (patient: Patient) => {
+    onPatientSelect(patient);
+    setOpen(false);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col">
@@ -123,10 +128,7 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
                     {patients.map((patient) => (
                       <CommandItem
                         key={patient.id}
-                        onSelect={() => {
-                          onPatientSelect(patient);
-                          setOpen(false);
-                        }}
+                        onSelect={() => handlePatientSelect(patient)}
                       >
                         <User className="mr-2 h-4 w-4" />
                         <span>{patient.first_name} {patient.last_name}</span>
