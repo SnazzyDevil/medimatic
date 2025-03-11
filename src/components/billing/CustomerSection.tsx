@@ -78,37 +78,38 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
         <h3 className="text-sm font-semibold mb-2">Bill to</h3>
         
         {selectedPatient ? (
-          <div className="space-y-1">
+          <div className="space-y-1 bg-slate-50 p-3 rounded-md border">
             <div className="font-medium text-lg">{selectedPatient.first_name} {selectedPatient.last_name}</div>
-            {selectedPatient.address && <div>{selectedPatient.address}</div>}
-            {selectedPatient.contact_number && <div>{selectedPatient.contact_number}</div>}
-            {selectedPatient.email && <div>{selectedPatient.email}</div>}
+            {selectedPatient.address && <div className="text-sm">{selectedPatient.address}</div>}
+            {selectedPatient.contact_number && <div className="text-sm">Phone: {selectedPatient.contact_number}</div>}
+            {selectedPatient.email && <div className="text-sm">Email: {selectedPatient.email}</div>}
+            {selectedPatient.medical_aid_number && <div className="text-sm">Medical Aid #: {selectedPatient.medical_aid_number}</div>}
             <div className="flex items-center space-x-2 mt-2">
               <Button 
-                variant="link" 
-                className="p-0 h-auto text-blue-600 font-semibold" 
-                onClick={() => {
-                  // Future edit functionality could go here
-                }}
+                variant="outline" 
+                size="sm"
+                className="h-8"
+                onClick={handleClearPatient}
               >
-                Edit {selectedPatient.first_name} {selectedPatient.last_name}
+                <X className="h-3.5 w-3.5 mr-1" />
+                Clear patient
               </Button>
-              <span>•</span>
               <Button 
-                variant="link" 
-                className="p-0 h-auto text-blue-600 font-semibold"
+                variant="outline" 
+                size="sm"
+                className="h-8"
                 onClick={() => setOpen(true)}
               >
-                Choose a different patient
+                Change patient
               </Button>
             </div>
           </div>
         ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-primary">
-                Add Patient
-                <ChevronsUpDown className="ml-1 h-4 w-4" />
+              <Button variant="outline" size="sm" className="w-full justify-between">
+                <span>Add Patient</span>
+                <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-[300px]" align="start" side="bottom">
@@ -127,6 +128,7 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
                           setOpen(false);
                         }}
                       >
+                        <User className="mr-2 h-4 w-4" />
                         <span>{patient.first_name} {patient.last_name}</span>
                       </CommandItem>
                     ))}
