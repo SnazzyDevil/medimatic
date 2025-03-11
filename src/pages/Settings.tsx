@@ -1,4 +1,3 @@
-
 import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +85,10 @@ const Settings = () => {
   const [webhookUrl, setWebhookUrl] = useState('https://api.example.com/webhook');
   const [webhookEvents, setWebhookEvents] = useState('all');
 
+  const [practiceImage, setPracticeImage] = useState<string | null>(null);
+  const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleNotificationChange = (key: string) => {
     setNotificationSettings(prev => ({
       ...prev,
@@ -148,10 +151,6 @@ const Settings = () => {
       description: `Your ${keyType.replace('ApiKey', '')} API key has been successfully regenerated.`,
     });
   };
-
-  const [practiceImage, setPracticeImage] = useState<string | null>(null);
-  const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'image') => {
     try {
@@ -304,6 +303,10 @@ const Settings = () => {
                     <div className="space-y-2">
                       <Label htmlFor="practiceName">Practice Name</Label>
                       <Input id="practiceName" defaultValue="MediCare Clinic" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="doctorName">Doctor's Name</Label>
+                      <Input id="doctorName" defaultValue="Dr. Jane Smith" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
