@@ -27,6 +27,8 @@ export interface Patient {
   address: string | null;
   medical_aid_number: string | null;
   email: string | null;
+  allergies: string | null;
+  alternate_contact: string | null;
 }
 
 export interface PracticeInfo {
@@ -74,7 +76,7 @@ export const CustomerSection = ({
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('id, first_name, last_name, contact_number, address, medical_aid_number, email');
+        .select('id, first_name, last_name, contact_number, address, medical_aid_number, email, allergies, alternate_contact');
       
       if (error) throw error;
       
@@ -130,6 +132,8 @@ export const CustomerSection = ({
               {selectedPatient.contact_number && <div className="text-sm">Phone: {selectedPatient.contact_number}</div>}
               {selectedPatient.email && <div className="text-sm">Email: {selectedPatient.email}</div>}
               {selectedPatient.medical_aid_number && <div className="text-sm">Medical Aid #: {selectedPatient.medical_aid_number}</div>}
+              {selectedPatient.allergies && <div className="text-sm">Allergies: {selectedPatient.allergies}</div>}
+              {selectedPatient.alternate_contact && <div className="text-sm">Alt. Contact: {selectedPatient.alternate_contact}</div>}
               <div className="flex items-center space-x-2 mt-2">
                 <Button 
                   variant="outline" 
