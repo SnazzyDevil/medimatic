@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   CheckCircle, 
@@ -40,6 +39,7 @@ const Dispensing = () => {
   const [openPrescriptionDialog, setOpenPrescriptionDialog] = useState(false);
   const [medicationsData, setMedicationsData] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
+  const [patientsData, setPatientsData] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const [newPrescription, setNewPrescription] = useState({
@@ -61,6 +61,7 @@ const Dispensing = () => {
   useEffect(() => {
     fetchMedications();
     fetchInventory();
+    fetchPatients();
   }, []);
   
   const fetchMedications = async () => {
@@ -107,6 +108,21 @@ const Dispensing = () => {
     } catch (error) {
       console.error("Error fetching inventory:", error);
       setInventoryData([]);
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*');
+      
+      if (error) throw error;
+      
+      setPatientsData(data);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      setPatientsData([]);
     }
   };
 
@@ -740,12 +756,21 @@ const Dispensing = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="patientName" className="text-right">Patient Name</Label>
-                  <Input
-                    id="patientName"
+                  <Select
                     value={newPrescription.patientName}
-                    onChange={(e) => setNewPrescription({...newPrescription, patientName: e.target.value})}
-                    className="col-span-3"
-                  />
+                    onValueChange={(value) => setNewPrescription({...newPrescription, patientName: value})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select patient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patientsData.map(patient => (
+                        <SelectItem key={patient.id} value={`${patient.first_name} ${patient.last_name}`}>
+                          {patient.first_name} {patient.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="medicationName" className="text-right">Medication</Label>
