@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   CheckCircle, 
@@ -18,8 +17,18 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogClose 
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
-// Sample data for the dispensing workflow
 const patientSample = {
   id: 1,
   name: "Sarah Johnson",
@@ -79,14 +88,23 @@ const Dispensing = () => {
   const [selectedMedication, setSelectedMedication] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [verificationComplete, setVerificationComplete] = useState({});
-  
-  // Function to handle medication selection
+  const [openPrescriptionDialog, setOpenPrescriptionDialog] = useState(false);
+  const [newPrescription, setNewPrescription] = useState({
+    patientName: "",
+    medicationName: "",
+    dosage: "",
+    frequency: "",
+    quantity: "",
+    refills: "0",
+    prescriber: "",
+    instructions: ""
+  });
+
   const handleSelectMedication = (medication) => {
     setSelectedMedication(medication);
     setCurrentStep(2);
   };
-  
-  // Function to verify medication
+
   const handleVerifyMedication = () => {
     setVerificationComplete({
       ...verificationComplete,
@@ -94,33 +112,72 @@ const Dispensing = () => {
     });
     setCurrentStep(3);
   };
-  
-  // Function to complete dispensing
+
   const handleCompleteDispensing = () => {
     setCurrentStep(4);
-    // In a real app, we would update the database here
   };
-  
-  // Function to go back to medication list
+
   const handleBackToList = () => {
     setSelectedMedication(null);
     setCurrentStep(1);
   };
 
-  // Function to check if a medication has interactions
   const hasInteractions = (medication) => {
     return medication.interactions && medication.interactions.length > 0;
   };
-  
-  // Function to check if a medication has warnings
+
   const hasWarnings = (medication) => {
     return medication.warnings && medication.warnings.length > 0;
   };
 
-  // Filter medications based on search query
   const filteredMedications = patientSample.medications.filter(med => 
     med.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleAddPrescription = () => {
+    if (!newPrescription.patientName || !newPrescription.medicationName || 
+        !newPrescription.dosage || !newPrescription.frequency || 
+        !newPrescription.quantity || !newPrescription.prescriber) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newMed = {
+      id: Date.now(),
+      name: newPrescription.medicationName,
+      dosage: newPrescription.dosage,
+      frequency: newPrescription.frequency,
+      quantity: parseInt(newPrescription.quantity),
+      refills: parseInt(newPrescription.refills),
+      prescriber: newPrescription.prescriber,
+      prescribedDate: new Date().toISOString().split('T')[0],
+      status: "pending",
+      warnings: newPrescription.instructions ? [newPrescription.instructions] : [],
+      interactions: []
+    };
+
+    toast({
+      title: "Prescription Added",
+      description: `Successfully added ${newPrescription.medicationName} for ${newPrescription.patientName}`,
+    });
+
+    setNewPrescription({
+      patientName: "",
+      medicationName: "",
+      dosage: "",
+      frequency: "",
+      quantity: "",
+      refills: "0",
+      prescriber: "",
+      instructions: ""
+    });
+
+    setOpenPrescriptionDialog(false);
+  };
 
   return (
     <div className="min-h-screen flex w-full">
@@ -130,13 +187,15 @@ const Dispensing = () => {
         <main className="page-container">
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Medication Dispensing</h1>
-            <Button className="btn-hover">
+            <Button 
+              className="btn-hover"
+              onClick={() => setOpenPrescriptionDialog(true)}
+            >
               <PlusCircle className="h-4 w-4 mr-2" />
               New Prescription
             </Button>
           </div>
 
-          {/* Patient Information */}
           <Card className="mb-6 border-healthcare-primary/30">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row justify-between">
@@ -163,7 +222,6 @@ const Dispensing = () => {
             </CardContent>
           </Card>
 
-          {/* Step Indicator */}
           <div className="mb-6">
             <div className="flex items-center">
               <div className={`flex items-center justify-center h-8 w-8 rounded-full text-sm ${
@@ -204,7 +262,6 @@ const Dispensing = () => {
             </div>
           </div>
 
-          {/* Step 1: Select Medication */}
           {currentStep === 1 && (
             <div className="animate-fade-in">
               <div className="flex items-center mb-4">
@@ -267,7 +324,6 @@ const Dispensing = () => {
             </div>
           )}
 
-          {/* Step 2: Verify Medication */}
           {currentStep === 2 && selectedMedication && (
             <div className="animate-fade-in">
               <div className="flex items-center mb-4">
@@ -318,7 +374,6 @@ const Dispensing = () => {
                       Safety Verification
                     </h3>
                     
-                    {/* Interactions */}
                     <div className="mb-4">
                       <h4 className="text-sm font-medium mb-1">Drug Interactions:</h4>
                       {hasInteractions(selectedMedication) ? (
@@ -350,7 +405,6 @@ const Dispensing = () => {
                       )}
                     </div>
                     
-                    {/* Warnings */}
                     <div>
                       <h4 className="text-sm font-medium mb-1">Warnings & Instructions:</h4>
                       {hasWarnings(selectedMedication) ? (
@@ -383,7 +437,6 @@ const Dispensing = () => {
             </div>
           )}
 
-          {/* Step 3: Prepare Medication */}
           {currentStep === 3 && selectedMedication && (
             <div className="animate-fade-in">
               <div className="flex items-center mb-4">
@@ -481,7 +534,6 @@ const Dispensing = () => {
             </div>
           )}
 
-          {/* Step 4: Complete Dispensing */}
           {currentStep === 4 && selectedMedication && (
             <div className="animate-fade-in">
               <div className="text-center py-8">
@@ -521,6 +573,112 @@ const Dispensing = () => {
               </div>
             </div>
           )}
+
+          <Dialog open={openPrescriptionDialog} onOpenChange={setOpenPrescriptionDialog}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Add New Prescription</DialogTitle>
+                <DialogDescription>
+                  Enter the prescription details below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="patientName" className="text-right">Patient Name</Label>
+                  <Input
+                    id="patientName"
+                    value={newPrescription.patientName}
+                    onChange={(e) => setNewPrescription({...newPrescription, patientName: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="medicationName" className="text-right">Medication</Label>
+                  <Input
+                    id="medicationName"
+                    value={newPrescription.medicationName}
+                    onChange={(e) => setNewPrescription({...newPrescription, medicationName: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="dosage" className="text-right">Dosage</Label>
+                  <Input
+                    id="dosage"
+                    value={newPrescription.dosage}
+                    onChange={(e) => setNewPrescription({...newPrescription, dosage: e.target.value})}
+                    className="col-span-3"
+                    placeholder="e.g., 500mg"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="frequency" className="text-right">Frequency</Label>
+                  <Select
+                    value={newPrescription.frequency}
+                    onValueChange={(value) => setNewPrescription({...newPrescription, frequency: value})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Once daily">Once daily</SelectItem>
+                      <SelectItem value="Twice daily">Twice daily</SelectItem>
+                      <SelectItem value="Three times daily">Three times daily</SelectItem>
+                      <SelectItem value="Four times daily">Four times daily</SelectItem>
+                      <SelectItem value="As needed">As needed</SelectItem>
+                      <SelectItem value="Weekly">Weekly</SelectItem>
+                      <SelectItem value="Monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="quantity" className="text-right">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={newPrescription.quantity}
+                    onChange={(e) => setNewPrescription({...newPrescription, quantity: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="refills" className="text-right">Refills</Label>
+                  <Input
+                    id="refills"
+                    type="number"
+                    value={newPrescription.refills}
+                    onChange={(e) => setNewPrescription({...newPrescription, refills: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="prescriber" className="text-right">Prescriber</Label>
+                  <Input
+                    id="prescriber"
+                    value={newPrescription.prescriber}
+                    onChange={(e) => setNewPrescription({...newPrescription, prescriber: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="instructions" className="text-right">Special Instructions</Label>
+                  <Input
+                    id="instructions"
+                    value={newPrescription.instructions}
+                    onChange={(e) => setNewPrescription({...newPrescription, instructions: e.target.value})}
+                    className="col-span-3"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button type="submit" onClick={handleAddPrescription}>Add Prescription</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
