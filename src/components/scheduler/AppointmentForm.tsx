@@ -63,6 +63,7 @@ interface AppointmentFormProps {
 export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
   const [patientId, setPatientId] = useState<string>("");
   const [appointmentType, setAppointmentType] = useState<string>("");
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -70,6 +71,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
+  const [availableEndTimeSlots, setAvailableEndTimeSlots] = useState<string[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
 
   useEffect(() => {
@@ -105,6 +107,20 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     }
   }, [date]);
 
+  // Update end time options when start time changes
+  useEffect(() => {
+    if (time) {
+      setEndTime(END_TIME_MAP[time] || "");
+      
+      // Create a list of possible end times (only the next slot for now)
+      const endTimeOptions = [END_TIME_MAP[time]].filter(Boolean);
+      setAvailableEndTimeSlots(endTimeOptions as string[]);
+    } else {
+      setEndTime("");
+      setAvailableEndTimeSlots([]);
+    }
+  }, [time]);
+
   const checkBookedTimeSlots = async (selectedDate: Date) => {
     setIsCheckingAvailability(true);
     setValidationError(null);
@@ -128,6 +144,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       
       if (time && bookedTimes.includes(time)) {
         setTime("");
+        setEndTime("");
         setValidationError("Your previously selected time is no longer available");
       }
     } catch (err) {
@@ -142,7 +159,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     e.preventDefault();
     setValidationError(null);
     
-    if (!date || !time || !patientId || !appointmentType) {
+    if (!date || !time || !endTime || !patientId || !appointmentType) {
       setValidationError("Please fill in all required fields");
       return;
     }
@@ -179,11 +196,11 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     const appointmentData = {
       date,
       time,
+      endTime,
       patientId,
       patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
       appointmentType,
-      formattedDate: format(date, 'yyyy-MM-dd'),
-      endTime: END_TIME_MAP[time] || ""
+      formattedDate: format(date, 'yyyy-MM-dd')
     };
     
     try {
@@ -279,15 +296,33 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       
       <div className="space-y-2">
         <Label htmlFor="endTime">To</Label>
-        <div className="flex items-center">
-          <Clock className="mr-2 h-4 w-4 text-muted-foreground absolute ml-3" />
-          <Input 
-            value={time ? END_TIME_MAP[time] || "" : ""} 
-            disabled 
-            className="pl-9 bg-muted/50" 
-            placeholder="End time"
-          />
-        </div>
+        <Select onValueChange={setEndTime} value={endTime} disabled={!time}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="End time">
+              {endTime ? (
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  {endTime}
+                </div>
+              ) : (
+                "End time"
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {availableEndTimeSlots.length > 0 ? (
+              availableEndTimeSlots.map((slot) => (
+                <SelectItem key={slot} value={slot}>
+                  {slot}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-4 text-center text-sm">
+                Select a start time first
+              </div>
+            )}
+          </SelectContent>
+        </Select>
         <div className="text-xs text-muted-foreground">
           Appointments are 30 minutes in duration
         </div>
@@ -349,7 +384,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         <Button 
           type="submit"
           className="btn-hover"
-          disabled={isLoading || isCheckingAvailability || !patientId || !time || !appointmentType}
+          disabled={isLoading || isCheckingAvailability || !patientId || !time || !endTime || !appointmentType}
         >
           Create Appointment
         </Button>
