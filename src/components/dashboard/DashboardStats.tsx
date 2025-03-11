@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const stats = [
   {
@@ -15,9 +16,7 @@ const stats = [
     change: "+5.2% vs. last month",
     trend: "up",
     icon: Package,
-    color: "bg-blue-50 text-blue-600",
-    bgColor: "from-blue-500 to-indigo-600",
-    textColor: "text-white"
+    gradientClasses: "from-blue-500 to-blue-700"
   },
   {
     label: "Active Patients",
@@ -25,9 +24,7 @@ const stats = [
     change: "+2.8% vs. last month",
     trend: "up",
     icon: Users,
-    color: "bg-violet-50 text-violet-600",
-    bgColor: "from-purple-500 to-violet-600",
-    textColor: "text-white"
+    gradientClasses: "from-purple-500 to-violet-700"
   },
   {
     label: "Dispensed Today",
@@ -35,9 +32,7 @@ const stats = [
     change: "-1.2% vs. yesterday",
     trend: "down",
     icon: Pill,
-    color: "bg-emerald-50 text-emerald-600",
-    bgColor: "from-emerald-500 to-teal-600",
-    textColor: "text-white"
+    gradientClasses: "from-emerald-500 to-teal-700"
   },
   {
     label: "Scheduled Dispensing",
@@ -45,9 +40,7 @@ const stats = [
     change: "For today",
     trend: "neutral",
     icon: Calendar,
-    color: "bg-amber-50 text-amber-600",
-    bgColor: "from-pink-500 to-rose-600",
-    textColor: "text-white"
+    gradientClasses: "from-pink-500 to-rose-700"
   },
 ];
 
@@ -57,12 +50,10 @@ export function DashboardStats() {
       {stats.map((stat) => (
         <div 
           key={stat.label} 
-          className="bg-gradient-to-r rounded-xl p-5 shadow-md transform transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg"
-          style={{ 
-            backgroundImage: `linear-gradient(to right, var(--tw-gradient-stops))`,
-            "--tw-gradient-from": `#${stat.bgColor.split(" ")[0].replace("from-", "")}`,
-            "--tw-gradient-to": `#${stat.bgColor.split(" ")[1].replace("to-", "")}`
-          } as React.CSSProperties}
+          className={cn(
+            "rounded-xl p-5 shadow-md transform transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg bg-gradient-to-r",
+            stat.gradientClasses
+          )}
         >
           <div className="flex justify-between items-start">
             <div className="flex flex-col">
