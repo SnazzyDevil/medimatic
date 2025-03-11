@@ -80,6 +80,7 @@ export const CustomerSection = ({
       
       if (error) throw error;
       
+      console.log("Fetched patients:", data);
       setPatients(data || []);
     } catch (error) {
       console.error("Error fetching patients:", error);
@@ -98,6 +99,7 @@ export const CustomerSection = ({
   };
 
   const handlePatientSelect = (patient: Patient) => {
+    console.log("Selected patient in CustomerSection:", patient);
     onPatientSelect(patient);
     setOpen(false);
   };

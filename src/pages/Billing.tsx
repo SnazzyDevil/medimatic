@@ -125,7 +125,9 @@ const Billing = () => {
   };
 
   const handlePatientSelect = (patient: Patient | null) => {
+    console.log("Selected patient:", patient);
     setSelectedPatient(patient);
+    
     if (patient) {
       setNewInvoice(prev => ({
         ...prev,
