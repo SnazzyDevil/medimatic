@@ -9,6 +9,10 @@ import { PatientList } from "@/components/patients/PatientList";
 const Patients = () => {
   const navigate = useNavigate();
   
+  const handleAddNewPatient = () => {
+    navigate("/patients/new");
+  };
+  
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -17,7 +21,7 @@ const Patients = () => {
         <main className="page-container">
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Patients</h1>
-            <Button className="btn-hover">
+            <Button className="btn-hover" onClick={handleAddNewPatient}>
               <UserPlus className="h-4 w-4 mr-2" />
               Add New Patient
             </Button>
