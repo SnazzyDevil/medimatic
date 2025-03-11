@@ -95,7 +95,6 @@ const Settings = () => {
   const [practiceName, setPracticeName] = useState(doctorSettings.practiceName);
   const [email, setEmail] = useState(doctorSettings.email);
 
-  // Load initial values from doctorSettings
   useEffect(() => {
     setPracticeImage(doctorSettings.practiceImage || null);
     setDoctorName(doctorSettings.name);
@@ -179,7 +178,6 @@ const Settings = () => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      // Check image dimensions
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
       
@@ -230,7 +228,6 @@ const Settings = () => {
         setPracticeLogo(publicUrl);
       } else {
         setPracticeImage(publicUrl);
-        // Don't update doctor settings here, let the save button do it
       }
 
       toast({
@@ -897,3 +894,183 @@ const Settings = () => {
                           <Label className="font-medium">Analytics API Key</Label>
                           <p className="text-sm text-healthcare-gray">
                             Used for connecting to analytics and reporting
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            value={apiKeys.analyticsApiKey} 
+                            readOnly 
+                            className="w-64 font-mono text-sm bg-slate-50"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => regenerateApiKey('analyticsApiKey')}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={saveApiSettings} className="btn-hover">
+                        <Save className="h-4 w-4 mr-2" />
+                        Save API Settings
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border border-healthcare-gray-light">
+                  <CardHeader>
+                    <CardTitle>Integrations</CardTitle>
+                    <CardDescription>
+                      Manage your third-party service integrations
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">EHR System Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to your electronic health record system
+                          </p>
+                        </div>
+                        <Switch 
+                          id="ehr-integration" 
+                          checked={integrations.ehr} 
+                          onCheckedChange={() => handleIntegrationChange('ehr')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Pharmacy Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to pharmacy systems
+                          </p>
+                        </div>
+                        <Switch 
+                          id="pharmacy-integration" 
+                          checked={integrations.pharmacy} 
+                          onCheckedChange={() => handleIntegrationChange('pharmacy')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Insurance Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to insurance systems
+                          </p>
+                        </div>
+                        <Switch 
+                          id="insurance-integration" 
+                          checked={integrations.insurance} 
+                          onCheckedChange={() => handleIntegrationChange('insurance')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Lab System Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to lab systems
+                          </p>
+                        </div>
+                        <Switch 
+                          id="lab-system-integration" 
+                          checked={integrations.labSystem} 
+                          onCheckedChange={() => handleIntegrationChange('labSystem')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Telemedicine Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to telemedicine systems
+                          </p>
+                        </div>
+                        <Switch 
+                          id="telemedicine-integration" 
+                          checked={integrations.telemedicine} 
+                          onCheckedChange={() => handleIntegrationChange('telemedicine')}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Patient Portal Integration</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Connect to patient portal systems
+                          </p>
+                        </div>
+                        <Switch 
+                          id="patient-portal-integration" 
+                          checked={integrations.patientPortal} 
+                          onCheckedChange={() => handleIntegrationChange('patientPortal')}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border border-healthcare-gray-light">
+                  <CardHeader>
+                    <CardTitle>Webhooks</CardTitle>
+                    <CardDescription>
+                      Configure webhooks for real-time data synchronization
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Webhook URL</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Enter the URL for your webhook
+                          </p>
+                        </div>
+                        <Input 
+                          id="webhook-url" 
+                          value={webhookUrl} 
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="font-medium">Webhook Events</Label>
+                          <p className="text-sm text-healthcare-gray">
+                            Select the events you want to receive webhooks for
+                          </p>
+                        </div>
+                        <Select value={webhookEvents} onValueChange={setWebhookEvents}>
+                          <SelectTrigger id="webhook-events">
+                            <SelectValue placeholder="Select webhook events" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Events</SelectItem>
+                            <SelectItem value="appointments">Appointments</SelectItem>
+                            <SelectItem value="prescriptions">Prescriptions</SelectItem>
+                            <SelectItem value="billing">Billing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
