@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Calendar as CalendarIcon, 
@@ -22,7 +21,6 @@ const HOURS = [
   "4:00 PM", "5:00 PM"
 ];
 
-// Color mapping for appointment types
 const APPOINTMENT_TYPE_COLORS = {
   "Check-up": "bg-blue-100 border-blue-300 text-blue-800",
   "Follow-up": "bg-violet-100 border-violet-300 text-violet-800",
@@ -45,15 +43,15 @@ interface Appointment {
 
 interface SchedulerCalendarProps {
   onNewAppointment?: () => void;
+  refreshTrigger?: number;
 }
 
-export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps = {}) {
+export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: SchedulerCalendarProps) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [formattedWeek, setFormattedWeek] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Get current week's start and end dates
   useEffect(() => {
     const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday
     const weekEnd = addDays(weekStart, 6); // Sunday
@@ -61,18 +59,15 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
     setFormattedWeek(`${format(weekStart, "MMMM d")} - ${format(weekEnd, "d, yyyy")}`);
     
     fetchAppointments(weekStart, weekEnd);
-  }, [currentWeek]);
+  }, [currentWeek, refreshTrigger]);
   
-  // Fetch appointments for current week
   const fetchAppointments = async (startDate: Date, endDate: Date) => {
     setLoading(true);
     
     try {
-      // Format dates to ISO string for database query
       const startDateStr = format(startDate, "yyyy-MM-dd");
       const endDateStr = format(endDate, "yyyy-MM-dd");
       
-      // Fetch appointments
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
         .select('id, patient_id, appointment_date, appointment_time, appointment_type')
@@ -89,10 +84,8 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         return;
       }
       
-      // Get patient IDs to fetch patient names
       const patientIds = [...new Set(appointmentsData.map(app => app.patient_id))];
       
-      // Fetch patient details
       const { data: patientsData, error: patientsError } = await supabase
         .from('patients')
         .select('id, first_name, last_name')
@@ -102,16 +95,14 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         throw patientsError;
       }
       
-      // Create a map of patient IDs to patient names
       const patientMap = patientsData ? patientsData.reduce((acc, patient) => {
         acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
         return acc;
       }, {}) : {};
       
-      // Create a new array with processed appointment data
       const processedAppointments = appointmentsData.map(app => {
         const appointmentDate = parseISO(app.appointment_date);
-        const dayIndex = (appointmentDate.getDay() === 0) ? 6 : appointmentDate.getDay() - 1; // Adjust Sunday (0) to be 6
+        const dayIndex = (appointmentDate.getDay() === 0) ? 6 : appointmentDate.getDay() - 1;
         
         return {
           ...app,
@@ -129,17 +120,14 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
     }
   };
   
-  // Navigate to previous week
   const previousWeek = () => {
     setCurrentWeek(prev => addDays(prev, -7));
   };
   
-  // Navigate to next week
   const nextWeek = () => {
     setCurrentWeek(prev => addDays(prev, 7));
   };
   
-  // Function to get appointments for a specific day and time
   const getAppointmentForTime = (day: number, time: string) => {
     return appointments.find(
       app => app.day === day && app.appointment_time === time
@@ -199,7 +187,6 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
           </div>
           
           <div className="grid grid-cols-8">
-            {/* Time column */}
             <div className="border-r">
               {HOURS.map((hour) => (
                 <div key={hour} className="border-b last:border-b-0 p-2 h-20 text-center">
@@ -210,7 +197,6 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
               ))}
             </div>
             
-            {/* Days columns */}
             {DAYS.map((_, dayIndex) => {
               const date = addDays(startOfWeek(currentWeek, { weekStartsOn: 1 }), dayIndex);
               const isToday = format(new Date(), "yyyy-MM-dd") === format(date, "yyyy-MM-dd");

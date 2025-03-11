@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
@@ -12,9 +13,23 @@ import {
 } from "@/components/ui/dialog";
 import { AppointmentForm } from "@/components/scheduler/AppointmentForm";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Appointment {
+  id: string;
+  patient_id: string;
+  appointment_date: string;
+  appointment_time: string;
+  appointment_type: string;
+  patientName?: string;
+  color?: string;
+  day?: number;
+}
 
 const Scheduler = () => {
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleNewAppointment = () => {
     setShowAppointmentForm(true);
@@ -30,6 +45,9 @@ const Scheduler = () => {
     });
     
     setShowAppointmentForm(false);
+    
+    // Trigger a refresh of the calendar
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleFormCancel = () => {
@@ -53,7 +71,10 @@ const Scheduler = () => {
             </Button>
           </div>
           
-          <SchedulerCalendar onNewAppointment={handleNewAppointment} />
+          <SchedulerCalendar 
+            onNewAppointment={handleNewAppointment}
+            refreshTrigger={refreshTrigger}
+          />
           
           <Dialog open={showAppointmentForm} onOpenChange={setShowAppointmentForm}>
             <DialogContent className="sm:max-w-[500px]">
