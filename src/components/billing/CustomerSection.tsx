@@ -1,23 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { User, X, ChevronsUpDown, Edit } from "lucide-react";
+import { User, X, Edit, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export interface Patient {
   id: string;
@@ -62,14 +51,15 @@ export const CustomerSection = ({
 }: CustomerSectionProps) => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open) {
+    if (dialogOpen) {
       fetchPatients();
     }
-  }, [open]);
+  }, [dialogOpen]);
 
   const fetchPatients = async () => {
     setIsLoading(true);
@@ -101,8 +91,15 @@ export const CustomerSection = ({
   const handlePatientSelect = (patient: Patient) => {
     console.log("Selected patient in CustomerSection:", patient);
     onPatientSelect(patient);
-    setOpen(false);
+    setDialogOpen(false);
   };
+
+  const filteredPatients = patients.filter(patient => {
+    const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
+    return fullName.includes(searchTerm.toLowerCase()) || 
+           (patient.contact_number && patient.contact_number.includes(searchTerm)) ||
+           (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -150,45 +147,80 @@ export const CustomerSection = ({
                   variant="outline" 
                   size="sm"
                   className="h-8"
-                  onClick={() => setOpen(true)}
+                  onClick={() => setDialogOpen(true)}
                 >
                   Change patient
                 </Button>
               </div>
             </div>
           ) : (
-            <Popover open={open} onOpenChange={setOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full justify-between">
-                  <span>Add Patient</span>
-                  <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-0 w-[300px]" align="start" side="bottom">
-                <Command>
-                  <CommandInput placeholder="Search patients..." />
-                  <CommandList>
-                    <CommandEmpty>
-                      {isLoading ? "Loading..." : "No patients found."}
-                    </CommandEmpty>
-                    <CommandGroup>
-                      {patients.map((patient) => (
-                        <CommandItem
-                          key={patient.id}
-                          onSelect={() => handlePatientSelect(patient)}
-                        >
-                          <User className="mr-2 h-4 w-4" />
-                          <span>{patient.first_name} {patient.last_name}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="p-4 border border-dashed rounded-md flex flex-col items-center justify-center">
+              <p className="text-muted-foreground mb-3">No patient selected</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDialogOpen(true)}
+                className="flex items-center"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Patient Details
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Select Patient</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Input 
+              placeholder="Search patients by name, phone, or email..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="mb-2"
+            />
+            
+            <div className="max-h-[400px] overflow-y-auto border rounded-md">
+              {isLoading ? (
+                <div className="p-4 text-center">Loading patients...</div>
+              ) : filteredPatients.length === 0 ? (
+                <div className="p-4 text-center">
+                  {searchTerm ? "No patients match your search" : "No patients found"}
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredPatients.map((patient) => (
+                    <div 
+                      key={patient.id} 
+                      className="p-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3"
+                      onClick={() => handlePatientSelect(patient)}
+                    >
+                      <User className="h-5 w-5 text-slate-400" />
+                      <div>
+                        <div className="font-medium">{patient.first_name} {patient.last_name}</div>
+                        <div className="text-sm text-slate-500">
+                          {patient.contact_number}
+                          {patient.email && ` • ${patient.email}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
