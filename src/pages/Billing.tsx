@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { CustomerSection, type Patient } from "@/components/billing/CustomerSection";
+import { CustomerSection, type Patient, type PracticeInfo } from "@/components/billing/CustomerSection";
 
 // Define TypeScript interface for invoice items
 interface InvoiceItem {
@@ -38,6 +39,7 @@ interface NewInvoice {
   total: number;
   currency: string;
   notes: string;
+  practiceInfo: PracticeInfo;
 }
 
 const Billing = () => {
@@ -47,6 +49,17 @@ const Billing = () => {
   const { toast } = useToast();
   
   const currentDate = new Date().toISOString().split('T')[0];
+
+  // Define practice information
+  const practiceInfo: PracticeInfo = {
+    name: "PharmaCare Clinic",
+    address: "123 Healthcare Avenue, Medical District, 12345",
+    phone: "+27 12 345 6789",
+    email: "info@pharmacare.co.za",
+    website: "www.pharmacare.co.za",
+    regNumber: "REG-12345-ZA",
+    vatNumber: "VAT4567890123"
+  };
   
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
     { id: 1, description: "", quantity: 1, price: "", amount: 0 }
@@ -63,7 +76,8 @@ const Billing = () => {
     discount: 0,
     total: 0,
     currency: "USD",
-    notes: ""
+    notes: "",
+    practiceInfo: practiceInfo
   });
   
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
@@ -233,107 +247,106 @@ const Billing = () => {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <CustomerSection 
-                    selectedPatient={selectedPatient} 
-                    onPatientSelect={handlePatientSelect} 
-                  />
+              <div className="space-y-6">
+                <CustomerSection 
+                  selectedPatient={selectedPatient} 
+                  onPatientSelect={handlePatientSelect}
+                  practiceInfo={practiceInfo}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="invoiceNumber">Invoice number</Label>
+                    <Input
+                      id="invoiceNumber"
+                      value={newInvoice.invoiceNumber}
+                      onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="poNumber">P.O./S.O. number</Label>
+                    <Input
+                      id="poNumber"
+                      value={newInvoice.poNumber}
+                      onChange={(e) => setNewInvoice({...newInvoice, poNumber: e.target.value})}
+                      placeholder="Optional"
+                    />
+                  </div>
                 </div>
                 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label htmlFor="invoiceNumber">Invoice number</Label>
-                      <Input
-                        id="invoiceNumber"
-                        value={newInvoice.invoiceNumber}
-                        onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="poNumber">P.O./S.O. number</Label>
-                      <Input
-                        id="poNumber"
-                        value={newInvoice.poNumber}
-                        onChange={(e) => setNewInvoice({...newInvoice, poNumber: e.target.value})}
-                        placeholder="Optional"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="invoiceDate">Invoice date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !invoiceDate && "text-muted-foreground"
-                            )}
-                          >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {invoiceDate ? format(invoiceDate, "yyyy-MM-dd") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <CalendarComponent
-                            mode="single"
-                            selected={invoiceDate}
-                            onSelect={(date) => {
-                              setInvoiceDate(date || new Date());
-                              setNewInvoice({
-                                ...newInvoice, 
-                                invoiceDate: date ? format(date, "yyyy-MM-dd") : currentDate
-                              });
-                            }}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="paymentDueDate">Payment due</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !paymentDueDate && "text-muted-foreground"
-                            )}
-                          >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {paymentDueDate ? format(paymentDueDate, "yyyy-MM-dd") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <CalendarComponent
-                            mode="single"
-                            selected={paymentDueDate}
-                            onSelect={(date) => {
-                              setPaymentDueDate(date || new Date());
-                              setNewInvoice({
-                                ...newInvoice, 
-                                paymentDueDate: date ? format(date, "yyyy-MM-dd") : currentDate
-                              });
-                            }}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div>
-                      <Button variant="outline" size="sm" className="text-sm">
-                        On Receipt
-                      </Button>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="invoiceDate">Invoice date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !invoiceDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {invoiceDate ? format(invoiceDate, "yyyy-MM-dd") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                          mode="single"
+                          selected={invoiceDate}
+                          onSelect={(date) => {
+                            setInvoiceDate(date || new Date());
+                            setNewInvoice({
+                              ...newInvoice, 
+                              invoiceDate: date ? format(date, "yyyy-MM-dd") : currentDate
+                            });
+                          }}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
+                  
+                  <div>
+                    <Label htmlFor="paymentDueDate">Payment due</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !paymentDueDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {paymentDueDate ? format(paymentDueDate, "yyyy-MM-dd") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                          mode="single"
+                          selected={paymentDueDate}
+                          onSelect={(date) => {
+                            setPaymentDueDate(date || new Date());
+                            setNewInvoice({
+                              ...newInvoice, 
+                              paymentDueDate: date ? format(date, "yyyy-MM-dd") : currentDate
+                            });
+                          }}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                
+                <div>
+                  <Button variant="outline" size="sm" className="text-sm">
+                    On Receipt
+                  </Button>
                 </div>
               </div>
               
