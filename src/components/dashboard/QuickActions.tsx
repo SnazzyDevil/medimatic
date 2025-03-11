@@ -20,10 +20,7 @@ export function QuickActions() {
         navigate("/inventory");
         break;
       case "reports":
-        toast({
-          title: "Reports",
-          description: "Report functionality coming soon",
-        });
+        navigate("/reports");
         break;
       case "schedule":
         navigate("/scheduler");
