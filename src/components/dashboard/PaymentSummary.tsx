@@ -5,60 +5,67 @@ import { Button } from "@/components/ui/button";
 
 export function PaymentSummary() {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-semibold">Payment Summary</CardTitle>
+    <Card className="border-none shadow-md bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
+      <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-white border-b">
+        <CardTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
+          <DollarSign className="h-5 w-5 text-emerald-500" />
+          Payment Summary
+        </CardTitle>
         <p className="text-sm text-muted-foreground">Current billing period</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="text-sm text-healthcare-gray">Revenue</div>
-              <div className="text-xl font-bold text-healthcare-primary flex items-center">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3">
+              <div className="text-sm text-gray-600">Revenue</div>
+              <div className="text-xl font-bold text-emerald-700 flex items-center">
                 <DollarSign className="h-4 w-4 mr-1" />
                 8,250
               </div>
-              <div className="flex items-center text-xs text-green-600 mt-1">
+              <div className="flex items-center text-xs text-emerald-600 mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 <span>+5.2% this week</span>
               </div>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <div className="text-sm text-healthcare-gray">Payments</div>
-              <div className="text-xl font-bold text-green-600 flex items-center">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
+              <div className="text-sm text-gray-600">Payments</div>
+              <div className="text-xl font-bold text-blue-700 flex items-center">
                 <CreditCard className="h-4 w-4 mr-1" />
                 7,820
               </div>
-              <div className="text-xs text-healthcare-gray mt-1">16 transactions</div>
+              <div className="text-xs text-gray-500 mt-1">16 transactions</div>
             </div>
           </div>
           
           <div className="space-y-2">
-            <div className="text-sm font-medium mb-1">Recent Payments</div>
+            <div className="text-sm font-medium text-gray-700 mb-1">Recent Payments</div>
             <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 rounded-md hover:bg-healthcare-secondary">
+              <div className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 transition-colors">
                 <div className="flex items-center">
-                  <Receipt className="h-4 w-4 text-healthcare-gray mr-2" />
+                  <div className="bg-blue-100 rounded-full p-1.5 mr-2">
+                    <Receipt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
                   <div>
-                    <div className="text-sm font-medium">INV-2023-001</div>
-                    <div className="text-xs text-healthcare-gray">June 10, 2023</div>
+                    <div className="text-sm font-medium text-gray-800">INV-2023-001</div>
+                    <div className="text-xs text-gray-500">June 10, 2023</div>
                   </div>
                 </div>
-                <div className="font-medium">$150.00</div>
+                <div className="font-medium text-gray-800">$150.00</div>
               </div>
-              <div className="flex justify-between items-center p-2 rounded-md hover:bg-healthcare-secondary">
+              <div className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 transition-colors">
                 <div className="flex items-center">
-                  <Receipt className="h-4 w-4 text-healthcare-gray mr-2" />
+                  <div className="bg-blue-100 rounded-full p-1.5 mr-2">
+                    <Receipt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
                   <div>
-                    <div className="text-sm font-medium">INV-2023-002</div>
-                    <div className="text-xs text-healthcare-gray">June 8, 2023</div>
+                    <div className="text-sm font-medium text-gray-800">INV-2023-002</div>
+                    <div className="text-xs text-gray-500">June 8, 2023</div>
                   </div>
                 </div>
-                <div className="font-medium">$220.00</div>
+                <div className="font-medium text-gray-800">$220.00</div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="w-full justify-between mt-2">
+            <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
               View all payments
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
