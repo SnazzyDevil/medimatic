@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { User, X, ChevronsUpDown } from "lucide-react";
+import { User, X, ChevronsUpDown, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { 
@@ -73,43 +73,37 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
   };
 
   return (
-    <div className="border rounded-md p-4 mb-4 space-y-3">
-      <h3 className="text-sm font-semibold text-muted-foreground">Patient Information</h3>
-      
-      {selectedPatient ? (
-        <div className="space-y-3">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              <User className="h-12 w-12 text-muted-foreground p-2 border rounded-full" />
-              <div>
-                <h3 className="font-medium">{selectedPatient.first_name} {selectedPatient.last_name}</h3>
-                <p className="text-sm text-muted-foreground">{selectedPatient.contact_number}</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleClearPatient}>
-              <X className="h-4 w-4 mr-1" />
-              Clear
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <Label className="text-muted-foreground">Address</Label>
-              <p>{selectedPatient.address || "Not provided"}</p>
-            </div>
-            <div>
-              <Label className="text-muted-foreground">Medical Aid Number</Label>
-              <p>{selectedPatient.medical_aid_number || "Not provided"}</p>
-            </div>
-            <div>
-              <Label className="text-muted-foreground">Email</Label>
-              <p>{selectedPatient.email || "Not provided"}</p>
+    <div className="space-y-4">
+      <div className="flex flex-col">
+        <h3 className="text-sm font-semibold mb-2">Bill to</h3>
+        
+        {selectedPatient ? (
+          <div className="space-y-1">
+            <div className="font-medium text-lg">{selectedPatient.first_name} {selectedPatient.last_name}</div>
+            {selectedPatient.address && <div>{selectedPatient.address}</div>}
+            {selectedPatient.contact_number && <div>{selectedPatient.contact_number}</div>}
+            {selectedPatient.email && <div>{selectedPatient.email}</div>}
+            <div className="flex items-center space-x-2 mt-2">
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-blue-600 font-semibold" 
+                onClick={() => {
+                  // Future edit functionality could go here
+                }}
+              >
+                Edit {selectedPatient.first_name} {selectedPatient.last_name}
+              </Button>
+              <span>•</span>
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-blue-600 font-semibold"
+                onClick={() => setOpen(true)}
+              >
+                Choose a different patient
+              </Button>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex gap-2 items-center">
-          <User className="h-12 w-12 text-muted-foreground p-2 border rounded-full" />
+        ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="text-primary">
@@ -141,8 +135,8 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
               </Command>
             </PopoverContent>
           </Popover>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
