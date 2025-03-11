@@ -26,6 +26,29 @@ const TIME_SLOTS = [
   "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM"
 ];
 
+// Map to get the end time based on start time (30 minute appointments)
+const END_TIME_MAP: Record<string, string> = {
+  "8:00 AM": "8:30 AM",
+  "8:30 AM": "9:00 AM", 
+  "9:00 AM": "9:30 AM", 
+  "9:30 AM": "10:00 AM", 
+  "10:00 AM": "10:30 AM", 
+  "10:30 AM": "11:00 AM", 
+  "11:00 AM": "11:30 AM", 
+  "11:30 AM": "12:00 PM", 
+  "12:00 PM": "12:30 PM", 
+  "12:30 PM": "1:00 PM", 
+  "1:00 PM": "1:30 PM", 
+  "1:30 PM": "2:00 PM", 
+  "2:00 PM": "2:30 PM", 
+  "2:30 PM": "3:00 PM", 
+  "3:00 PM": "3:30 PM", 
+  "3:30 PM": "4:00 PM", 
+  "4:00 PM": "4:30 PM", 
+  "4:30 PM": "5:00 PM", 
+  "5:00 PM": "5:30 PM"
+};
+
 interface Patient {
   id: string;
   first_name: string;
@@ -159,7 +182,8 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       patientId,
       patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
       appointmentType,
-      formattedDate: format(date, 'yyyy-MM-dd')
+      formattedDate: format(date, 'yyyy-MM-dd'),
+      endTime: END_TIME_MAP[time] || ""
     };
     
     try {
@@ -218,7 +242,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="time">Time</Label>
+        <Label htmlFor="time">From</Label>
         {isCheckingAvailability && (
           <div className="text-sm text-muted-foreground">
             Checking available time slots...
@@ -226,14 +250,14 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         )}
         <Select onValueChange={setTime} value={time} disabled={isCheckingAvailability}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select time">
+            <SelectValue placeholder="Select start time">
               {time ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-4 w-4" />
                   {time}
                 </div>
               ) : (
-                "Select time"
+                "Select start time"
               )}
             </SelectValue>
           </SelectTrigger>
@@ -251,6 +275,22 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
             )}
           </SelectContent>
         </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="endTime">To</Label>
+        <div className="flex items-center">
+          <Clock className="mr-2 h-4 w-4 text-muted-foreground absolute ml-3" />
+          <Input 
+            value={time ? END_TIME_MAP[time] || "" : ""} 
+            disabled 
+            className="pl-9 bg-muted/50" 
+            placeholder="End time"
+          />
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Appointments are 30 minutes in duration
+        </div>
       </div>
       
       <div className="space-y-2">

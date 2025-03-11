@@ -83,7 +83,7 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         throw appointmentsError;
       }
       
-      if (!appointmentsData) {
+      if (!appointmentsData || appointmentsData.length === 0) {
         setAppointments([]);
         setLoading(false);
         return;
