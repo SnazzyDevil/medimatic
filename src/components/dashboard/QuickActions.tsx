@@ -14,7 +14,7 @@ export function QuickActions() {
         navigate("/dispensing");
         break;
       case "newPatient":
-        navigate("/patients?new=true");
+        navigate("/patients/new");
         break;
       case "inventory":
         navigate("/inventory");
