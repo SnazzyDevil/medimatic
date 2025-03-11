@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PatientFormProps {
   onSubmit?: (data: PatientFormData) => void;
@@ -35,6 +36,7 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
     allergies: "",
     alternateContact: "",
   });
+  const [submitting, setSubmitting] = React.useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,7 +46,7 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -57,15 +59,47 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
       return;
     }
 
-    if (onSubmit) {
-      onSubmit(formData);
-    } else {
-      console.log("Form submitted:", formData);
+    setSubmitting(true);
+
+    try {
+      // Insert data to Supabase
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          contact_number: formData.contactNumber,
+          medical_aid_number: formData.medicalAidNumber,
+          address: formData.address,
+          email: formData.email,
+          allergies: formData.allergies,
+          alternate_contact: formData.alternateContact,
+        })
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (onSubmit) {
+        onSubmit(formData);
+      }
+
       toast({
         title: "Success",
         description: "Patient added successfully.",
       });
+
       navigate("/patients");
+    } catch (error) {
+      console.error("Error adding patient:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add patient. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -185,9 +219,9 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
           </Button>
           <Button 
             type="submit" 
-            disabled={isLoading}
+            disabled={isLoading || submitting}
           >
-            {isLoading ? "Saving..." : "Save Patient"}
+            {isLoading || submitting ? "Saving..." : "Save Patient"}
           </Button>
         </CardFooter>
       </form>
