@@ -42,6 +42,7 @@ export const useDoctorSettings = () => {
 
 export function Header() {
   const { doctorSettings } = useDoctorSettings();
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
   
   return (
     <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in">
@@ -51,10 +52,53 @@ export function Header() {
       </div>
 
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/20">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-0.5 right-0.5 h-2 w-2 bg-rose-500 rounded-full"></span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/20">
+              <Bell className="h-5 w-5" />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-0.5 right-0.5 h-2 w-2 bg-rose-500 rounded-full"></span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 mt-2">
+            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="max-h-72 overflow-y-auto">
+              <DropdownMenuItem className="flex flex-col items-start py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-medium">New Appointment</span>
+                  <span className="text-xs text-gray-500">2 min ago</span>
+                </div>
+                <span className="text-sm text-gray-600 mt-1">
+                  Sarah Johnson scheduled an appointment for tomorrow at 10:00 AM
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="flex flex-col items-start py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-medium">Prescription Renewal</span>
+                  <span className="text-xs text-gray-500">1 hour ago</span>
+                </div>
+                <span className="text-sm text-gray-600 mt-1">
+                  Michael Brown requested a prescription renewal for Lisinopril
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="flex flex-col items-start py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-medium">Inventory Alert</span>
+                  <span className="text-xs text-gray-500">3 hours ago</span>
+                </div>
+                <span className="text-sm text-gray-600 mt-1">
+                  Low stock alert: Amoxicillin 500mg (5 units remaining)
+                </span>
+              </DropdownMenuItem>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-center justify-center text-violet-600 font-medium">
+              View all notifications
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
