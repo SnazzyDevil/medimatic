@@ -1,3 +1,4 @@
+
 import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 
 const timeZones = [
+  { value: "Africa/Johannesburg", label: "South Africa (SAST)" },
   { value: "America/New_York", label: "Eastern Time (ET)" },
   { value: "America/Chicago", label: "Central Time (CT)" },
   { value: "America/Denver", label: "Mountain Time (MT)" },
@@ -28,6 +30,7 @@ const timeZones = [
 ];
 
 const currencies = [
+  { value: "ZAR", label: "South African Rand (R)", symbol: "R" },
   { value: "USD", label: "US Dollar ($)", symbol: "$" },
   { value: "EUR", label: "Euro (€)", symbol: "€" },
   { value: "GBP", label: "British Pound (£)", symbol: "£" },
