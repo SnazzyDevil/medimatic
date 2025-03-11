@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { 
   CheckCircle, 
@@ -80,7 +81,8 @@ const Dispensing = () => {
         prescriber: item.prescriber,
         prescribedDate: new Date(item.created_at).toISOString().split('T')[0],
         status: "pending",
-        warnings: item.instructions ? [item.instructions] : [],
+        // Add warnings array using duration_of_treatment if available
+        warnings: item.duration_of_treatment ? [item.duration_of_treatment] : [],
         interactions: []
       }));
       
