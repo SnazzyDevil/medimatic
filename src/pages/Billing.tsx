@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CustomerSection, type Patient, type PracticeInfo } from "@/components/billing/CustomerSection";
 
-// Define TypeScript interface for invoice items
 interface InvoiceItem {
   id: number;
   description: string;
@@ -25,7 +23,6 @@ interface InvoiceItem {
   amount: number;
 }
 
-// Define TypeScript interface for the new invoice
 interface NewInvoice {
   patientName: string;
   patientId?: string;
@@ -50,7 +47,6 @@ const Billing = () => {
   
   const currentDate = new Date().toISOString().split('T')[0];
 
-  // Define practice information
   const practiceInfo: PracticeInfo = {
     name: "PharmaCare Clinic",
     address: "123 Healthcare Avenue, Medical District, 12345",
@@ -101,7 +97,6 @@ const Billing = () => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
         
-        // Recalculate amount if quantity or price changes
         if (field === 'quantity' || field === 'price') {
           const quantity = field === 'quantity' ? Number(value) : item.quantity;
           const price = field === 'price' ? value : item.price;
@@ -167,7 +162,6 @@ const Billing = () => {
 
     setIsLoading(true);
     try {
-      // In a real app, you would save this to the database
       console.log("Creating invoice:", newInvoice);
       
       toast({
@@ -207,7 +201,8 @@ const Billing = () => {
       discount: 0,
       total: 0,
       currency: "USD",
-      notes: ""
+      notes: "",
+      practiceInfo: practiceInfo
     });
   };
 
@@ -440,7 +435,6 @@ const Billing = () => {
                         size="sm"
                         className="text-primary p-0 h-auto"
                         onClick={() => {
-                          // Add discount functionality
                         }}
                       >
                         <Plus className="h-4 w-4 mr-1" />
