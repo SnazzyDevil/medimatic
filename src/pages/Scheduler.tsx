@@ -55,7 +55,7 @@ const Scheduler = () => {
             </Button>
           </div>
           
-          <SchedulerCalendar />
+          <SchedulerCalendar onNewAppointment={handleNewAppointment} />
           
           <Dialog open={showAppointmentForm} onOpenChange={setShowAppointmentForm}>
             <DialogContent className="sm:max-w-[500px]">
