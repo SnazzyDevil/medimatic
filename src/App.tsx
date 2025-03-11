@@ -12,6 +12,7 @@ import Scheduler from "./pages/Scheduler";
 import Billing from "./pages/Billing";
 import Inventory from "./pages/Inventory";
 import Dispensing from "./pages/Dispensing";
+import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/billing" element={<Billing />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dispensing" element={<Dispensing />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

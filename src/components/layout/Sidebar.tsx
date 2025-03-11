@@ -1,6 +1,6 @@
 
 import { Link, useLocation } from "react-router-dom";
-import { Calendar, CreditCard, Home, Settings, Users, Package, Pill } from "lucide-react";
+import { Calendar, CreditCard, Home, Settings, Users, Package, Pill, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ const navItems = [
   { name: "Inventory", icon: Package, href: "/inventory" },
   { name: "Dispensing", icon: Pill, href: "/dispensing" },
   { name: "Billing", icon: CreditCard, href: "/billing" },
+  { name: "Reports", icon: FileText, href: "/reports" },
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
