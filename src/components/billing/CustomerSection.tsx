@@ -117,7 +117,7 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
                 <ChevronsUpDown className="ml-1 h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0" align="start" side="bottom" className="w-[300px]">
+            <PopoverContent className="p-0" align="start" side="bottom" width="300px">
               <Command>
                 <CommandInput placeholder="Search patients..." />
                 <CommandList>
