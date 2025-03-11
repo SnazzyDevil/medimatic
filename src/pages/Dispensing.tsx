@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -8,7 +8,8 @@ import {
   ClipboardCheck, 
   ShieldAlert,
   XCircle,
-  PlusCircle
+  PlusCircle,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,60 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-
-const patientSample = {
-  id: 1,
-  name: "Sarah Johnson",
-  dob: "08/15/1981",
-  allergies: ["Penicillin", "Peanuts"],
-  medications: [
-    {
-      id: 101,
-      name: "Lisinopril",
-      dosage: "10mg",
-      frequency: "Once daily",
-      quantity: 30,
-      refills: 2,
-      prescriber: "Dr. Michael Chen",
-      prescribedDate: "2023-05-10",
-      status: "pending",
-      warnings: [],
-      interactions: []
-    },
-    {
-      id: 102,
-      name: "Metformin",
-      dosage: "500mg",
-      frequency: "Twice daily",
-      quantity: 60,
-      refills: 3,
-      prescriber: "Dr. Michael Chen",
-      prescribedDate: "2023-05-10",
-      status: "pending",
-      warnings: ["Take with food to minimize GI side effects"],
-      interactions: []
-    },
-    {
-      id: 103,
-      name: "Amoxicillin",
-      dosage: "500mg",
-      frequency: "Three times daily",
-      quantity: 21,
-      refills: 0,
-      prescriber: "Dr. Emma Wilson",
-      prescribedDate: "2023-06-02",
-      status: "pending",
-      warnings: [],
-      interactions: [
-        {
-          medication: "Metformin",
-          severity: "moderate",
-          description: "May affect blood glucose levels"
-        }
-      ]
-    }
-  ]
-};
+import { supabase } from "@/integrations/supabase/client";
 
 const Dispensing = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -89,16 +37,76 @@ const Dispensing = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [verificationComplete, setVerificationComplete] = useState({});
   const [openPrescriptionDialog, setOpenPrescriptionDialog] = useState(false);
+  const [medicationsData, setMedicationsData] = useState([]);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
   const [newPrescription, setNewPrescription] = useState({
     patientName: "",
     medicationName: "",
+    medicationId: "",
     dosage: "",
     frequency: "",
     quantity: "",
     refills: "0",
     prescriber: "",
-    instructions: ""
+    instructions: "",
+    durationOfTreatment: "",
+    dispensingStaff: "",
+    cost: "",
+    dispensingDate: new Date().toISOString().split('T')[0]
   });
+
+  useEffect(() => {
+    fetchMedications();
+    fetchInventory();
+  }, []);
+  
+  const fetchMedications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('dispensing')
+        .select('*');
+      
+      if (error) throw error;
+      
+      const transformedData = data.map(item => ({
+        id: item.id,
+        name: item.medication_name,
+        dosage: item.dosage,
+        frequency: item.frequency,
+        quantity: item.quantity,
+        refills: item.refills,
+        prescriber: item.prescriber,
+        prescribedDate: new Date(item.created_at).toISOString().split('T')[0],
+        status: "pending",
+        warnings: item.instructions ? [item.instructions] : [],
+        interactions: []
+      }));
+      
+      setMedicationsData(transformedData.length > 0 ? transformedData : patientSample.medications);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching medications:", error);
+      setMedicationsData(patientSample.medications);
+      setLoading(false);
+    }
+  };
+  
+  const fetchInventory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*');
+      
+      if (error) throw error;
+      
+      setInventoryData(data);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      setInventoryData([]);
+    }
+  };
 
   const handleSelectMedication = (medication) => {
     setSelectedMedication(medication);
@@ -113,7 +121,43 @@ const Dispensing = () => {
     setCurrentStep(3);
   };
 
-  const handleCompleteDispensing = () => {
+  const handleCompleteDispensing = async () => {
+    const matchingInventoryItem = inventoryData.find(
+      item => item.name.toLowerCase() === selectedMedication.name.toLowerCase()
+    );
+    
+    if (matchingInventoryItem) {
+      try {
+        const newStock = Math.max(0, matchingInventoryItem.stock - selectedMedication.quantity);
+        const status = newStock < matchingInventoryItem.threshold ? "low" : "normal";
+        
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ 
+            stock: newStock,
+            status: status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', matchingInventoryItem.id);
+          
+        if (updateError) throw updateError;
+        
+        toast({
+          title: "Inventory Updated",
+          description: `${selectedMedication.name} stock updated to ${newStock}`,
+        });
+        
+        fetchInventory();
+      } catch (error) {
+        console.error("Error updating inventory:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update inventory",
+          variant: "destructive"
+        });
+      }
+    }
+    
     setCurrentStep(4);
   };
 
@@ -130,14 +174,15 @@ const Dispensing = () => {
     return medication.warnings && medication.warnings.length > 0;
   };
 
-  const filteredMedications = patientSample.medications.filter(med => 
+  const filteredMedications = medicationsData.filter(med => 
     med.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddPrescription = () => {
+  const handleAddPrescription = async () => {
     if (!newPrescription.patientName || !newPrescription.medicationName || 
         !newPrescription.dosage || !newPrescription.frequency || 
-        !newPrescription.quantity || !newPrescription.prescriber) {
+        !newPrescription.quantity || !newPrescription.prescriber ||
+        !newPrescription.dispensingStaff) {
       toast({
         title: "Missing fields",
         description: "Please fill out all required fields",
@@ -146,37 +191,139 @@ const Dispensing = () => {
       return;
     }
 
-    const newMed = {
-      id: Date.now(),
-      name: newPrescription.medicationName,
-      dosage: newPrescription.dosage,
-      frequency: newPrescription.frequency,
-      quantity: parseInt(newPrescription.quantity),
-      refills: parseInt(newPrescription.refills),
-      prescriber: newPrescription.prescriber,
-      prescribedDate: new Date().toISOString().split('T')[0],
-      status: "pending",
-      warnings: newPrescription.instructions ? [newPrescription.instructions] : [],
-      interactions: []
-    };
+    try {
+      let medicationId = null;
+      const matchingInventoryItem = inventoryData.find(
+        item => item.name.toLowerCase() === newPrescription.medicationName.toLowerCase()
+      );
+      
+      if (matchingInventoryItem) {
+        medicationId = matchingInventoryItem.id;
+      }
+      
+      const { data, error } = await supabase
+        .from('dispensing')
+        .insert({
+          patient_name: newPrescription.patientName,
+          medication_name: newPrescription.medicationName,
+          medication_id: medicationId,
+          dosage: newPrescription.dosage,
+          frequency: newPrescription.frequency,
+          quantity: parseInt(newPrescription.quantity),
+          refills: parseInt(newPrescription.refills),
+          prescriber: newPrescription.prescriber,
+          duration_of_treatment: newPrescription.durationOfTreatment,
+          dispensing_staff: newPrescription.dispensingStaff,
+          cost: newPrescription.cost ? parseFloat(newPrescription.cost) : null,
+          dispensing_date: newPrescription.dispensingDate
+        })
+        .select();
+        
+      if (error) throw error;
+      
+      if (matchingInventoryItem) {
+        const newStock = Math.max(0, matchingInventoryItem.stock - parseInt(newPrescription.quantity));
+        const status = newStock < matchingInventoryItem.threshold ? "low" : "normal";
+        
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ 
+            stock: newStock,
+            status: status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', matchingInventoryItem.id);
+          
+        if (updateError) throw updateError;
+      }
+      
+      toast({
+        title: "Prescription Added",
+        description: `Successfully added ${newPrescription.medicationName} for ${newPrescription.patientName}`,
+      });
+      
+      fetchMedications();
+      fetchInventory();
+      
+      setNewPrescription({
+        patientName: "",
+        medicationName: "",
+        medicationId: "",
+        dosage: "",
+        frequency: "",
+        quantity: "",
+        refills: "0",
+        prescriber: "",
+        instructions: "",
+        durationOfTreatment: "",
+        dispensingStaff: "",
+        cost: "",
+        dispensingDate: new Date().toISOString().split('T')[0]
+      });
+      
+      setOpenPrescriptionDialog(false);
+    } catch (error) {
+      console.error("Error adding prescription:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add prescription",
+        variant: "destructive"
+      });
+    }
+  };
 
-    toast({
-      title: "Prescription Added",
-      description: `Successfully added ${newPrescription.medicationName} for ${newPrescription.patientName}`,
-    });
-
-    setNewPrescription({
-      patientName: "",
-      medicationName: "",
-      dosage: "",
-      frequency: "",
-      quantity: "",
-      refills: "0",
-      prescriber: "",
-      instructions: ""
-    });
-
-    setOpenPrescriptionDialog(false);
+  const patientSample = {
+    id: 1,
+    name: "Sarah Johnson",
+    dob: "08/15/1981",
+    allergies: ["Penicillin", "Peanuts"],
+    medications: [
+      {
+        id: 101,
+        name: "Lisinopril",
+        dosage: "10mg",
+        frequency: "Once daily",
+        quantity: 30,
+        refills: 2,
+        prescriber: "Dr. Michael Chen",
+        prescribedDate: "2023-05-10",
+        status: "pending",
+        warnings: [],
+        interactions: []
+      },
+      {
+        id: 102,
+        name: "Metformin",
+        dosage: "500mg",
+        frequency: "Twice daily",
+        quantity: 60,
+        refills: 3,
+        prescriber: "Dr. Michael Chen",
+        prescribedDate: "2023-05-10",
+        status: "pending",
+        warnings: ["Take with food to minimize GI side effects"],
+        interactions: []
+      },
+      {
+        id: 103,
+        name: "Amoxicillin",
+        dosage: "500mg",
+        frequency: "Three times daily",
+        quantity: 21,
+        refills: 0,
+        prescriber: "Dr. Emma Wilson",
+        prescribedDate: "2023-06-02",
+        status: "pending",
+        warnings: [],
+        interactions: [
+          {
+            medication: "Metformin",
+            severity: "moderate",
+            description: "May affect blood glucose levels"
+          }
+        ]
+      }
+    ]
   };
 
   return (
@@ -262,7 +409,13 @@ const Dispensing = () => {
             </div>
           </div>
 
-          {currentStep === 1 && (
+          {loading && (
+            <div className="flex justify-center items-center py-10">
+              <p>Loading medications...</p>
+            </div>
+          )}
+
+          {currentStep === 1 && !loading && (
             <div className="animate-fade-in">
               <div className="flex items-center mb-4">
                 <h2 className="text-lg font-medium">Select Medication to Dispense</h2>
@@ -594,12 +747,28 @@ const Dispensing = () => {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="medicationName" className="text-right">Medication</Label>
-                  <Input
-                    id="medicationName"
+                  <Select
                     value={newPrescription.medicationName}
-                    onChange={(e) => setNewPrescription({...newPrescription, medicationName: e.target.value})}
-                    className="col-span-3"
-                  />
+                    onValueChange={(value) => {
+                      const selectedItem = inventoryData.find(item => item.name === value);
+                      setNewPrescription({
+                        ...newPrescription, 
+                        medicationName: value,
+                        medicationId: selectedItem?.id || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select medication" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {inventoryData.map(item => (
+                        <SelectItem key={item.id} value={item.name}>
+                          {item.name} ({item.stock} in stock)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="dosage" className="text-right">Dosage</Label>
@@ -632,6 +801,16 @@ const Dispensing = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="durationOfTreatment" className="text-right">Duration of Treatment</Label>
+                  <Input
+                    id="durationOfTreatment"
+                    value={newPrescription.durationOfTreatment}
+                    onChange={(e) => setNewPrescription({...newPrescription, durationOfTreatment: e.target.value})}
+                    className="col-span-3"
+                    placeholder="e.g., 7 days, 2 weeks"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="quantity" className="text-right">Quantity</Label>
                   <Input
                     id="quantity"
@@ -657,6 +836,36 @@ const Dispensing = () => {
                     id="prescriber"
                     value={newPrescription.prescriber}
                     onChange={(e) => setNewPrescription({...newPrescription, prescriber: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="dispensingStaff" className="text-right">Dispensing Staff</Label>
+                  <Input
+                    id="dispensingStaff"
+                    value={newPrescription.dispensingStaff}
+                    onChange={(e) => setNewPrescription({...newPrescription, dispensingStaff: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="cost" className="text-right">Cost</Label>
+                  <Input
+                    id="cost"
+                    type="number"
+                    step="0.01"
+                    value={newPrescription.cost}
+                    onChange={(e) => setNewPrescription({...newPrescription, cost: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="dispensingDate" className="text-right">Dispensing Date</Label>
+                  <Input
+                    id="dispensingDate"
+                    type="date"
+                    value={newPrescription.dispensingDate}
+                    onChange={(e) => setNewPrescription({...newPrescription, dispensingDate: e.target.value})}
                     className="col-span-3"
                   />
                 </div>

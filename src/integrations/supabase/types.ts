@@ -44,6 +44,110 @@ export type Database = {
           },
         ]
       }
+      dispensing: {
+        Row: {
+          cost: number | null
+          created_at: string
+          dispensing_date: string
+          dispensing_staff: string
+          dosage: string
+          duration_of_treatment: string | null
+          frequency: string
+          id: string
+          medication_id: string | null
+          medication_name: string
+          patient_name: string
+          prescriber: string
+          quantity: number
+          refills: number
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          dispensing_date?: string
+          dispensing_staff: string
+          dosage: string
+          duration_of_treatment?: string | null
+          frequency: string
+          id?: string
+          medication_id?: string | null
+          medication_name: string
+          patient_name: string
+          prescriber: string
+          quantity: number
+          refills?: number
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          dispensing_date?: string
+          dispensing_staff?: string
+          dosage?: string
+          duration_of_treatment?: string | null
+          frequency?: string
+          id?: string
+          medication_id?: string | null
+          medication_name?: string
+          patient_name?: string
+          prescriber?: string
+          quantity?: number
+          refills?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispensing_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory: {
+        Row: {
+          category: string
+          created_at: string
+          expiry_date: string | null
+          id: string
+          item_code: string
+          name: string
+          status: string | null
+          stock: number
+          supplier_name: string
+          threshold: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_code: string
+          name: string
+          status?: string | null
+          stock?: number
+          supplier_name: string
+          threshold?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_code?: string
+          name?: string
+          status?: string | null
+          stock?: number
+          supplier_name?: string
+          threshold?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
