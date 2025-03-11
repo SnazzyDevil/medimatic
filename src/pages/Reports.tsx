@@ -16,6 +16,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -247,27 +255,24 @@ export default function Reports() {
             
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted border-b">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                       {getReportHeaders(reportType).map((header, i) => (
-                        <th key={i} className="px-4 py-3 text-left font-medium">{header}</th>
+                        <TableHead key={i}>{header}</TableHead>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getSampleData(reportType).slice(0, 3).map((row, i) => (
-                      <tr key={i} className={i % 2 === 0 ? "bg-background" : "bg-muted/30"}>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getSampleData(reportType).map((row, i) => (
+                      <TableRow key={i}>
                         {row.map((cell, j) => (
-                          <td key={j} className="px-4 py-3 border-t">{cell}</td>
+                          <TableCell key={j}>{cell}</TableCell>
                         ))}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="p-4 border-t bg-muted/30 text-center text-sm text-muted-foreground">
-                Preview showing 3 of {getSampleData(reportType).length} records. Generate the report to see all data.
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
