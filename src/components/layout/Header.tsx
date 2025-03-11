@@ -19,6 +19,7 @@ export const useDoctorSettings = () => {
     email: "info@medicare-clinic.com",
     practiceName: "MediCare Clinic",
     image: "https://i.pravatar.cc/100?img=11", // Default image
+    practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png", // Practice image
   });
 
   // Load settings from localStorage on component mount
@@ -58,11 +59,11 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative flex items-center gap-2 pl-2 pr-2 hover:bg-white/20">
-              <span className="hidden sm:inline text-sm text-white">{doctorSettings.name}</span>
+              <span className="hidden sm:inline text-sm text-white">{doctorSettings.practiceName}</span>
               <Avatar className="h-8 w-8 border border-white/30">
-                <AvatarImage src={doctorSettings.image} alt={doctorSettings.name} />
+                <AvatarImage src={doctorSettings.practiceImage} alt={doctorSettings.practiceName} />
                 <AvatarFallback className="bg-white/20 text-white">
-                  {doctorSettings.name.split(' ').map(n => n[0]).join('')}
+                  {doctorSettings.practiceName.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
             </Button>

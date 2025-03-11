@@ -34,9 +34,9 @@ const Dashboard = () => {
                   Notifications
                 </Button>
                 <Avatar className="h-12 w-12 border-2 border-white/30">
-                  <AvatarImage src={doctorSettings.image} alt={doctorSettings.name} />
+                  <AvatarImage src={doctorSettings.practiceImage} alt={doctorSettings.practiceName} />
                   <AvatarFallback className="bg-white/20 text-white">
-                    {doctorSettings.name.split(' ').map(n => n[0]).join('')}
+                    {doctorSettings.practiceName.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
               </div>
