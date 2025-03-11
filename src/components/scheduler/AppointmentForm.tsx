@@ -110,11 +110,19 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   // Update end time options when start time changes
   useEffect(() => {
     if (time) {
+      // Default to the 30-minute slot for initial selection
       setEndTime(END_TIME_MAP[time] || "");
       
-      // Create a list of possible end times (only the next slot for now)
-      const endTimeOptions = [END_TIME_MAP[time]].filter(Boolean);
-      setAvailableEndTimeSlots(endTimeOptions as string[]);
+      // Find the index of the selected time in TIME_SLOTS
+      const selectedIndex = TIME_SLOTS.findIndex(slot => slot === time);
+      
+      if (selectedIndex !== -1 && selectedIndex < TIME_SLOTS.length - 1) {
+        // Filter time slots that come after the selected start time
+        const validEndTimeSlots = TIME_SLOTS.filter((_, index) => index > selectedIndex);
+        setAvailableEndTimeSlots(validEndTimeSlots);
+      } else {
+        setAvailableEndTimeSlots([]);
+      }
     } else {
       setEndTime("");
       setAvailableEndTimeSlots([]);
@@ -161,6 +169,15 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     
     if (!date || !time || !endTime || !patientId || !appointmentType) {
       setValidationError("Please fill in all required fields");
+      return;
+    }
+    
+    // Validate that end time is after start time
+    const startTimeIndex = TIME_SLOTS.indexOf(time);
+    const endTimeIndex = TIME_SLOTS.indexOf(endTime);
+    
+    if (startTimeIndex >= endTimeIndex) {
+      setValidationError("End time must be after start time");
       return;
     }
     
@@ -298,14 +315,14 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         <Label htmlFor="endTime">To</Label>
         <Select onValueChange={setEndTime} value={endTime} disabled={!time}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="End time">
+            <SelectValue placeholder="Select end time">
               {endTime ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-4 w-4" />
                   {endTime}
                 </div>
               ) : (
-                "End time"
+                "Select end time"
               )}
             </SelectValue>
           </SelectTrigger>
@@ -324,7 +341,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
           </SelectContent>
         </Select>
         <div className="text-xs text-muted-foreground">
-          Appointments are 30 minutes in duration
+          Select any end time after your start time
         </div>
       </div>
       
