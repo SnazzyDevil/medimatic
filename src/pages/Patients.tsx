@@ -14,14 +14,18 @@ const Patients = () => {
   };
   
   return (
-    <div className="min-h-screen flex w-full">
+    <div className="min-h-screen flex w-full bg-[#f8fafc]">
       <Sidebar />
       <div className="flex-1 ml-16">
         <Header />
         <main className="page-container">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="font-semibold text-2xl">Patients</h1>
-            <Button className="btn-hover" onClick={handleAddNewPatient}>
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-6 mb-8 shadow-md">
+            <h1 className="font-bold text-3xl mb-2">Patients Management</h1>
+            <p className="text-violet-100">Manage your patients' records and information</p>
+            <Button 
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white border-white/10" 
+              onClick={handleAddNewPatient}
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               Add New Patient
             </Button>

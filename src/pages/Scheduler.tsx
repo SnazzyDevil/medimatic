@@ -55,15 +55,16 @@ const Scheduler = () => {
   };
 
   return (
-    <div className="min-h-screen flex w-full">
+    <div className="min-h-screen flex w-full bg-[#f8fafc]">
       <Sidebar />
       <div className="flex-1 ml-16">
         <Header />
         <main className="page-container">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="font-semibold text-2xl">Scheduler</h1>
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-6 mb-8 shadow-md">
+            <h1 className="font-bold text-3xl mb-2">Appointment Scheduler</h1>
+            <p className="text-violet-100">Manage appointments and schedule patient visits</p>
             <Button 
-              className="btn-hover"
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white border-white/10"
               onClick={handleNewAppointment}
             >
               <CalendarPlus className="h-4 w-4 mr-2" />
