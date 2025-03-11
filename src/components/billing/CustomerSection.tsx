@@ -113,7 +113,7 @@ export const CustomerSection = ({ selectedPatient, onPatientSelect }: CustomerSe
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="text-primary">
-                Add a customer
+                Add Patient
                 <ChevronsUpDown className="ml-1 h-4 w-4" />
               </Button>
             </PopoverTrigger>
