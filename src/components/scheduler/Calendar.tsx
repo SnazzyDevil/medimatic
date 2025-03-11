@@ -83,6 +83,12 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
         throw appointmentsError;
       }
       
+      if (!appointmentsData) {
+        setAppointments([]);
+        setLoading(false);
+        return;
+      }
+      
       // Get patient IDs to fetch patient names
       const patientIds = [...new Set(appointmentsData.map(app => app.patient_id))];
       
@@ -97,10 +103,10 @@ export function SchedulerCalendar({ onNewAppointment }: SchedulerCalendarProps =
       }
       
       // Create a map of patient IDs to patient names
-      const patientMap = patientsData.reduce((acc, patient) => {
+      const patientMap = patientsData ? patientsData.reduce((acc, patient) => {
         acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
         return acc;
-      }, {});
+      }, {}) : {};
       
       // Create a new array with processed appointment data
       const processedAppointments = appointmentsData.map(app => {
