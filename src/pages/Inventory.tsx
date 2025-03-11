@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+
+const ITEM_CATEGORIES = {
+  medications: ["Antibiotic", "Pain Relief", "Blood Pressure", "Diabetes", "Respiratory", "Other"],
+  supplies: ["PPE", "Equipment", "Consumables", "Other"],
+  equipment: ["Diagnostic", "Surgical", "Monitoring", "Treatment", "Other"]
+};
 
 const medications = [
   {
@@ -145,6 +152,9 @@ const Inventory = () => {
     stock: "",
     threshold: "",
     expiryDate: "",
+    itemCode: "",
+    unitCost: "",
+    supplierName: "",
   });
   
   const [medicationsData, setMedicationsData] = useState(medications);
@@ -152,7 +162,7 @@ const Inventory = () => {
   const [equipmentData, setEquipmentData] = useState(equipment);
   
   const handleAddItem = () => {
-    if (!newItem.name || !newItem.category || !newItem.stock || !newItem.threshold) {
+    if (!newItem.name || !newItem.category || !newItem.stock || !newItem.threshold || !newItem.itemCode || !newItem.unitCost || !newItem.supplierName) {
       toast({
         title: "Missing fields",
         description: "Please fill out all required fields",
@@ -173,6 +183,9 @@ const Inventory = () => {
       threshold,
       expiryDate: newItem.expiryDate || new Date().toISOString().split('T')[0],
       status,
+      itemCode: newItem.itemCode,
+      unitCost: newItem.unitCost,
+      supplierName: newItem.supplierName,
       ...(activeTab === "equipment" && {
         lastService: new Date().toISOString().split('T')[0],
         nextService: new Date(Date.now() + 31536000000).toISOString().split('T')[0],
@@ -193,6 +206,9 @@ const Inventory = () => {
       stock: "",
       threshold: "",
       expiryDate: "",
+      itemCode: "",
+      unitCost: "",
+      supplierName: "",
     });
     setOpenAddDialog(false);
     
@@ -439,6 +455,15 @@ const Inventory = () => {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="itemCode" className="text-right">Item Code</Label>
+                  <Input
+                    id="itemCode"
+                    value={newItem.itemCode}
+                    onChange={(e) => setNewItem({...newItem, itemCode: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">Name</Label>
                   <Input
                     id="name"
@@ -449,10 +474,38 @@ const Inventory = () => {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="category" className="text-right">Category</Label>
-                  <Input
-                    id="category"
+                  <Select
                     value={newItem.category}
-                    onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                    onValueChange={(value) => setNewItem({...newItem, category: value})}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEM_CATEGORIES[activeTab as keyof typeof ITEM_CATEGORIES].map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="unitCost" className="text-right">Unit Cost</Label>
+                  <Input
+                    id="unitCost"
+                    type="number"
+                    value={newItem.unitCost}
+                    onChange={(e) => setNewItem({...newItem, unitCost: e.target.value})}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplierName" className="text-right">Supplier</Label>
+                  <Input
+                    id="supplierName"
+                    value={newItem.supplierName}
+                    onChange={(e) => setNewItem({...newItem, supplierName: e.target.value})}
                     className="col-span-3"
                   />
                 </div>
