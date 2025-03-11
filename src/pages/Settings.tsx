@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Header } from "@/components/layout/Header";
+import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
@@ -44,6 +44,8 @@ const currencies = [
 ];
 
 const Settings = () => {
+  const { doctorSettings, updateDoctorSettings } = useDoctorSettings();
+  
   const [notificationSettings, setNotificationSettings] = useState({
     emailAppointments: true,
     smsAppointments: false,
@@ -89,6 +91,10 @@ const Settings = () => {
   const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [doctorName, setDoctorName] = useState(doctorSettings.name);
+  const [practiceName, setPracticeName] = useState(doctorSettings.practiceName);
+  const [email, setEmail] = useState(doctorSettings.email);
+
   const handleNotificationChange = (key: string) => {
     setNotificationSettings(prev => ({
       ...prev,
@@ -132,6 +138,13 @@ const Settings = () => {
   };
 
   const saveGeneralSettings = () => {
+    updateDoctorSettings({
+      name: doctorName,
+      practiceName: practiceName,
+      email: email,
+      image: practiceImage || doctorSettings.image,
+    });
+
     toast({
       title: "Settings saved",
       description: "Your general settings have been updated successfully.",
@@ -178,6 +191,9 @@ const Settings = () => {
         setPracticeLogo(publicUrl);
       } else {
         setPracticeImage(publicUrl);
+        updateDoctorSettings({
+          image: publicUrl,
+        });
       }
 
       toast({
@@ -263,7 +279,7 @@ const Settings = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Practice Image</Label>
+                        <Label>Practice Image (Doctor Profile)</Label>
                         {practiceImage ? (
                           <div className="relative w-full h-48">
                             <img
@@ -302,16 +318,29 @@ const Settings = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="practiceName">Practice Name</Label>
-                      <Input id="practiceName" defaultValue="MediCare Clinic" />
+                      <Input 
+                        id="practiceName" 
+                        value={practiceName} 
+                        onChange={(e) => setPracticeName(e.target.value)} 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="doctorName">Doctor's Name</Label>
-                      <Input id="doctorName" defaultValue="Dr. Jane Smith" />
+                      <Input 
+                        id="doctorName" 
+                        value={doctorName} 
+                        onChange={(e) => setDoctorName(e.target.value)} 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" defaultValue="info@medicare-clinic.com" />
+                      <Input 
+                        id="email" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number</Label>
                       <Input id="phone" defaultValue="(555) 123-4567" />

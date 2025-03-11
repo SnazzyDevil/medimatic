@@ -1,5 +1,5 @@
 
-import { Settings, Bell, User } from "lucide-react";
+import { Settings, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { InventoryLevels } from "@/components/dashboard/InventoryLevels";
@@ -8,12 +8,14 @@ import { UpcomingDispensing } from "@/components/dashboard/UpcomingDispensing";
 import { UpcomingAppointments } from "@/components/dashboard/UpcomingAppointments";
 import { PaymentSummary } from "@/components/dashboard/PaymentSummary";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { Header } from "@/components/layout/Header";
+import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 const Dashboard = () => {
+  const { doctorSettings } = useDoctorSettings();
+  
   return (
     <div className="min-h-screen flex w-full bg-[#f8fafc]">
       <Sidebar />
@@ -23,7 +25,7 @@ const Dashboard = () => {
           <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-6 mb-8 shadow-md">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="font-bold text-3xl mb-2">Good morning, Dr. Anderson</h1>
+                <h1 className="font-bold text-3xl mb-2">Good morning, {doctorSettings.name}</h1>
                 <p className="text-violet-100">Here are your important tasks, updates and alerts for today</p>
               </div>
               <div className="flex items-center gap-4">
@@ -32,8 +34,10 @@ const Dashboard = () => {
                   Notifications
                 </Button>
                 <Avatar className="h-12 w-12 border-2 border-white/30">
-                  <AvatarImage src="https://i.pravatar.cc/100?img=11" alt="User" />
-                  <AvatarFallback>DR</AvatarFallback>
+                  <AvatarImage src={doctorSettings.image} alt={doctorSettings.name} />
+                  <AvatarFallback className="bg-white/20 text-white">
+                    {doctorSettings.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
                 </Avatar>
               </div>
             </div>

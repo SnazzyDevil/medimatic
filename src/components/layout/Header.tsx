@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from "react";
 import { Bell, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,8 +10,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// Create a hook to manage doctor settings
+export const useDoctorSettings = () => {
+  const [doctorSettings, setDoctorSettings] = useState({
+    name: "Dr. Jane Smith",
+    email: "info@medicare-clinic.com",
+    practiceName: "MediCare Clinic",
+    image: "https://i.pravatar.cc/100?img=11", // Default image
+  });
+
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    const storedSettings = localStorage.getItem("doctorSettings");
+    if (storedSettings) {
+      setDoctorSettings(JSON.parse(storedSettings));
+    }
+  }, []);
+
+  // Update settings function
+  const updateDoctorSettings = (newSettings) => {
+    const updatedSettings = { ...doctorSettings, ...newSettings };
+    setDoctorSettings(updatedSettings);
+    localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
+  };
+
+  return { doctorSettings, updateDoctorSettings };
+};
 
 export function Header() {
+  const { doctorSettings } = useDoctorSettings();
+  
   return (
     <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in">
       <div className="flex items-center">
@@ -26,8 +57,14 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 text-white">
-              <User className="h-4 w-4" />
+            <Button variant="ghost" className="relative flex items-center gap-2 pl-2 pr-2 hover:bg-white/20">
+              <span className="hidden sm:inline text-sm text-white">{doctorSettings.name}</span>
+              <Avatar className="h-8 w-8 border border-white/30">
+                <AvatarImage src={doctorSettings.image} alt={doctorSettings.name} />
+                <AvatarFallback className="bg-white/20 text-white">
+                  {doctorSettings.name.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 mt-2">
