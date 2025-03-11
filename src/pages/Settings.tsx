@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { toast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,6 +95,14 @@ const Settings = () => {
   const [practiceName, setPracticeName] = useState(doctorSettings.practiceName);
   const [email, setEmail] = useState(doctorSettings.email);
 
+  // Load initial values from doctorSettings
+  useEffect(() => {
+    setPracticeImage(doctorSettings.practiceImage || null);
+    setDoctorName(doctorSettings.name);
+    setPracticeName(doctorSettings.practiceName);
+    setEmail(doctorSettings.email);
+  }, [doctorSettings]);
+
   const handleNotificationChange = (key: string) => {
     setNotificationSettings(prev => ({
       ...prev,
@@ -142,7 +150,7 @@ const Settings = () => {
       name: doctorName,
       practiceName: practiceName,
       email: email,
-      image: practiceImage || doctorSettings.image,
+      practiceImage: practiceImage || doctorSettings.practiceImage,
     });
 
     toast({
@@ -171,6 +179,37 @@ const Settings = () => {
       const file = event.target.files?.[0];
       if (!file) return;
 
+      // Check image dimensions
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      const checkImageDimensions = new Promise<boolean>((resolve) => {
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
+          URL.revokeObjectURL(objectUrl);
+          
+          if (width > 250 || height > 250) {
+            toast({
+              title: "Image too large",
+              description: "Please upload an image that is 250x250 pixels or smaller.",
+              variant: "destructive"
+            });
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        };
+        
+        img.src = objectUrl;
+      });
+      
+      const validSize = await checkImageDimensions;
+      if (!validSize) {
+        setIsUploading(false);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${type}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
@@ -191,9 +230,7 @@ const Settings = () => {
         setPracticeLogo(publicUrl);
       } else {
         setPracticeImage(publicUrl);
-        updateDoctorSettings({
-          image: publicUrl,
-        });
+        // Don't update doctor settings here, let the save button do it
       }
 
       toast({
@@ -859,187 +896,4 @@ const Settings = () => {
                         <div>
                           <Label className="font-medium">Analytics API Key</Label>
                           <p className="text-sm text-healthcare-gray">
-                            Used for connecting to analytics and reporting tools
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={apiKeys.analyticsApiKey} 
-                            readOnly 
-                            className="w-64 font-mono text-sm bg-slate-50"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => regenerateApiKey('analyticsApiKey')}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border border-healthcare-gray-light">
-                  <CardHeader>
-                    <CardTitle>Third-Party Integrations</CardTitle>
-                    <CardDescription>
-                      Enable or disable connections with external healthcare systems
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="ehr-integration" className="font-medium">EHR System Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with your electronic health record system
-                          </p>
-                        </div>
-                        <Switch 
-                          id="ehr-integration" 
-                          checked={integrations.ehr}
-                          onCheckedChange={() => handleIntegrationChange('ehr')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="pharmacy-integration" className="font-medium">Pharmacy System Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with pharmacy systems for prescription management
-                          </p>
-                        </div>
-                        <Switch 
-                          id="pharmacy-integration" 
-                          checked={integrations.pharmacy}
-                          onCheckedChange={() => handleIntegrationChange('pharmacy')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="insurance-integration" className="font-medium">Insurance Provider Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with insurance providers for coverage verification
-                          </p>
-                        </div>
-                        <Switch 
-                          id="insurance-integration" 
-                          checked={integrations.insurance}
-                          onCheckedChange={() => handleIntegrationChange('insurance')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="lab-integration" className="font-medium">Laboratory System Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with laboratory systems for test ordering and results
-                          </p>
-                        </div>
-                        <Switch 
-                          id="lab-integration" 
-                          checked={integrations.labSystem}
-                          onCheckedChange={() => handleIntegrationChange('labSystem')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="telemedicine-integration" className="font-medium">Telemedicine Platform Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with telemedicine platforms for virtual appointments
-                          </p>
-                        </div>
-                        <Switch 
-                          id="telemedicine-integration" 
-                          checked={integrations.telemedicine}
-                          onCheckedChange={() => handleIntegrationChange('telemedicine')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="portal-integration" className="font-medium">Patient Portal Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect with patient portal systems for seamless data sharing
-                          </p>
-                        </div>
-                        <Switch 
-                          id="portal-integration" 
-                          checked={integrations.patientPortal}
-                          onCheckedChange={() => handleIntegrationChange('patientPortal')}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border border-healthcare-gray-light">
-                  <CardHeader>
-                    <CardTitle>Webhook Configuration</CardTitle>
-                    <CardDescription>
-                      Set up webhooks to notify external systems of events
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="webhook-url" className="font-medium">Webhook URL</Label>
-                        <Input 
-                          id="webhook-url"
-                          placeholder="https://api.yoursystem.com/webhook"
-                          value={webhookUrl}
-                          onChange={(e) => setWebhookUrl(e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="webhook-events" className="font-medium">Webhook Events</Label>
-                        <Select 
-                          value={webhookEvents} 
-                          onValueChange={(value) => setWebhookEvents(value)}
-                        >
-                          <SelectTrigger id="webhook-events" className="w-full">
-                            <SelectValue placeholder="Select events to trigger webhooks" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Events</SelectItem>
-                            <SelectItem value="appointments">Appointments Only</SelectItem>
-                            <SelectItem value="billing">Billing Only</SelectItem>
-                            <SelectItem value="prescriptions">Prescriptions Only</SelectItem>
-                            <SelectItem value="patients">Patient Records Only</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="pt-4">
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Test Webhook
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <div className="flex justify-end pt-4">
-                  <Button onClick={saveApiSettings} className="btn-hover">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save API Settings
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
-    </div>
-  );
-};
-
-export default Settings;
+                            Used for connecting to analytics and reporting
