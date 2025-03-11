@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
@@ -26,7 +25,6 @@ const TIME_SLOTS = [
   "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM"
 ];
 
-// Map to get the end time based on start time (30 minute appointments)
 const END_TIME_MAP: Record<string, string> = {
   "8:00 AM": "8:30 AM",
   "8:30 AM": "9:00 AM", 
@@ -107,17 +105,13 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     }
   }, [date]);
 
-  // Update end time options when start time changes
   useEffect(() => {
     if (time) {
-      // Default to the 30-minute slot for initial selection
-      setEndTime(END_TIME_MAP[time] || "");
+      setEndTime("");
       
-      // Find the index of the selected time in TIME_SLOTS
       const selectedIndex = TIME_SLOTS.findIndex(slot => slot === time);
       
       if (selectedIndex !== -1 && selectedIndex < TIME_SLOTS.length - 1) {
-        // Filter time slots that come after the selected start time
         const validEndTimeSlots = TIME_SLOTS.filter((_, index) => index > selectedIndex);
         setAvailableEndTimeSlots(validEndTimeSlots);
       } else {
@@ -172,7 +166,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       return;
     }
     
-    // Validate that end time is after start time
     const startTimeIndex = TIME_SLOTS.indexOf(time);
     const endTimeIndex = TIME_SLOTS.indexOf(endTime);
     
@@ -200,28 +193,20 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
-    } catch (err) {
-      console.error('Error during final availability check:', err);
-      if (err.code !== 'PGRST116') {
-        setValidationError("Failed to verify appointment availability. Please try again.");
-        return;
-      }
-    }
-    
-    const selectedPatient = patients.find(p => p.id === patientId);
-    
-    const appointmentData = {
-      date,
-      time,
-      endTime,
-      patientId,
-      patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
-      appointmentType,
-      formattedDate: format(date, 'yyyy-MM-dd')
-    };
-    
-    try {
-      const { error } = await supabase
+      
+      const selectedPatient = patients.find(p => p.id === patientId);
+      
+      const appointmentData = {
+        date,
+        time,
+        endTime,
+        patientId,
+        patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
+        appointmentType,
+        formattedDate: format(date, 'yyyy-MM-dd')
+      };
+      
+      const { error: insertError } = await supabase
         .from('appointments')
         .insert({
           patient_id: patientId,
@@ -230,13 +215,14 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
           appointment_type: appointmentType
         });
       
-      if (error) {
-        if (error.code === '23505') {
+      if (insertError) {
+        console.error('Error inserting appointment:', insertError);
+        if (insertError.code === '23505') {
           setValidationError("This time slot has just been booked. Please select another time.");
           await checkBookedTimeSlots(date);
           return;
         }
-        throw error;
+        throw insertError;
       }
       
       onSubmit(appointmentData);
