@@ -1,4 +1,4 @@
-import { Save, Lock, Key, Download, ImageIcon, Upload } from "lucide-react";
+import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +12,34 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+
+const timeZones = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
+  { value: "America/Phoenix", label: "Arizona (MST)" },
+  { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
+  { value: "Europe/Paris", label: "Central European Time (CET)" },
+  { value: "Asia/Tokyo", label: "Japan Standard Time (JST)" },
+  { value: "Australia/Sydney", label: "Australian Eastern Time (AET)" },
+];
+
+const currencies = [
+  { value: "USD", label: "US Dollar ($)", symbol: "$" },
+  { value: "EUR", label: "Euro (€)", symbol: "€" },
+  { value: "GBP", label: "British Pound (£)", symbol: "£" },
+  { value: "JPY", label: "Japanese Yen (¥)", symbol: "¥" },
+  { value: "CAD", label: "Canadian Dollar (C$)", symbol: "C$" },
+  { value: "AUD", label: "Australian Dollar (A$)", symbol: "A$" },
+  { value: "CHF", label: "Swiss Franc (Fr)", symbol: "Fr" },
+  { value: "CNY", label: "Chinese Yuan (¥)", symbol: "¥" },
+  { value: "INR", label: "Indian Rupee (₹)", symbol: "₹" },
+  { value: "MXN", label: "Mexican Peso (Mex$)", symbol: "Mex$" },
+  { value: "BRL", label: "Brazilian Real (R$)", symbol: "R$" },
+];
 
 const Settings = () => {
   const [notificationSettings, setNotificationSettings] = useState({
@@ -50,6 +78,8 @@ const Settings = () => {
     patientPortal: true
   });
 
+  const [timeZone, setTimeZone] = useState("America/New_York");
+  const [currency, setCurrency] = useState("USD");
   const [webhookUrl, setWebhookUrl] = useState('https://api.example.com/webhook');
   const [webhookEvents, setWebhookEvents] = useState('all');
 
@@ -92,6 +122,13 @@ const Settings = () => {
     toast({
       title: "API settings saved",
       description: "Your API and integration preferences have been updated successfully.",
+    });
+  };
+
+  const saveGeneralSettings = () => {
+    toast({
+      title: "Settings saved",
+      description: "Your general settings have been updated successfully.",
     });
   };
 
@@ -297,6 +334,44 @@ const Settings = () => {
                       <Label htmlFor="country">Country</Label>
                       <Input id="country" defaultValue="United States" />
                     </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <Label htmlFor="timezone">Time Zone</Label>
+                      </div>
+                      <Select value={timeZone} onValueChange={setTimeZone}>
+                        <SelectTrigger id="timezone">
+                          <SelectValue placeholder="Select time zone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeZones.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value}>
+                              {tz.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        <Label htmlFor="currency">Currency</Label>
+                      </div>
+                      <Select value={currency} onValueChange={setCurrency}>
+                        <SelectTrigger id="currency">
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((curr) => (
+                            <SelectItem key={curr.value} value={curr.value}>
+                              {curr.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   
                   <div className="border-t pt-6 mt-6">
@@ -333,7 +408,7 @@ const Settings = () => {
                   </div>
                   
                   <div className="flex justify-end">
-                    <Button className="btn-hover">
+                    <Button className="btn-hover" onClick={saveGeneralSettings}>
                       <Save className="h-4 w-4 mr-2" />
                       Save Changes
                     </Button>
