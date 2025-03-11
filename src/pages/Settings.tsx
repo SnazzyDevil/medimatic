@@ -1,4 +1,4 @@
-import { Save, Lock, Key, Download } from "lucide-react";
+import { Save, Lock, Key, Download, ImageIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -109,6 +109,54 @@ const Settings = () => {
     });
   };
 
+  const [practiceImage, setPracticeImage] = useState<string | null>(null);
+  const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'image') => {
+    try {
+      setIsUploading(true);
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('practice-assets')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('practice-assets')
+        .getPublicUrl(filePath);
+
+      if (type === 'logo') {
+        setPracticeLogo(publicUrl);
+      } else {
+        setPracticeImage(publicUrl);
+      }
+
+      toast({
+        title: "Upload successful",
+        description: `Practice ${type} has been updated successfully.`,
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading the file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -137,6 +185,82 @@ const Settings = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Practice Logo</Label>
+                        {practiceLogo ? (
+                          <div className="relative w-48 h-24">
+                            <img
+                              src={practiceLogo}
+                              alt="Practice Logo"
+                              className="w-full h-full object-contain rounded-md"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="absolute top-2 right-2"
+                              onClick={() => setPracticeLogo(null)}
+                            >
+                              Change
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <label className="cursor-pointer">
+                              <div className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-slate-50">
+                                <Upload className="h-4 w-4" />
+                                <span>Upload Logo</span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleFileUpload(e, 'logo')}
+                                disabled={isUploading}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Practice Image</Label>
+                        {practiceImage ? (
+                          <div className="relative w-full h-48">
+                            <img
+                              src={practiceImage}
+                              alt="Practice Image"
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="absolute top-2 right-2"
+                              onClick={() => setPracticeImage(null)}
+                            >
+                              Change
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <label className="cursor-pointer">
+                              <div className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-slate-50">
+                                <ImageIcon className="h-4 w-4" />
+                                <span>Upload Image</span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleFileUpload(e, 'image')}
+                                disabled={isUploading}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="practiceName">Practice Name</Label>
                       <Input id="practiceName" defaultValue="MediCare Clinic" />
@@ -803,9 +927,3 @@ const Settings = () => {
             </TabsContent>
           </Tabs>
         </main>
-      </div>
-    </div>
-  );
-};
-
-export default Settings;
