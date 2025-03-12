@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   AlertCircle,
@@ -26,6 +27,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { AddMedicationDialog } from "@/components/patients/AddMedicationDialog";
 
 // Sample patient data
 const patientData = {
@@ -121,6 +123,18 @@ const patientData = {
 const PatientDetail = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [medications, setMedications] = useState(patientData.medications);
+  const [isAddMedicationDialogOpen, setIsAddMedicationDialogOpen] = useState(false);
+
+  const handleAddMedication = (newMedication: any) => {
+    const medicationToAdd = {
+      ...newMedication,
+      endDate: "",
+      status: newMedication.status || "active",
+    };
+    
+    setMedications([medicationToAdd, ...medications]);
+  };
 
   return (
     <div className="min-h-screen flex w-full">
@@ -295,7 +309,7 @@ const PatientDetail = () => {
                     <CardContent className="p-0">
                       <div className="flex justify-between items-center p-4 border-b">
                         <h3 className="font-medium">Medication History</h3>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => setIsAddMedicationDialogOpen(true)}>
                           <Plus className="h-4 w-4 mr-1" />
                           Add Medication
                         </Button>
@@ -312,7 +326,7 @@ const PatientDetail = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {patientData.medications.map((med, index) => (
+                          {medications.map((med, index) => (
                             <TableRow key={index}>
                               <TableCell className="font-medium">{med.name}</TableCell>
                               <TableCell>{med.dosage}</TableCell>
@@ -442,6 +456,13 @@ const PatientDetail = () => {
               </Tabs>
             </div>
           </div>
+          
+          {/* Add Medication Dialog */}
+          <AddMedicationDialog
+            isOpen={isAddMedicationDialogOpen}
+            onClose={() => setIsAddMedicationDialogOpen(false)}
+            onAddMedication={handleAddMedication}
+          />
         </main>
       </div>
     </div>
