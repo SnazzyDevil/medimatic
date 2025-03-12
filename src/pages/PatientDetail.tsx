@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   AlertCircle,
@@ -28,8 +27,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { AddMedicationDialog } from "@/components/patients/AddMedicationDialog";
+import { AddVisitDialog } from "@/components/patients/AddVisitDialog";
+import { ScheduleAppointmentDialog } from "@/components/patients/ScheduleAppointmentDialog";
 
-// Sample patient data
 const patientData = {
   id: 1,
   name: "Sarah Johnson",
@@ -124,7 +124,12 @@ const PatientDetail = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [medications, setMedications] = useState(patientData.medications);
+  const [visits, setVisits] = useState(patientData.visits);
+  const [appointments, setAppointments] = useState(patientData.upcomingAppointments);
+  
   const [isAddMedicationDialogOpen, setIsAddMedicationDialogOpen] = useState(false);
+  const [isAddVisitDialogOpen, setIsAddVisitDialogOpen] = useState(false);
+  const [isScheduleAppointmentDialogOpen, setIsScheduleAppointmentDialogOpen] = useState(false);
 
   const handleAddMedication = (newMedication: any) => {
     const medicationToAdd = {
@@ -134,6 +139,14 @@ const PatientDetail = () => {
     };
     
     setMedications([medicationToAdd, ...medications]);
+  };
+
+  const handleAddVisit = (newVisit: any) => {
+    setVisits([newVisit, ...visits]);
+  };
+
+  const handleScheduleAppointment = (newAppointment: any) => {
+    setAppointments([newAppointment, ...appointments]);
   };
 
   return (
@@ -351,13 +364,13 @@ const PatientDetail = () => {
                     <CardContent className="p-0">
                       <div className="flex justify-between items-center p-4 border-b">
                         <h3 className="font-medium">Visit History</h3>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => setIsAddVisitDialogOpen(true)}>
                           <Plus className="h-4 w-4 mr-1" />
                           Add Visit
                         </Button>
                       </div>
-                      {patientData.visits.map((visit, index) => (
-                        <div key={index} className={`p-4 ${index < patientData.visits.length - 1 ? 'border-b' : ''}`}>
+                      {visits.map((visit, index) => (
+                        <div key={index} className={`p-4 ${index < visits.length - 1 ? 'border-b' : ''}`}>
                           <div className="flex justify-between items-start mb-2">
                             <div>
                               <h4 className="font-medium">{visit.type}</h4>
@@ -398,7 +411,10 @@ const PatientDetail = () => {
                 <TabsContent value="appointments" className="animate-fade-in">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-medium">Appointments</h3>
-                    <Button size="sm">
+                    <Button 
+                      size="sm"
+                      onClick={() => setIsScheduleAppointmentDialogOpen(true)}
+                    >
                       <Calendar className="h-4 w-4 mr-1" />
                       Schedule Appointment
                     </Button>
@@ -457,11 +473,22 @@ const PatientDetail = () => {
             </div>
           </div>
           
-          {/* Add Medication Dialog */}
           <AddMedicationDialog
             isOpen={isAddMedicationDialogOpen}
             onClose={() => setIsAddMedicationDialogOpen(false)}
             onAddMedication={handleAddMedication}
+          />
+          
+          <AddVisitDialog
+            isOpen={isAddVisitDialogOpen}
+            onClose={() => setIsAddVisitDialogOpen(false)}
+            onAddVisit={handleAddVisit}
+          />
+          
+          <ScheduleAppointmentDialog
+            isOpen={isScheduleAppointmentDialogOpen}
+            onClose={() => setIsScheduleAppointmentDialogOpen(false)}
+            onScheduleAppointment={handleScheduleAppointment}
           />
         </main>
       </div>
