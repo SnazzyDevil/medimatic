@@ -24,12 +24,14 @@ interface AddMedicationDialogProps {
     status: "active" | "discontinued";
     prescribedBy: string;
   }) => void;
+  patientId?: string; // Added patientId as an optional prop
 }
 
 export function AddMedicationDialog({
   isOpen,
   onClose,
   onAddMedication,
+  patientId, // Added patientId to the component props
 }: AddMedicationDialogProps) {
   const { toast } = useToast();
   const [medicationData, setMedicationData] = useState({
