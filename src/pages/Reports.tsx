@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Download } from "lucide-react";
@@ -50,17 +49,14 @@ export default function Reports() {
 
     setIsGenerating(true);
     try {
-      // Format dates for display and use in filename
       const fromDateStr = format(fromDate, "yyyy-MM-dd");
       const toDateStr = format(toDate, "yyyy-MM-dd");
       
-      // Create sample data based on report type
       const headers = getReportHeaders(reportType);
       const sampleData = getSampleData(reportType);
       
       const csvContent = `${headers.join(",")}\n${sampleData.map(row => row.join(",")).join("\n")}`;
       
-      // Create and download the CSV file
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       
@@ -105,15 +101,14 @@ export default function Reports() {
   };
 
   const getSampleData = (type: ReportType): string[][] => {
-    // Return sample data for each report type
     switch (type) {
       case "inventory":
         return [
-          ["MED001", "Paracetamol 500mg", "Analgesics", "240", "$0.15", "PharmSupply Inc", "In Stock"],
-          ["MED002", "Amoxicillin 250mg", "Antibiotics", "180", "$0.25", "MedSource Ltd", "Low Stock"],
-          ["MED003", "Salbutamol Inhaler", "Respiratory", "45", "$12.50", "BreathEasy Co", "In Stock"],
-          ["MED004", "Metformin 500mg", "Diabetes", "320", "$0.18", "DiaCare Supplies", "In Stock"],
-          ["MED005", "Lisinopril 10mg", "Cardiovascular", "90", "$0.30", "HeartHealth Ltd", "Out of Stock"]
+          ["MED001", "Paracetamol 500mg", "Analgesics", "240", "R 0.15", "PharmSupply Inc", "In Stock"],
+          ["MED002", "Amoxicillin 250mg", "Antibiotics", "180", "R 0.25", "MedSource Ltd", "Low Stock"],
+          ["MED003", "Salbutamol Inhaler", "Respiratory", "45", "R 12.50", "BreathEasy Co", "In Stock"],
+          ["MED004", "Metformin 500mg", "Diabetes", "320", "R 0.18", "DiaCare Supplies", "In Stock"],
+          ["MED005", "Lisinopril 10mg", "Cardiovascular", "90", "R 0.30", "HeartHealth Ltd", "Out of Stock"]
         ];
       case "patients":
         return [
@@ -125,11 +120,11 @@ export default function Reports() {
         ];
       case "financials":
         return [
-          ["INV2024-001", "John Smith", "2024-05-01", "$125.00", "Paid", "Credit Card"],
-          ["INV2024-002", "Sarah Johnson", "2024-05-03", "$75.50", "Pending", "Insurance"],
-          ["INV2024-003", "Michael Brown", "2024-05-05", "$210.25", "Paid", "Cash"],
-          ["INV2024-004", "Emily Davis", "2024-05-08", "$45.00", "Overdue", "Credit Card"],
-          ["INV2024-005", "David Wilson", "2024-05-10", "$180.75", "Paid", "Insurance"]
+          ["INV2024-001", "John Smith", "2024-05-01", "2024-05-15", "R 125.00", "Paid", "Credit Card"],
+          ["INV2024-002", "Sarah Johnson", "2024-05-03", "2024-05-18", "R 75.50", "Pending", "Insurance"],
+          ["INV2024-003", "Michael Brown", "2024-05-05", "2024-05-20", "R 210.25", "Paid", "Cash"],
+          ["INV2024-004", "Emily Davis", "2024-05-08", "2024-05-23", "R 45.00", "Overdue", "Credit Card"],
+          ["INV2024-005", "David Wilson", "2024-05-10", "2024-05-20", "R 180.75", "Paid", "Insurance"]
         ];
       case "dispensing":
         return [

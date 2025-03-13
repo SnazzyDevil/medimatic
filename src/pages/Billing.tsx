@@ -72,7 +72,7 @@ const Billing = () => {
     subtotal: 0,
     discount: 0,
     total: 0,
-    currency: "USD",
+    currency: "ZAR",
     notes: "",
     practiceInfo: practiceInfo
   });
@@ -203,7 +203,7 @@ const Billing = () => {
       subtotal: 0,
       discount: 0,
       total: 0,
-      currency: "USD",
+      currency: "ZAR",
       notes: "",
       practiceInfo: practiceInfo
     });
@@ -222,10 +222,10 @@ const Billing = () => {
       ].join(",");
       
       const sampleData = [
-        ["INV-2025-001", "Sarah Johnson", "2025-03-01", "2025-03-15", "$250.00", "Paid"],
-        ["INV-2025-002", "Michael Smith", "2025-03-03", "2025-03-18", "$175.50", "Pending"],
-        ["INV-2025-003", "Emma Davis", "2025-03-05", "2025-03-20", "$320.75", "Overdue"],
-        ["INV-2025-004", "Uven Rampersad", "2025-03-08", "2025-03-23", "$195.25", "Paid"],
+        ["INV-2025-001", "Sarah Johnson", "2025-03-01", "2025-03-15", "R 250.00", "Paid"],
+        ["INV-2025-002", "Michael Smith", "2025-03-03", "2025-03-18", "R 175.50", "Pending"],
+        ["INV-2025-003", "Emma Davis", "2025-03-05", "2025-03-20", "R 320.75", "Overdue"],
+        ["INV-2025-004", "Uven Rampersad", "2025-03-08", "2025-03-23", "R 195.25", "Paid"],
       ].map(row => row.join(",")).join("\n");
       
       const csvContent = `${headers}\n${sampleData}`;
@@ -483,7 +483,7 @@ const Billing = () => {
                   <div className="w-1/2 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
-                      <span>{Number(newInvoice.subtotal).toFixed(2)}</span>
+                      <span>R {Number(newInvoice.subtotal).toFixed(2)}</span>
                     </div>
                     
                     <div className="flex justify-between">
@@ -502,7 +502,7 @@ const Billing = () => {
                     <div className="flex justify-between items-center pt-2 border-t">
                       <div className="flex items-center">
                         <span className="font-medium mr-2">Total</span>
-                        <Select defaultValue="USD">
+                        <Select defaultValue="ZAR">
                           <SelectTrigger className="h-8 border-0 bg-transparent hover:bg-accent px-2 w-auto">
                             <SelectValue placeholder="Currency" />
                           </SelectTrigger>
@@ -514,7 +514,7 @@ const Billing = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <span className="font-medium">{Number(newInvoice.total).toFixed(2)}</span>
+                      <span className="font-medium">R {Number(newInvoice.total).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

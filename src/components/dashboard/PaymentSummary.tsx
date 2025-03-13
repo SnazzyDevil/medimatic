@@ -21,7 +21,7 @@ export function PaymentSummary() {
               <div className="text-sm text-gray-600">Revenue</div>
               <div className="text-xl font-bold text-emerald-700 flex items-center">
                 <DollarSign className="h-4 w-4 mr-1" />
-                8,250
+                R 8,250
               </div>
               <div className="flex items-center text-xs text-emerald-600 mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
@@ -32,7 +32,7 @@ export function PaymentSummary() {
               <div className="text-sm text-gray-600">Payments</div>
               <div className="text-xl font-bold text-blue-700 flex items-center">
                 <CreditCard className="h-4 w-4 mr-1" />
-                7,820
+                R 7,820
               </div>
               <div className="text-xs text-gray-500 mt-1">16 transactions</div>
             </div>
@@ -51,7 +51,7 @@ export function PaymentSummary() {
                     <div className="text-xs text-gray-500">June 10, 2023</div>
                   </div>
                 </div>
-                <div className="font-medium text-gray-800">$150.00</div>
+                <div className="font-medium text-gray-800">R 150.00</div>
               </div>
               <div className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 transition-colors">
                 <div className="flex items-center">
@@ -63,7 +63,7 @@ export function PaymentSummary() {
                     <div className="text-xs text-gray-500">June 8, 2023</div>
                   </div>
                 </div>
-                <div className="font-medium text-gray-800">$220.00</div>
+                <div className="font-medium text-gray-800">R 220.00</div>
               </div>
             </div>
             <Link to="/billing">

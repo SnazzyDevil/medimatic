@@ -93,7 +93,7 @@ export function BillingOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="text-3xl font-bold">$8,200</div>
+              <div className="text-3xl font-bold">R 8,200</div>
               <div className="flex items-center text-sm text-healthcare-success">
                 <TrendingUp className="h-3.5 w-3.5 mr-1" />
                 <span>+12% from last month</span>
@@ -127,17 +127,17 @@ export function BillingOverview() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-healthcare-highlight rounded-lg p-3">
                 <div className="text-sm text-healthcare-gray">Paid</div>
-                <div className="text-xl font-bold text-healthcare-primary">$7,650</div>
+                <div className="text-xl font-bold text-healthcare-primary">R 7,650</div>
                 <div className="text-xs text-healthcare-gray mt-1">12 invoices</div>
               </div>
               <div className="bg-healthcare-secondary rounded-lg p-3">
                 <div className="text-sm text-healthcare-gray">Pending</div>
-                <div className="text-xl font-bold">$550</div>
+                <div className="text-xl font-bold">R 550</div>
                 <div className="text-xs text-healthcare-gray mt-1">3 invoices</div>
               </div>
               <div className="col-span-2 bg-red-50 rounded-lg p-3">
                 <div className="text-sm text-healthcare-danger">Overdue</div>
-                <div className="text-xl font-bold text-healthcare-danger">$310.75</div>
+                <div className="text-xl font-bold text-healthcare-danger">R 310.75</div>
                 <div className="text-xs text-healthcare-gray mt-1">1 invoice</div>
               </div>
             </div>
@@ -162,7 +162,7 @@ export function BillingOverview() {
                     <div className="text-sm font-medium">{invoice.patientName}</div>
                     <div className="flex justify-between">
                       <div className="text-xs text-healthcare-gray">{invoice.date}</div>
-                      <div className="text-xs font-medium">${invoice.amount.toFixed(2)}</div>
+                      <div className="text-xs font-medium">R {invoice.amount.toFixed(2)}</div>
                     </div>
                   </div>
                 </div>
@@ -262,7 +262,7 @@ export function BillingOverview() {
                   <TableCell>
                     <div className="flex items-center">
                       <DollarSign className="h-4 w-4 mr-1 text-healthcare-gray" />
-                      {invoice.amount.toFixed(2)}
+                      R {invoice.amount.toFixed(2)}
                     </div>
                   </TableCell>
                   <TableCell>
