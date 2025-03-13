@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddVisitDialogProps {
   isOpen: boolean;
@@ -29,14 +30,17 @@ interface AddVisitDialogProps {
       weight: string;
     };
   }) => void;
+  patientId?: string;
 }
 
 export function AddVisitDialog({
   isOpen,
   onClose,
   onAddVisit,
+  patientId = "1", // Default for demo, should be replaced with actual patient id
 }: AddVisitDialogProps) {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [visitData, setVisitData] = useState({
     date: new Date().toISOString().split("T")[0],
     type: "",
@@ -67,7 +71,7 @@ export function AddVisitDialog({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -80,28 +84,71 @@ export function AddVisitDialog({
       return;
     }
 
-    onAddVisit(visitData);
+    setIsSubmitting(true);
     
-    // Reset form
-    setVisitData({
-      date: new Date().toISOString().split("T")[0],
-      type: "",
-      doctor: "",
-      notes: "",
-      vitals: {
-        bp: "",
-        hr: "",
-        temp: "",
-        weight: "",
+    try {
+      // Save visit to Supabase
+      const { data: visitData_db, error: visitError } = await supabase
+        .from('visits')
+        .insert({
+          patient_id: patientId,
+          date: visitData.date,
+          type: visitData.type,
+          doctor: visitData.doctor,
+          notes: visitData.notes || null,
+        })
+        .select();
+      
+      if (visitError) throw visitError;
+      
+      if (visitData_db && visitData_db.length > 0) {
+        // Save vitals to Supabase
+        const { error: vitalsError } = await supabase
+          .from('visit_vitals')
+          .insert({
+            visit_id: visitData_db[0].id,
+            bp: visitData.vitals.bp || null,
+            hr: visitData.vitals.hr || null,
+            temp: visitData.vitals.temp || null,
+            weight: visitData.vitals.weight || null,
+          });
+        
+        if (vitalsError) throw vitalsError;
       }
-    });
-    
-    onClose();
-    
-    toast({
-      title: "Visit added",
-      description: `Visit on ${visitData.date} has been added successfully`,
-    });
+      
+      // Call onAddVisit to update UI
+      onAddVisit(visitData);
+      
+      // Reset form
+      setVisitData({
+        date: new Date().toISOString().split("T")[0],
+        type: "",
+        doctor: "",
+        notes: "",
+        vitals: {
+          bp: "",
+          hr: "",
+          temp: "",
+          weight: "",
+        }
+      });
+      
+      onClose();
+      
+      toast({
+        title: "Visit added",
+        description: `Visit on ${visitData.date} has been added successfully`,
+      });
+    } catch (error) {
+      console.error("Error adding visit:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add visit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -238,10 +285,12 @@ export function AddVisitDialog({
           </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Add Visit</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Add Visit"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

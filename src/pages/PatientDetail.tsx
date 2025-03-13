@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   AlertCircle,
   Calendar, 
@@ -25,10 +25,12 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AddMedicationDialog } from "@/components/patients/AddMedicationDialog";
 import { AddVisitDialog } from "@/components/patients/AddVisitDialog";
 import { ScheduleAppointmentDialog } from "@/components/patients/ScheduleAppointmentDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const patientData = {
   id: 1,
@@ -122,27 +124,192 @@ const patientData = {
 
 const PatientDetail = () => {
   const navigate = useNavigate();
+  const { id: patientId } = useParams<{ id: string }>();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [medications, setMedications] = useState(patientData.medications);
   const [visits, setVisits] = useState(patientData.visits);
   const [appointments, setAppointments] = useState(patientData.upcomingAppointments);
+  const [loading, setLoading] = useState(true);
   
   const [isAddMedicationDialogOpen, setIsAddMedicationDialogOpen] = useState(false);
   const [isAddVisitDialogOpen, setIsAddVisitDialogOpen] = useState(false);
   const [isScheduleAppointmentDialogOpen, setIsScheduleAppointmentDialogOpen] = useState(false);
 
-  const handleAddMedication = (newMedication: any) => {
-    const medicationToAdd = {
-      ...newMedication,
-      endDate: "",
-      status: newMedication.status || "active",
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data: medicationData, error: medicationError } = await supabase
+          .from('medications')
+          .select('*')
+          .eq('patient_id', patientId);
+
+        if (medicationError) throw medicationError;
+        
+        if (medicationData && medicationData.length > 0) {
+          const formattedMedications = medicationData.map(med => ({
+            name: med.name,
+            dosage: med.dosage,
+            frequency: med.frequency,
+            startDate: med.start_date,
+            endDate: med.end_date || "",
+            status: med.status,
+            prescribedBy: med.prescribed_by,
+          }));
+          setMedications(formattedMedications);
+        }
+
+        const { data: appointmentData, error: appointmentError } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('patient_id', patientId);
+
+        if (appointmentError) throw appointmentError;
+        
+        if (appointmentData && appointmentData.length > 0) {
+          const formattedAppointments = appointmentData.map(appt => ({
+            date: appt.appointment_date,
+            time: appt.appointment_time,
+            type: appt.appointment_type,
+            doctor: appt.doctor || "",
+            notes: "",
+          }));
+          setAppointments(formattedAppointments);
+        }
+
+        const { data: visitData, error: visitError } = await supabase
+          .from('visits')
+          .select('*, visit_vitals(*)')
+          .eq('patient_id', patientId);
+
+        if (visitError) throw visitError;
+        
+        if (visitData && visitData.length > 0) {
+          const formattedVisits = visitData.map(visit => {
+            const vitals = visit.visit_vitals && visit.visit_vitals[0] ? {
+              bp: visit.visit_vitals[0].bp || "",
+              hr: visit.visit_vitals[0].hr || "",
+              temp: visit.visit_vitals[0].temp || "",
+              weight: visit.visit_vitals[0].weight || ""
+            } : {
+              bp: "",
+              hr: "",
+              temp: "",
+              weight: ""
+            };
+            
+            return {
+              date: visit.date,
+              type: visit.type,
+              doctor: visit.doctor,
+              notes: visit.notes || "",
+              vitals
+            };
+          });
+          setVisits(formattedVisits);
+        }
+
+      } catch (error) {
+        console.error("Error fetching patient data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load patient data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    setMedications([medicationToAdd, ...medications]);
+
+    if (patientId) {
+      fetchData();
+    }
+  }, [patientId, toast]);
+
+  const handleAddMedication = async (newMedication: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('medications')
+        .insert({
+          patient_id: patientId,
+          name: newMedication.name,
+          dosage: newMedication.dosage,
+          frequency: newMedication.frequency,
+          start_date: newMedication.startDate,
+          end_date: newMedication.endDate || null,
+          status: newMedication.status || "active",
+          prescribed_by: newMedication.prescribedBy,
+          notes: newMedication.notes || null,
+        });
+      
+      if (error) throw error;
+      
+      const medicationToAdd = {
+        ...newMedication,
+        endDate: newMedication.endDate || "",
+        status: newMedication.status || "active",
+      };
+      
+      setMedications([medicationToAdd, ...medications]);
+      
+      toast({
+        title: "Medication added",
+        description: `${newMedication.name} has been added successfully.`,
+      });
+    } catch (error) {
+      console.error("Error adding medication:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add medication. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAddVisit = (newVisit: any) => {
-    setVisits([newVisit, ...visits]);
+  const handleAddVisit = async (newVisit: any) => {
+    try {
+      const { data: visitData, error: visitError } = await supabase
+        .from('visits')
+        .insert({
+          patient_id: patientId,
+          date: newVisit.date,
+          type: newVisit.type,
+          doctor: newVisit.doctor,
+          notes: newVisit.notes || null,
+        })
+        .select();
+      
+      if (visitError) throw visitError;
+      
+      if (visitData && visitData.length > 0) {
+        const { error: vitalsError } = await supabase
+          .from('visit_vitals')
+          .insert({
+            visit_id: visitData[0].id,
+            bp: newVisit.vitals.bp || null,
+            hr: newVisit.vitals.hr || null,
+            temp: newVisit.vitals.temp || null,
+            weight: newVisit.vitals.weight || null,
+          });
+        
+        if (vitalsError) throw vitalsError;
+      }
+      
+      setVisits([newVisit, ...visits]);
+      
+      toast({
+        title: "Visit added",
+        description: `Visit on ${newVisit.date} has been added successfully.`,
+      });
+    } catch (error) {
+      console.error("Error adding visit:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add visit. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleScheduleAppointment = (newAppointment: any) => {
@@ -477,18 +644,21 @@ const PatientDetail = () => {
             isOpen={isAddMedicationDialogOpen}
             onClose={() => setIsAddMedicationDialogOpen(false)}
             onAddMedication={handleAddMedication}
+            patientId={patientId}
           />
           
           <AddVisitDialog
             isOpen={isAddVisitDialogOpen}
             onClose={() => setIsAddVisitDialogOpen(false)}
             onAddVisit={handleAddVisit}
+            patientId={patientId}
           />
           
           <ScheduleAppointmentDialog
             isOpen={isScheduleAppointmentDialogOpen}
             onClose={() => setIsScheduleAppointmentDialogOpen(false)}
             onScheduleAppointment={handleScheduleAppointment}
+            patientId={patientId}
           />
         </main>
       </div>

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ScheduleAppointmentDialogProps {
   isOpen: boolean;
@@ -24,14 +25,17 @@ interface ScheduleAppointmentDialogProps {
     doctor: string;
     notes: string;
   }) => void;
+  patientId?: string;
 }
 
 export function ScheduleAppointmentDialog({
   isOpen,
   onClose,
   onScheduleAppointment,
+  patientId = "1", // Default for demo, should be replaced with actual patient id
 }: ScheduleAppointmentDialogProps) {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [appointmentData, setAppointmentData] = useState({
     date: new Date().toISOString().split("T")[0],
     time: "09:00",
@@ -45,7 +49,7 @@ export function ScheduleAppointmentDialog({
     setAppointmentData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -58,23 +62,50 @@ export function ScheduleAppointmentDialog({
       return;
     }
 
-    onScheduleAppointment(appointmentData);
+    setIsSubmitting(true);
     
-    // Reset form
-    setAppointmentData({
-      date: new Date().toISOString().split("T")[0],
-      time: "09:00",
-      type: "",
-      doctor: "",
-      notes: "",
-    });
-    
-    onClose();
-    
-    toast({
-      title: "Appointment scheduled",
-      description: `Appointment on ${appointmentData.date} at ${appointmentData.time} has been scheduled.`,
-    });
+    try {
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: patientId,
+          appointment_date: appointmentData.date,
+          appointment_time: appointmentData.time,
+          appointment_type: appointmentData.type,
+          doctor: appointmentData.doctor,
+        });
+      
+      if (error) throw error;
+      
+      // Call onScheduleAppointment to update UI
+      onScheduleAppointment(appointmentData);
+      
+      // Reset form
+      setAppointmentData({
+        date: new Date().toISOString().split("T")[0],
+        time: "09:00",
+        type: "",
+        doctor: "",
+        notes: "",
+      });
+      
+      onClose();
+      
+      toast({
+        title: "Appointment scheduled",
+        description: `Appointment on ${appointmentData.date} at ${appointmentData.time} has been scheduled.`,
+      });
+    } catch (error) {
+      console.error("Error saving appointment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule appointment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -165,10 +196,12 @@ export function ScheduleAppointmentDialog({
           </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Schedule Appointment</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Scheduling..." : "Schedule Appointment"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
