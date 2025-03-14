@@ -155,6 +155,7 @@ const Inventory = () => {
     itemCode: "",
     unitCost: "",
     supplierName: "",
+    type: "medications",
   });
   
   const [medicationsData, setMedicationsData] = useState(medications);
@@ -186,17 +187,17 @@ const Inventory = () => {
       itemCode: newItem.itemCode,
       unitCost: newItem.unitCost,
       supplierName: newItem.supplierName,
-      ...(activeTab === "equipment" && {
+      ...(newItem.type === "equipment" && {
         lastService: new Date().toISOString().split('T')[0],
         nextService: new Date(Date.now() + 31536000000).toISOString().split('T')[0],
       }),
     };
     
-    if (activeTab === "medications") {
+    if (newItem.type === "medications") {
       setMedicationsData([...medicationsData, itemToAdd]);
-    } else if (activeTab === "supplies") {
+    } else if (newItem.type === "supplies") {
       setSuppliesData([...suppliesData, itemToAdd]);
-    } else if (activeTab === "equipment") {
+    } else if (newItem.type === "equipment") {
       setEquipmentData([...equipmentData, itemToAdd]);
     }
     
@@ -209,12 +210,21 @@ const Inventory = () => {
       itemCode: "",
       unitCost: "",
       supplierName: "",
+      type: "medications",
     });
     setOpenAddDialog(false);
     
     toast({
       title: "Item added",
       description: `${itemToAdd.name} has been added to inventory.`,
+    });
+  };
+  
+  const handleTypeChange = (type: string) => {
+    setNewItem({
+      ...newItem,
+      type,
+      category: "",
     });
   };
   
@@ -455,6 +465,22 @@ const Inventory = () => {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="type" className="text-right">Item Type</Label>
+                  <Select
+                    value={newItem.type}
+                    onValueChange={handleTypeChange}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select item type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="medications">Medication</SelectItem>
+                      <SelectItem value="supplies">Supplies</SelectItem>
+                      <SelectItem value="equipment">Equipment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="itemCode" className="text-right">Item Code</Label>
                   <Input
                     id="itemCode"
@@ -482,7 +508,7 @@ const Inventory = () => {
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ITEM_CATEGORIES[activeTab as keyof typeof ITEM_CATEGORIES].map((category) => (
+                      {ITEM_CATEGORIES[newItem.type as keyof typeof ITEM_CATEGORIES].map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
                         </SelectItem>
@@ -529,7 +555,7 @@ const Inventory = () => {
                     className="col-span-3"
                   />
                 </div>
-                {activeTab !== "equipment" && (
+                {newItem.type !== "equipment" && (
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
                     <Input
@@ -555,3 +581,4 @@ const Inventory = () => {
 };
 
 export default Inventory;
+
