@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -42,12 +43,23 @@ interface NewInvoice {
   practiceInfo: PracticeInfo;
 }
 
+interface CreatedInvoice {
+  id: string;
+  invoice_number: string;
+  patient_name: string;
+  created_at: string;
+  total_amount: number;
+  status: string;
+}
+
 const Billing = () => {
   const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
   const [openPreviewDialog, setOpenPreviewDialog] = useState(false);
+  const [openInvoicesDialog, setOpenInvoicesDialog] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [createdInvoices, setCreatedInvoices] = useState<CreatedInvoice[]>([]);
   const { toast } = useToast();
   
   const currentDate = new Date().toISOString().split('T')[0];
@@ -109,7 +121,43 @@ const Billing = () => {
     };
     
     fetchInventoryItems();
+    fetchCreatedInvoices();
   }, []);
+
+  const fetchCreatedInvoices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          id, 
+          invoice_date,
+          due_date,
+          total_amount,
+          status,
+          created_at,
+          patients!inner(first_name, last_name)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching invoices:', error);
+        return;
+      }
+      
+      const formattedInvoices = data?.map(invoice => ({
+        id: invoice.id,
+        invoice_number: invoice.id.substring(0, 8).toUpperCase(),
+        patient_name: `${invoice.patients.first_name} ${invoice.patients.last_name}`,
+        created_at: format(new Date(invoice.created_at), 'yyyy-MM-dd'),
+        total_amount: invoice.total_amount,
+        status: invoice.status
+      })) || [];
+      
+      setCreatedInvoices(formattedInvoices);
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+    }
+  };
 
   const handleAddItem = () => {
     const newId = invoiceItems.length ? Math.max(...invoiceItems.map(item => item.id)) + 1 : 1;
@@ -176,7 +224,7 @@ const Billing = () => {
   };
 
   const handleCreateInvoice = async () => {
-    if (!newInvoice.patientName) {
+    if (!newInvoice.patientName || !selectedPatient?.id) {
       toast({
         title: "Missing information",
         description: "Please select a patient.",
@@ -196,21 +244,58 @@ const Billing = () => {
 
     setIsLoading(true);
     try {
-      console.log("Creating invoice:", newInvoice);
+      // Insert invoice record
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          patient_id: selectedPatient.id,
+          invoice_date: newInvoice.invoiceDate,
+          due_date: newInvoice.paymentDueDate,
+          total_amount: newInvoice.total,
+          notes: newInvoice.notes,
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+      
+      if (invoiceError) {
+        throw invoiceError;
+      }
+      
+      // Insert invoice items
+      const invoiceItems = newInvoice.items.map(item => ({
+        invoice_id: invoiceData.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: parseFloat(item.price),
+        amount: item.amount
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems);
+      
+      if (itemsError) {
+        throw itemsError;
+      }
       
       toast({
         title: "Invoice created",
-        description: `Invoice ${newInvoice.invoiceNumber} has been created successfully.`,
+        description: `Invoice has been created successfully.`,
       });
       
       setOpenInvoiceDialog(false);
+      
+      // Refresh invoices list and show dialog
+      await fetchCreatedInvoices();
+      setOpenInvoicesDialog(true);
       resetInvoiceForm();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating invoice:", error);
       toast({
         title: "Error",
-        description: "Failed to create invoice. Please try again.",
+        description: `Failed to create invoice: ${error.message || "Please try again."}`,
         variant: "destructive"
       });
     } finally {
@@ -349,6 +434,14 @@ const Billing = () => {
                 {downloadingReport ? "Downloading..." : "Download Reports"}
               </Button>
               <Button 
+                variant="outline"
+                className="btn-hover"
+                onClick={() => setOpenInvoicesDialog(true)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Invoices
+              </Button>
+              <Button 
                 className="btn-hover"
                 onClick={() => {
                   setOpenInvoiceDialog(true);
@@ -362,6 +455,7 @@ const Billing = () => {
           
           <BillingOverview />
 
+          {/* Create Invoice Dialog */}
           <Dialog open={openInvoiceDialog} onOpenChange={setOpenInvoiceDialog}>
             <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -659,6 +753,67 @@ const Billing = () => {
             invoiceData={newInvoice}
             patient={selectedPatient}
           />
+
+          {/* Created Invoices Dialog */}
+          <Dialog open={openInvoicesDialog} onOpenChange={setOpenInvoicesDialog}>
+            <DialogContent className="sm:max-w-[700px]">
+              <DialogHeader>
+                <DialogTitle className="text-xl">Invoices</DialogTitle>
+                <DialogDescription>
+                  View all created invoices
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-left font-medium">Invoice #</th>
+                      <th className="px-4 py-2 text-left font-medium">Patient</th>
+                      <th className="px-4 py-2 text-left font-medium">Date</th>
+                      <th className="px-4 py-2 text-right font-medium">Amount</th>
+                      <th className="px-4 py-2 text-center font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {createdInvoices.length > 0 ? (
+                      createdInvoices.map((invoice) => (
+                        <tr key={invoice.id} className="border-b hover:bg-gray-50">
+                          <td className="px-4 py-3">{invoice.invoice_number}</td>
+                          <td className="px-4 py-3">{invoice.patient_name}</td>
+                          <td className="px-4 py-3">{invoice.created_at}</td>
+                          <td className="px-4 py-3 text-right">R {invoice.total_amount.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium
+                              ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 
+                                invoice.status === 'overdue' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'}`}>
+                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-3 text-center text-gray-500">
+                          No invoices found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => setOpenInvoicesDialog(false)}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
