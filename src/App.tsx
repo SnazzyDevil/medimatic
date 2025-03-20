@@ -1,45 +1,54 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Patients from "./pages/Patients";
-import AddPatient from "./pages/AddPatient";
-import PatientDetail from "./pages/PatientDetail";
-import Scheduler from "./pages/Scheduler";
-import Billing from "./pages/Billing";
-import Inventory from "./pages/Inventory";
-import Dispensing from "./pages/Dispensing";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+import { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { DoctorSettingsProvider } from '@/components/layout/Header';
+import './App.css';
 
+// Lazy load pages
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Patients = lazy(() => import('@/pages/Patients'));
+const PatientDetail = lazy(() => import('@/pages/PatientDetail'));
+const AddPatient = lazy(() => import('@/pages/AddPatient'));
+const Scheduler = lazy(() => import('@/pages/Scheduler'));
+const Dispensing = lazy(() => import('@/pages/Dispensing'));
+const Inventory = lazy(() => import('@/pages/Inventory'));
+const Billing = lazy(() => import('@/pages/Billing'));
+const Reports = lazy(() => import('@/pages/Reports'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Index = lazy(() => import('@/pages/Index'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
+
+// Create a client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/patients" element={<Patients />} />
-          <Route path="/patients/new" element={<AddPatient />} />
-          <Route path="/patients/:id" element={<PatientDetail />} />
-          <Route path="/scheduler" element={<Scheduler />} />
-          <Route path="/billing" element={<Billing />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/dispensing" element={<Dispensing />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DoctorSettingsProvider>
+        <Router>
+          <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center">Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/patients" element={<Patients />} />
+              <Route path="/patients/:id" element={<PatientDetail />} />
+              <Route path="/add-patient" element={<AddPatient />} />
+              <Route path="/scheduler" element={<Scheduler />} />
+              <Route path="/dispensing" element={<Dispensing />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/billing" element={<Billing />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+          <Toaster />
+        </Router>
+      </DoctorSettingsProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
