@@ -92,6 +92,9 @@ const Settings = () => {
   const [timeZone, setTimeZone] = useState(doctorSettings.timeZone || "America/New_York");
   const [currency, setCurrency] = useState(doctorSettings.currency || "ZAR");
 
+  const [webhookUrl, setWebhookUrl] = useState("https://api.yourservice.com/webhook");
+  const [webhookEvents, setWebhookEvents] = useState("all");
+
   useEffect(() => {
     setPracticeImage(doctorSettings.practiceImage || null);
     setDoctorName(doctorSettings.name);
