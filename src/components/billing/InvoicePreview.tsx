@@ -188,12 +188,6 @@ export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient }: Inv
         
         <div className="flex justify-end mt-4 gap-2 print:hidden">
           <Button 
-            variant="outline" 
-            onClick={() => window.print()}
-          >
-            Print Invoice
-          </Button>
-          <Button 
             variant="secondary" 
             onClick={() => onOpenChange(false)}
           >
@@ -204,3 +198,4 @@ export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient }: Inv
     </Dialog>
   );
 };
+
