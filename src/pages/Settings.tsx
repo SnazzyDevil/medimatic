@@ -82,6 +82,11 @@ const Settings = () => {
     patientPortal: true
   });
 
+  const [timeZone, setTimeZone] = useState("America/New_York");
+  const [currency, setCurrency] = useState("USD");
+  const [webhookUrl, setWebhookUrl] = useState('https://api.example.com/webhook');
+  const [webhookEvents, setWebhookEvents] = useState('all');
+
   const [practiceImage, setPracticeImage] = useState<string | null>(null);
   const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -89,19 +94,12 @@ const Settings = () => {
   const [doctorName, setDoctorName] = useState(doctorSettings.name);
   const [practiceName, setPracticeName] = useState(doctorSettings.practiceName);
   const [email, setEmail] = useState(doctorSettings.email);
-  const [timeZone, setTimeZone] = useState(doctorSettings.timeZone || "America/New_York");
-  const [currency, setCurrency] = useState(doctorSettings.currency || "ZAR");
-
-  const [webhookUrl, setWebhookUrl] = useState("https://api.yourservice.com/webhook");
-  const [webhookEvents, setWebhookEvents] = useState("all");
 
   useEffect(() => {
     setPracticeImage(doctorSettings.practiceImage || null);
     setDoctorName(doctorSettings.name);
     setPracticeName(doctorSettings.practiceName);
     setEmail(doctorSettings.email);
-    setTimeZone(doctorSettings.timeZone || "America/New_York");
-    setCurrency(doctorSettings.currency || "ZAR");
   }, [doctorSettings]);
 
   const handleNotificationChange = (key: string) => {
@@ -152,8 +150,6 @@ const Settings = () => {
       practiceName: practiceName,
       email: email,
       practiceImage: practiceImage || doctorSettings.practiceImage,
-      timeZone: timeZone,
-      currency: currency,
     });
 
     toast({

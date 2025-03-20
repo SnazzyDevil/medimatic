@@ -1,72 +1,77 @@
 
-import { useEffect, useState } from "react";
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useDoctorSettings } from "@/components/layout/Header";
+import { ArrowRight, CreditCard, DollarSign, Receipt, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export function PaymentSummary() {
-  const { doctorSettings } = useDoctorSettings();
-  const currencySymbol = doctorSettings.currency === "ZAR" ? "R" : 
-                         doctorSettings.currency === "USD" ? "$" : 
-                         doctorSettings.currency === "EUR" ? "€" : 
-                         doctorSettings.currency === "GBP" ? "£" : "R";
-  
-  const [paymentsData, setPaymentsData] = useState({
-    totalOutstanding: 12850,
-    recentPayments: [
-      { id: 1, patient: "Michael Brown", amount: 450, date: "2023-06-01", status: "paid" },
-      { id: 2, patient: "Emma Wilson", amount: 850, date: "2023-06-02", status: "paid" },
-      { id: 3, patient: "James Taylor", amount: 1200, date: "2023-06-05", status: "paid" },
-    ],
-    paymentsByMonth: [
-      { month: "Jan", amount: 8500 },
-      { month: "Feb", amount: 9200 },
-      { month: "Mar", amount: 8900 },
-      { month: "Apr", amount: 10500 },
-      { month: "May", amount: 9800 },
-      { month: "Jun", amount: 11200 },
-    ]
-  });
-
   return (
-    <Card className="shadow-md h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-bold">Payment Summary</CardTitle>
-        <CardDescription>Recent payments and outstanding amounts</CardDescription>
+    <Card className="border-none shadow-md bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
+      <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-white border-b">
+        <CardTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
+          <DollarSign className="h-5 w-5 text-emerald-500" />
+          Payment Summary
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">Current billing period</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <div className="space-y-4">
-          <div className="bg-violet-50 p-4 rounded-md">
-            <p className="text-sm font-medium text-violet-600">Total Outstanding</p>
-            <p className="text-2xl font-bold text-violet-700">{currencySymbol} {paymentsData.totalOutstanding.toLocaleString()}</p>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium mb-2">Recent Payments</h4>
-            <div className="space-y-2">
-              {paymentsData.recentPayments.map((payment) => (
-                <div key={payment.id} className="flex justify-between items-center text-sm p-2 hover:bg-slate-50 rounded-md">
-                  <span className="font-medium">{payment.patient}</span>
-                  <div className="flex items-center">
-                    <span className="text-green-600 font-medium">{currencySymbol} {payment.amount}</span>
-                    <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
-                      Paid
-                    </span>
-                  </div>
-                </div>
-              ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3">
+              <div className="text-sm text-gray-600">Revenue</div>
+              <div className="text-xl font-bold text-emerald-700 flex items-center">
+                <DollarSign className="h-4 w-4 mr-1" />
+                R 8,250
+              </div>
+              <div className="flex items-center text-xs text-emerald-600 mt-1">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                <span>+5.2% this week</span>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
+              <div className="text-sm text-gray-600">Payments</div>
+              <div className="text-xl font-bold text-blue-700 flex items-center">
+                <CreditCard className="h-4 w-4 mr-1" />
+                R 7,820
+              </div>
+              <div className="text-xs text-gray-500 mt-1">16 transactions</div>
             </div>
           </div>
-
-          <div className="mt-4 text-xs text-center text-healthcare-gray">
-            <a href="/billing" className="text-violet-600 font-medium hover:underline">
-              View all payments
-            </a>
+          
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-700 mb-1">Recent Payments</div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 transition-colors">
+                <div className="flex items-center">
+                  <div className="bg-blue-100 rounded-full p-1.5 mr-2">
+                    <Receipt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">INV-2023-001</div>
+                    <div className="text-xs text-gray-500">June 10, 2023</div>
+                  </div>
+                </div>
+                <div className="font-medium text-gray-800">R 150.00</div>
+              </div>
+              <div className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 transition-colors">
+                <div className="flex items-center">
+                  <div className="bg-blue-100 rounded-full p-1.5 mr-2">
+                    <Receipt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">INV-2023-002</div>
+                    <div className="text-xs text-gray-500">June 8, 2023</div>
+                  </div>
+                </div>
+                <div className="font-medium text-gray-800">R 220.00</div>
+              </div>
+            </div>
+            <Link to="/billing">
+              <Button variant="ghost" size="sm" className="w-full justify-between mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                View all payments
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </CardContent>

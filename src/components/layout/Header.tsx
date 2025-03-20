@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,52 +12,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Create a context for doctor settings
-const DoctorSettingsContext = createContext<{
-  doctorSettings: {
-    name: string;
-    email: string;
-    practiceName: string;
-    image: string;
-    practiceImage: string;
-    currency?: string;
-    timeZone?: string;
-  };
-  updateDoctorSettings: (newSettings: Partial<{
-    name: string;
-    email: string;
-    practiceName: string;
-    image: string;
-    practiceImage: string;
-    currency?: string;
-    timeZone?: string;
-  }>) => void;
-}>({
-  doctorSettings: {
-    name: "Dr. Jane Smith",
-    email: "info@medicare-clinic.com",
-    practiceName: "MediCare Clinic",
-    image: "https://i.pravatar.cc/100?img=11", // Default image
-    practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png", // Practice image
-    currency: "$",
-    timeZone: "America/New_York",
-  },
-  updateDoctorSettings: () => {},
-});
-
 // Create a hook to manage doctor settings
-export const useDoctorSettings = () => useContext(DoctorSettingsContext);
-
-// Provider component for doctor settings
-export const DoctorSettingsProvider = ({ children }: { children: React.ReactNode }) => {
+export const useDoctorSettings = () => {
   const [doctorSettings, setDoctorSettings] = useState({
     name: "Dr. Jane Smith",
     email: "info@medicare-clinic.com",
     practiceName: "MediCare Clinic",
     image: "https://i.pravatar.cc/100?img=11", // Default image
     practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png", // Practice image
-    currency: "R",
-    timeZone: "America/New_York",
   });
 
   // Load settings from localStorage on component mount
@@ -69,17 +31,13 @@ export const DoctorSettingsProvider = ({ children }: { children: React.ReactNode
   }, []);
 
   // Update settings function
-  const updateDoctorSettings = (newSettings: Partial<typeof doctorSettings>) => {
+  const updateDoctorSettings = (newSettings) => {
     const updatedSettings = { ...doctorSettings, ...newSettings };
     setDoctorSettings(updatedSettings);
     localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
   };
 
-  return (
-    <DoctorSettingsContext.Provider value={{ doctorSettings, updateDoctorSettings }}>
-      {children}
-    </DoctorSettingsContext.Provider>
-  );
+  return { doctorSettings, updateDoctorSettings };
 };
 
 export function Header() {
