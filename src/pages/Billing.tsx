@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CustomerSection, type Patient, type PracticeInfo } from "@/components/billing/CustomerSection";
+import { InvoicePreview } from "@/components/billing/InvoicePreview";
 
 interface InvoiceItem {
   id: number;
@@ -41,6 +43,7 @@ interface NewInvoice {
 
 const Billing = () => {
   const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
+  const [openPreviewDialog, setOpenPreviewDialog] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
@@ -185,6 +188,16 @@ const Billing = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handlePreviewInvoice = () => {
+    // Ensure the invoice data is updated with the latest items before showing preview
+    const updatedInvoice = {
+      ...newInvoice,
+      items: invoiceItems
+    };
+    setNewInvoice(updatedInvoice);
+    setOpenPreviewDialog(true);
   };
   
   const resetInvoiceForm = () => {
@@ -502,7 +515,10 @@ const Billing = () => {
                     <div className="flex justify-between items-center pt-2 border-t">
                       <div className="flex items-center">
                         <span className="font-medium mr-2">Total</span>
-                        <Select defaultValue="ZAR">
+                        <Select 
+                          defaultValue="ZAR"
+                          onValueChange={(value) => setNewInvoice({...newInvoice, currency: value})}
+                        >
                           <SelectTrigger className="h-8 border-0 bg-transparent hover:bg-accent px-2 w-auto">
                             <SelectValue placeholder="Currency" />
                           </SelectTrigger>
@@ -532,7 +548,7 @@ const Billing = () => {
               </div>
               
               <DialogFooter className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={() => setOpenInvoiceDialog(false)}>
+                <Button variant="outline" onClick={handlePreviewInvoice}>
                   Preview
                 </Button>
                 <Button onClick={handleCreateInvoice} disabled={isLoading}>
@@ -542,6 +558,14 @@ const Billing = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          
+          {/* Invoice Preview Dialog */}
+          <InvoicePreview 
+            open={openPreviewDialog}
+            onOpenChange={setOpenPreviewDialog}
+            invoiceData={newInvoice}
+            patient={selectedPatient}
+          />
         </main>
       </div>
     </div>
