@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -12,10 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { CustomerSection, type Patient, type PracticeInfo } from "@/components/billing/CustomerSection";
 import { InvoicePreview } from "@/components/billing/InvoicePreview";
+import { supabase } from "@/integrations/supabase/client";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 interface InvoiceItem {
   id: number;
@@ -82,6 +83,33 @@ const Billing = () => {
   
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [paymentDueDate, setPaymentDueDate] = useState<Date>(new Date());
+
+  const [inventoryItems, setInventoryItems] = useState<Array<{id: string, name: string, unit_cost: number, category: string}>>([]);
+  const [searchResults, setSearchResults] = useState<Array<{id: string, name: string, unit_cost: number, category: string}>>([]);
+  const [showItemSearch, setShowItemSearch] = useState<{id: number, show: boolean}>({id: -1, show: false});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchInventoryItems = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('inventory')
+          .select('id, name, unit_cost, category')
+          .order('name');
+        
+        if (error) {
+          console.error('Error fetching inventory:', error);
+          return;
+        }
+        
+        setInventoryItems(data || []);
+      } catch (error) {
+        console.error('Error fetching inventory:', error);
+      }
+    };
+    
+    fetchInventoryItems();
+  }, []);
 
   const handleAddItem = () => {
     const newId = invoiceItems.length ? Math.max(...invoiceItems.map(item => item.id)) + 1 : 1;
@@ -191,7 +219,6 @@ const Billing = () => {
   };
   
   const handlePreviewInvoice = () => {
-    // Ensure the invoice data is updated with the latest items before showing preview
     const updatedInvoice = {
       ...newInvoice,
       items: invoiceItems
@@ -269,6 +296,38 @@ const Billing = () => {
     } finally {
       setDownloadingReport(false);
     }
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    if (query.length > 1) {
+      const filtered = inventoryItems.filter(item => 
+        item.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } else {
+      setSearchResults([]);
+    }
+  };
+  
+  const handleSelectInventoryItem = (id: number, item: {id: string, name: string, unit_cost: number, category: string}) => {
+    const updatedItems = invoiceItems.map(invoiceItem => {
+      if (invoiceItem.id === id) {
+        const price = item.unit_cost.toString();
+        return {
+          ...invoiceItem,
+          description: `${item.name} (${item.category})`,
+          price,
+          amount: invoiceItem.quantity * parseFloat(price)
+        };
+      }
+      return invoiceItem;
+    });
+    
+    setInvoiceItems(updatedItems);
+    calculateTotals(updatedItems);
+    setShowItemSearch({id: -1, show: false});
+    setSearchQuery("");
   };
 
   return (
@@ -434,12 +493,46 @@ const Billing = () => {
                   <div className="divide-y">
                     {invoiceItems.map((item) => (
                       <div key={item.id} className="grid grid-cols-12 gap-2 p-2 items-center">
-                        <div className="col-span-6">
-                          <Input
-                            value={item.description}
-                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                            placeholder="Item description"
-                          />
+                        <div className="col-span-6 relative">
+                          <div className="relative">
+                            <Input
+                              value={item.description}
+                              onChange={(e) => {
+                                handleItemChange(item.id, 'description', e.target.value);
+                                handleSearchChange(e.target.value);
+                                setShowItemSearch({id: item.id, show: true});
+                              }}
+                              onFocus={() => setShowItemSearch({id: item.id, show: true})}
+                              placeholder="Item description"
+                              className="pr-8"
+                            />
+                            <Search className="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                          </div>
+                          
+                          {showItemSearch.show && showItemSearch.id === item.id && searchResults.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
+                              <Command>
+                                <CommandList>
+                                  <CommandGroup heading="Inventory Items">
+                                    {searchResults.map((result) => (
+                                      <CommandItem
+                                        key={result.id}
+                                        value={result.name}
+                                        onSelect={() => handleSelectInventoryItem(item.id, result)}
+                                        className="cursor-pointer"
+                                      >
+                                        <span>{result.name}</span>
+                                        <span className="ml-2 text-muted-foreground">R {result.unit_cost.toFixed(2)}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                                {searchResults.length === 0 && (
+                                  <CommandEmpty>No items found.</CommandEmpty>
+                                )}
+                              </Command>
+                            </div>
+                          )}
                         </div>
                         <div className="col-span-2">
                           <Input
