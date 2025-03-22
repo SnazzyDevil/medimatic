@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -233,10 +232,14 @@ const Billing = () => {
       return;
     }
 
-    if (invoiceItems.some(item => !item.description || !item.price)) {
+    const validItems = invoiceItems.filter(item => 
+      item.description && item.price && parseFloat(item.price) > 0
+    );
+
+    if (validItems.length === 0) {
       toast({
         title: "Missing information",
-        description: "Please fill in all item details.",
+        description: "Please add at least one item with description and price.",
         variant: "destructive"
       });
       return;
@@ -244,7 +247,6 @@ const Billing = () => {
 
     setIsLoading(true);
     try {
-      // Insert invoice record
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -262,8 +264,7 @@ const Billing = () => {
         throw invoiceError;
       }
       
-      // Insert invoice items
-      const invoiceItems = newInvoice.items.map(item => ({
+      const invoiceItems = validItems.map(item => ({
         invoice_id: invoiceData.id,
         description: item.description,
         quantity: item.quantity,
@@ -286,7 +287,6 @@ const Billing = () => {
       
       setOpenInvoiceDialog(false);
       
-      // Refresh invoices list and show dialog
       await fetchCreatedInvoices();
       setOpenInvoicesDialog(true);
       resetInvoiceForm();
