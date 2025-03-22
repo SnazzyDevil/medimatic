@@ -417,6 +417,11 @@ const Billing = () => {
     setSearchQuery("");
   };
 
+  const handleEditInvoice = () => {
+    setAfterSavePreview(false);
+    setOpenInvoiceDialog(true);
+  };
+
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
