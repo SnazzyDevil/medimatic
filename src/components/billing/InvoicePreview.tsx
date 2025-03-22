@@ -1,5 +1,5 @@
 
-import { X } from "lucide-react";
+import { X, Printer, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
@@ -32,9 +32,10 @@ interface InvoicePreviewProps {
     practiceInfo: PracticeInfo;
   };
   patient: Patient | null;
+  onEdit?: () => void;
 }
 
-export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient }: InvoicePreviewProps) => {
+export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient, onEdit }: InvoicePreviewProps) => {
   const getCurrencySymbol = (currency: string) => {
     switch (currency) {
       case "USD": return "$";
@@ -46,6 +47,10 @@ export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient }: Inv
   };
 
   const currencySymbol = getCurrencySymbol(invoiceData.currency);
+  
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -188,14 +193,28 @@ export const InvoicePreview = ({ open, onOpenChange, invoiceData, patient }: Inv
         
         <div className="flex justify-end mt-4 gap-2 print:hidden">
           <Button 
-            variant="secondary" 
+            variant="outline" 
             onClick={() => onOpenChange(false)}
           >
             Close
+          </Button>
+          {onEdit && (
+            <Button 
+              variant="outline"
+              onClick={onEdit}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          <Button 
+            onClick={handlePrint}
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-

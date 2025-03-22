@@ -60,6 +60,8 @@ const Billing = () => {
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [createdInvoices, setCreatedInvoices] = useState<CreatedInvoice[]>([]);
   const { toast } = useToast();
+  const [afterSavePreview, setAfterSavePreview] = useState(false);
+  const [savedInvoiceId, setSavedInvoiceId] = useState<string | null>(null);
   
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -286,10 +288,10 @@ const Billing = () => {
       });
       
       setOpenInvoiceDialog(false);
+      setSavedInvoiceId(invoiceData.id);
+      setAfterSavePreview(true);
       
       await fetchCreatedInvoices();
-      setOpenInvoicesDialog(true);
-      resetInvoiceForm();
       
     } catch (error: any) {
       console.error("Error creating invoice:", error);
@@ -746,12 +748,21 @@ const Billing = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Invoice Preview Dialog */}
+          {/* Invoice Preview Dialog (before save) */}
           <InvoicePreview 
             open={openPreviewDialog}
             onOpenChange={setOpenPreviewDialog}
             invoiceData={newInvoice}
             patient={selectedPatient}
+          />
+          
+          {/* Invoice Preview Dialog (after save) */}
+          <InvoicePreview 
+            open={afterSavePreview}
+            onOpenChange={setAfterSavePreview}
+            invoiceData={newInvoice}
+            patient={selectedPatient}
+            onEdit={handleEditInvoice}
           />
 
           {/* Created Invoices Dialog */}
