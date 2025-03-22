@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
@@ -99,8 +99,9 @@ const Billing = () => {
 
   const [inventoryItems, setInventoryItems] = useState<Array<{id: string, name: string, unit_cost: number, category: string}>>([]);
   const [searchResults, setSearchResults] = useState<Array<{id: string, name: string, unit_cost: number, category: string}>>([]);
-  const [showItemSearch, setShowItemSearch] = useState<{id: number, show: boolean}>({id: -1, show: false});
+  const [showItemsPopover, setShowItemsPopover] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const itemsPopoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchInventoryItems = async () => {
@@ -387,35 +388,53 @@ const Billing = () => {
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
-    if (query.length > 1) {
+    if (query.length > 0) {
       const filtered = inventoryItems.filter(item => 
-        item.name.toLowerCase().includes(query.toLowerCase())
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.category.toLowerCase().includes(query.toLowerCase())
       );
       setSearchResults(filtered);
     } else {
-      setSearchResults([]);
+      setSearchResults(inventoryItems);
     }
   };
   
-  const handleSelectInventoryItem = (id: number, item: {id: string, name: string, unit_cost: number, category: string}) => {
-    const updatedItems = invoiceItems.map(invoiceItem => {
-      if (invoiceItem.id === id) {
-        const price = item.unit_cost.toString();
-        return {
-          ...invoiceItem,
-          description: `${item.name} (${item.category})`,
-          price,
-          amount: invoiceItem.quantity * parseFloat(price)
-        };
-      }
-      return invoiceItem;
-    });
+  const handleSelectInventoryItem = (item: {id: string, name: string, unit_cost: number, category: string}) => {
+    const newId = invoiceItems.length ? Math.max(...invoiceItems.map(i => i.id)) + 1 : 1;
     
-    setInvoiceItems(updatedItems);
-    calculateTotals(updatedItems);
-    setShowItemSearch({id: -1, show: false});
+    const newItem = {
+      id: newId,
+      description: `${item.name} (${item.category})`,
+      quantity: 1,
+      price: item.unit_cost.toString(),
+      amount: item.unit_cost
+    };
+    
+    setInvoiceItems([...invoiceItems, newItem]);
+    calculateTotals([...invoiceItems, newItem]);
+    setShowItemsPopover(false);
     setSearchQuery("");
   };
+
+  const handleAddCustomItem = () => {
+    const newId = invoiceItems.length ? Math.max(...invoiceItems.map(item => item.id)) + 1 : 1;
+    setInvoiceItems([...invoiceItems, { id: newId, description: "", quantity: 1, price: "", amount: 0 }]);
+    calculateTotals();
+    setShowItemsPopover(false);
+  };
+
+  const handleOutsideClick = (e: MouseEvent) => {
+    if (itemsPopoverRef.current && !itemsPopoverRef.current.contains(e.target as Node)) {
+      setShowItemsPopover(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
 
   const handleEditInvoice = () => {
     setAfterSavePreview(false);
@@ -462,7 +481,6 @@ const Billing = () => {
           
           <BillingOverview />
 
-          {/* Create Invoice Dialog */}
           <Dialog open={openInvoiceDialog} onOpenChange={setOpenInvoiceDialog}>
             <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -594,46 +612,12 @@ const Billing = () => {
                   <div className="divide-y">
                     {invoiceItems.map((item) => (
                       <div key={item.id} className="grid grid-cols-12 gap-2 p-2 items-center">
-                        <div className="col-span-6 relative">
-                          <div className="relative">
-                            <Input
-                              value={item.description}
-                              onChange={(e) => {
-                                handleItemChange(item.id, 'description', e.target.value);
-                                handleSearchChange(e.target.value);
-                                setShowItemSearch({id: item.id, show: true});
-                              }}
-                              onFocus={() => setShowItemSearch({id: item.id, show: true})}
-                              placeholder="Item description"
-                              className="pr-8"
-                            />
-                            <Search className="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                          </div>
-                          
-                          {showItemSearch.show && showItemSearch.id === item.id && searchResults.length > 0 && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
-                              <Command>
-                                <CommandList>
-                                  <CommandGroup heading="Inventory Items">
-                                    {searchResults.map((result) => (
-                                      <CommandItem
-                                        key={result.id}
-                                        value={result.name}
-                                        onSelect={() => handleSelectInventoryItem(item.id, result)}
-                                        className="cursor-pointer"
-                                      >
-                                        <span>{result.name}</span>
-                                        <span className="ml-2 text-muted-foreground">R {result.unit_cost.toFixed(2)}</span>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                                {searchResults.length === 0 && (
-                                  <CommandEmpty>No items found.</CommandEmpty>
-                                )}
-                              </Command>
-                            </div>
-                          )}
+                        <div className="col-span-6">
+                          <Input
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                            placeholder="Item description"
+                          />
                         </div>
                         <div className="col-span-2">
                           <Input
@@ -663,7 +647,6 @@ const Billing = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveItem(item.id)}
-                            disabled={invoiceItems.length === 1}
                             className="h-8 w-8 p-0"
                           >
                             <X className="h-4 w-4" />
@@ -673,16 +656,80 @@ const Billing = () => {
                     ))}
                   </div>
                   
-                  <div className="p-2 bg-background">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleAddItem}
-                      className="text-primary"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add an item
-                    </Button>
+                  <div className="p-2 bg-background relative">
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowItemsPopover(true);
+                          setSearchResults(inventoryItems);
+                        }}
+                        className="text-primary"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add item
+                      </Button>
+                      
+                      {showItemsPopover && (
+                        <div 
+                          ref={itemsPopoverRef}
+                          className="absolute z-50 top-full left-0 mt-1 w-[500px] bg-white border rounded-md shadow-lg max-h-[350px] overflow-y-auto"
+                        >
+                          <div className="p-2 border-b">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                              <Input
+                                value={searchQuery}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder="Type an item name"
+                                className="pl-8"
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          
+                          <Command>
+                            <CommandList>
+                              <CommandGroup heading="Inventory Items">
+                                {searchResults.length > 0 ? (
+                                  searchResults.map((result) => (
+                                    <CommandItem
+                                      key={result.id}
+                                      value={result.name}
+                                      onSelect={() => handleSelectInventoryItem(result)}
+                                      className="cursor-pointer flex justify-between items-center py-3 px-4 hover:bg-gray-50"
+                                    >
+                                      <div>
+                                        <div className="font-medium">{result.name}</div>
+                                        <div className="text-sm text-muted-foreground">{result.category}</div>
+                                      </div>
+                                      <div className="text-right">
+                                        R{result.unit_cost.toFixed(2)}
+                                      </div>
+                                    </CommandItem>
+                                  ))
+                                ) : (
+                                  <CommandEmpty>No items found.</CommandEmpty>
+                                )}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                          
+                          <div className="p-2 border-t flex justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddCustomItem}
+                              className="w-full"
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Create a new item
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -753,7 +800,6 @@ const Billing = () => {
             </DialogContent>
           </Dialog>
           
-          {/* Invoice Preview Dialog (before save) */}
           <InvoicePreview 
             open={openPreviewDialog}
             onOpenChange={setOpenPreviewDialog}
@@ -761,7 +807,6 @@ const Billing = () => {
             patient={selectedPatient}
           />
           
-          {/* Invoice Preview Dialog (after save) */}
           <InvoicePreview 
             open={afterSavePreview}
             onOpenChange={setAfterSavePreview}
@@ -770,7 +815,6 @@ const Billing = () => {
             onEdit={handleEditInvoice}
           />
 
-          {/* Created Invoices Dialog */}
           <Dialog open={openInvoicesDialog} onOpenChange={setOpenInvoicesDialog}>
             <DialogContent className="sm:max-w-[700px]">
               <DialogHeader>
@@ -837,3 +881,4 @@ const Billing = () => {
 };
 
 export default Billing;
+
