@@ -12,6 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddMedicationDialogProps {
   isOpen: boolean;
@@ -42,10 +51,43 @@ export function AddMedicationDialog({
     status: "active" as "active" | "discontinued",
     prescribedBy: "",
   });
+  const [medications, setMedications] = useState<Array<{id: string, name: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+
+  const fetchMedications = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      
+      setMedications(data || []);
+    } catch (error) {
+      console.error("Error fetching medications:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load medications from inventory",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setMedicationData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleMedicationSelect = (value: string) => {
+    setMedicationData((prev) => ({ ...prev, name: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,14 +139,29 @@ export function AddMedicationDialog({
               <Label htmlFor="name" className="text-right">
                 Medication
               </Label>
-              <Input
-                id="name"
-                name="name"
-                value={medicationData.name}
-                onChange={handleChange}
-                className="col-span-3"
-                required
-              />
+              <div className="col-span-3">
+                <Select 
+                  value={medicationData.name} 
+                  onValueChange={handleMedicationSelect}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select medication" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loading ? (
+                      <div className="px-2 py-1 text-sm">Loading medications...</div>
+                    ) : medications.length > 0 ? (
+                      medications.map((med) => (
+                        <SelectItem key={med.id} value={med.name}>
+                          {med.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-sm">No medications found</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
