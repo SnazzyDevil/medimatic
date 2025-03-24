@@ -8,6 +8,10 @@ import { PatientList } from "@/components/patients/PatientList";
 const Patients = () => {
   const navigate = useNavigate();
   
+  const handlePatientSelect = (id) => {
+    navigate(`/patients/${id}`);
+  };
+  
   return (
     <div className="min-h-screen flex w-full bg-[#f8fafc]">
       <Sidebar />
@@ -19,7 +23,7 @@ const Patients = () => {
             <p className="text-violet-100">Manage your patients' records and information</p>
           </div>
           
-          <PatientList onPatientSelect={(id) => navigate(`/patients/${id}`)} />
+          <PatientList onPatientSelect={handlePatientSelect} />
         </main>
       </div>
     </div>
