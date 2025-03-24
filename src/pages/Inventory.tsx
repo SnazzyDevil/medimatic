@@ -1,3 +1,5 @@
+
+import { useState, useEffect } from "react";
 import { AlertTriangle, Clock, Filter, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,134 +16,25 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const ITEM_CATEGORIES = {
   medications: ["Antibiotic", "Pain Relief", "Blood Pressure", "Diabetes", "Respiratory", "Other"],
   supplies: ["PPE", "Equipment", "Consumables", "Other"],
   equipment: ["Diagnostic", "Surgical", "Monitoring", "Treatment", "Other"]
 };
-
-const medications = [
-  {
-    id: 1,
-    name: "Amoxicillin",
-    category: "Antibiotic",
-    stock: 253,
-    threshold: 50,
-    expiryDate: "2024-12-15",
-    status: "normal",
-  },
-  {
-    id: 2,
-    name: "Ibuprofen",
-    category: "Pain Relief",
-    stock: 42,
-    threshold: 50,
-    expiryDate: "2024-08-30",
-    status: "low",
-  },
-  {
-    id: 3,
-    name: "Lisinopril",
-    category: "Blood Pressure",
-    stock: 124,
-    threshold: 30,
-    expiryDate: "2024-07-05",
-    status: "expiring",
-  },
-  {
-    id: 4,
-    name: "Metformin",
-    category: "Diabetes",
-    stock: 76,
-    threshold: 40,
-    expiryDate: "2025-03-10",
-    status: "normal",
-  },
-  {
-    id: 5,
-    name: "Salbutamol Inhaler",
-    category: "Respiratory",
-    stock: 18,
-    threshold: 25,
-    expiryDate: "2024-11-22",
-    status: "low",
-  },
-];
-
-const supplies = [
-  {
-    id: 1,
-    name: "Nitrile Gloves (M)",
-    category: "PPE",
-    stock: 450,
-    threshold: 100,
-    expiryDate: "2025-06-30",
-    status: "normal",
-  },
-  {
-    id: 2,
-    name: "Surgical Masks",
-    category: "PPE",
-    stock: 120,
-    threshold: 150,
-    expiryDate: "2025-05-15",
-    status: "low",
-  },
-  {
-    id: 3,
-    name: "IV Catheters",
-    category: "Equipment",
-    stock: 65,
-    threshold: 50,
-    expiryDate: "2026-02-28",
-    status: "normal",
-  },
-];
-
-const equipment = [
-  {
-    id: 1,
-    name: "Blood Pressure Monitor",
-    category: "Diagnostic",
-    stock: 8,
-    threshold: 3,
-    lastService: "2023-11-10",
-    nextService: "2024-11-10",
-    status: "normal",
-  },
-  {
-    id: 2,
-    name: "Stethoscope",
-    category: "Diagnostic",
-    stock: 12,
-    threshold: 5,
-    lastService: "2023-09-05",
-    nextService: "2024-09-05",
-    status: "normal",
-  },
-  {
-    id: 3,
-    name: "Thermometer",
-    category: "Diagnostic",
-    stock: 4,
-    threshold: 5,
-    lastService: "2023-12-20",
-    nextService: "2024-12-20",
-    status: "low",
-  },
-];
 
 const Inventory = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -158,11 +51,80 @@ const Inventory = () => {
     type: "medications",
   });
   
-  const [medicationsData, setMedicationsData] = useState(medications);
-  const [suppliesData, setSuppliesData] = useState(supplies);
-  const [equipmentData, setEquipmentData] = useState(equipment);
+  const [searchTerm, setSearchTerm] = useState("");
   
-  const handleAddItem = () => {
+  // Fetch inventory data from Supabase
+  const fetchInventory = async () => {
+    console.log("Fetching inventory data...");
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching inventory:', error);
+      throw error;
+    }
+    
+    console.log("Inventory data fetched:", data);
+    return data || [];
+  };
+  
+  const { 
+    data: inventoryData, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch 
+  } = useQuery({
+    queryKey: ['inventory'],
+    queryFn: fetchInventory
+  });
+  
+  // Process inventory data into medication, supplies and equipment categories
+  const getMedicationsData = () => {
+    if (!inventoryData) return [];
+    return inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.medications.includes(item.category) &&
+      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  };
+  
+  const getSuppliesData = () => {
+    if (!inventoryData) return [];
+    return inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.supplies.includes(item.category) &&
+      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  };
+  
+  const getEquipmentData = () => {
+    if (!inventoryData) return [];
+    return inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.equipment.includes(item.category) &&
+      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  };
+  
+  // Calculate statistics
+  const getLowStockCount = () => {
+    if (!inventoryData) return 0;
+    return inventoryData.filter(item => item.stock < item.threshold).length;
+  };
+  
+  const getExpiringCount = () => {
+    if (!inventoryData) return 0;
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
+    return inventoryData.filter(item => {
+      if (!item.expiry_date) return false;
+      const expiryDate = new Date(item.expiry_date);
+      return expiryDate <= thirtyDaysFromNow && expiryDate >= today;
+    }).length;
+  };
+  
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.category || !newItem.stock || !newItem.threshold || !newItem.itemCode || !newItem.unitCost || !newItem.supplierName) {
       toast({
         title: "Missing fields",
@@ -177,47 +139,64 @@ const Inventory = () => {
     const status = stock < threshold ? "low" : "normal";
     
     const itemToAdd = {
-      id: Date.now(),
       name: newItem.name,
       category: newItem.category,
-      stock,
-      threshold,
-      expiryDate: newItem.expiryDate || new Date().toISOString().split('T')[0],
-      status,
-      itemCode: newItem.itemCode,
-      unitCost: newItem.unitCost,
-      supplierName: newItem.supplierName,
-      ...(newItem.type === "equipment" && {
-        lastService: new Date().toISOString().split('T')[0],
-        nextService: new Date(Date.now() + 31536000000).toISOString().split('T')[0],
-      }),
+      stock: stock,
+      threshold: threshold,
+      expiry_date: newItem.expiryDate || null,
+      status: status,
+      item_code: newItem.itemCode,
+      unit_cost: parseFloat(newItem.unitCost),
+      supplier_name: newItem.supplierName,
     };
     
-    if (newItem.type === "medications") {
-      setMedicationsData([...medicationsData, itemToAdd]);
-    } else if (newItem.type === "supplies") {
-      setSuppliesData([...suppliesData, itemToAdd]);
-    } else if (newItem.type === "equipment") {
-      setEquipmentData([...equipmentData, itemToAdd]);
+    try {
+      console.log("Adding item to inventory:", itemToAdd);
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert(itemToAdd)
+        .select();
+      
+      if (error) {
+        console.error("Error adding item to inventory:", error);
+        toast({
+          title: "Error",
+          description: `Failed to add item: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Item added successfully:", data);
+      toast({
+        title: "Item added",
+        description: `${itemToAdd.name} has been added to inventory.`,
+      });
+      
+      // Reset form and close dialog
+      setNewItem({
+        name: "",
+        category: "",
+        stock: "",
+        threshold: "",
+        expiryDate: "",
+        itemCode: "",
+        unitCost: "",
+        supplierName: "",
+        type: "medications",
+      });
+      setOpenAddDialog(false);
+      
+      // Refresh inventory data
+      refetch();
+    } catch (err) {
+      console.error("Exception adding item:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while adding the item.",
+        variant: "destructive",
+      });
     }
-    
-    setNewItem({
-      name: "",
-      category: "",
-      stock: "",
-      threshold: "",
-      expiryDate: "",
-      itemCode: "",
-      unitCost: "",
-      supplierName: "",
-      type: "medications",
-    });
-    setOpenAddDialog(false);
-    
-    toast({
-      title: "Item added",
-      description: `${itemToAdd.name} has been added to inventory.`,
-    });
   };
   
   const handleTypeChange = (type: string) => {
@@ -227,6 +206,24 @@ const Inventory = () => {
       category: "",
     });
   };
+  
+  if (isError) {
+    console.error("Error fetching data:", error);
+    return (
+      <div className="min-h-screen flex w-full">
+        <Sidebar />
+        <div className="flex-1 ml-16">
+          <Header />
+          <main className="page-container">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <h2 className="text-red-800 font-medium">Error loading inventory data</h2>
+              <p className="text-red-700">Please try refreshing the page or contact support if the issue persists.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex w-full">
@@ -246,7 +243,7 @@ const Inventory = () => {
             <Card className="border-healthcare-primary/30">
               <CardContent className="p-4 flex items-center">
                 <div className="bg-blue-100 rounded-full p-3 mr-4">
-                  <span className="text-blue-500 text-xl font-bold">32</span>
+                  <span className="text-blue-500 text-xl font-bold">{getLowStockCount()}</span>
                 </div>
                 <div>
                   <p className="text-sm text-healthcare-gray">Low Stock Items</p>
@@ -257,7 +254,7 @@ const Inventory = () => {
             <Card className="border-healthcare-primary/30">
               <CardContent className="p-4 flex items-center">
                 <div className="bg-amber-100 rounded-full p-3 mr-4">
-                  <span className="text-amber-500 text-xl font-bold">8</span>
+                  <span className="text-amber-500 text-xl font-bold">{getExpiringCount()}</span>
                 </div>
                 <div>
                   <p className="text-sm text-healthcare-gray">Expiring Soon</p>
@@ -268,11 +265,13 @@ const Inventory = () => {
             <Card className="border-healthcare-primary/30">
               <CardContent className="p-4 flex items-center">
                 <div className="bg-green-100 rounded-full p-3 mr-4">
-                  <span className="text-green-500 text-xl font-bold">5</span>
+                  <span className="text-green-500 text-xl font-bold">
+                    {isLoading ? "..." : inventoryData?.length || 0}
+                  </span>
                 </div>
                 <div>
-                  <p className="text-sm text-healthcare-gray">On Order</p>
-                  <p className="font-medium">Arriving Soon</p>
+                  <p className="text-sm text-healthcare-gray">Total Items</p>
+                  <p className="font-medium">In Inventory</p>
                 </div>
               </CardContent>
             </Card>
@@ -284,6 +283,8 @@ const Inventory = () => {
               <Input 
                 placeholder="Search inventory..." 
                 className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button variant="outline" size="sm" className="btn-hover">
@@ -312,7 +313,22 @@ const Inventory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {medicationsData.map((item) => (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
+                            <p>Loading inventory data...</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : getMedicationsData().length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                          No medication items found. Add some to get started.
+                        </TableCell>
+                      </TableRow>
+                    ) : getMedicationsData().map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -328,7 +344,7 @@ const Inventory = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center">
-                            <span>{item.expiryDate}</span>
+                            <span>{item.expiry_date || "N/A"}</span>
                             {item.status === "expiring" && (
                               <Clock className="h-4 w-4 text-amber-500 ml-2" />
                             )}
@@ -374,7 +390,22 @@ const Inventory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {suppliesData.map((item) => (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
+                            <p>Loading inventory data...</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : getSuppliesData().length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                          No supplies items found. Add some to get started.
+                        </TableCell>
+                      </TableRow>
+                    ) : getSuppliesData().map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -388,7 +419,7 @@ const Inventory = () => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{item.expiryDate}</TableCell>
+                        <TableCell>{item.expiry_date || "N/A"}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={item.status === "normal" ? "default" : "outline"}
@@ -416,13 +447,27 @@ const Inventory = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Last Service</TableHead>
-                      <TableHead>Next Service</TableHead>
+                      <TableHead>Supplier</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {equipmentData.map((item) => (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
+                            <p>Loading inventory data...</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : getEquipmentData().length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                          No equipment items found. Add some to get started.
+                        </TableCell>
+                      </TableRow>
+                    ) : getEquipmentData().map((item) => (
                       <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -436,8 +481,7 @@ const Inventory = () => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{item.lastService}</TableCell>
-                        <TableCell>{item.nextService}</TableCell>
+                        <TableCell>{item.supplier_name}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={item.status === "normal" ? "default" : "outline"}
@@ -462,6 +506,7 @@ const Inventory = () => {
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Add New Item to Inventory</DialogTitle>
+                <DialogDescription>Fill in the details below to add a new item to your inventory.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -581,4 +626,3 @@ const Inventory = () => {
 };
 
 export default Inventory;
-
