@@ -37,7 +37,7 @@ export function AddVisitDialog({
   isOpen,
   onClose,
   onAddVisit,
-  patientId = "1", // Default for demo, should be replaced with actual patient id
+  patientId,
 }: AddVisitDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +79,15 @@ export function AddVisitDialog({
       toast({
         title: "Missing information",
         description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!patientId) {
+      toast({
+        title: "Error",
+        description: "Patient ID is required",
         variant: "destructive",
       });
       return;

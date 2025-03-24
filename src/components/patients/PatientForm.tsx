@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PatientFormProps {
@@ -26,6 +26,7 @@ export interface PatientFormData {
 
 export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = React.useState<PatientFormData>({
     firstName: "",
     lastName: "",
@@ -46,14 +47,44 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
     }));
   };
 
+  const validateEmail = (email: string): boolean => {
+    if (!email) return true; // Allow empty email
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
+  const validateContactNumber = (number: string): boolean => {
+    if (!number) return false; // Contact number is required
+    const regex = /^[0-9+\-\s()]{7,15}$/;
+    return regex.test(number);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
-    if (!formData.firstName || !formData.lastName || !formData.contactNumber) {
+    // Enhanced validation
+    if (!formData.firstName || !formData.lastName) {
       toast({
         title: "Missing required fields",
-        description: "Please fill in all required fields.",
+        description: "First name and last name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateContactNumber(formData.contactNumber)) {
+      toast({
+        title: "Invalid contact number",
+        description: "Please enter a valid contact number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.email && !validateEmail(formData.email)) {
+      toast({
+        title: "Invalid email address",
+        description: "Please enter a valid email address.",
         variant: "destructive",
       });
       return;
@@ -69,11 +100,11 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
           first_name: formData.firstName,
           last_name: formData.lastName,
           contact_number: formData.contactNumber,
-          medical_aid_number: formData.medicalAidNumber,
-          address: formData.address,
-          email: formData.email,
-          allergies: formData.allergies,
-          alternate_contact: formData.alternateContact,
+          medical_aid_number: formData.medicalAidNumber || null,
+          address: formData.address || null,
+          email: formData.email || null,
+          allergies: formData.allergies || null,
+          alternate_contact: formData.alternateContact || null,
         })
         .select();
 

@@ -32,7 +32,7 @@ export function ScheduleAppointmentDialog({
   isOpen,
   onClose,
   onScheduleAppointment,
-  patientId = "1", // Default for demo, should be replaced with actual patient id
+  patientId,
 }: ScheduleAppointmentDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +57,15 @@ export function ScheduleAppointmentDialog({
       toast({
         title: "Missing information",
         description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!patientId) {
+      toast({
+        title: "Error",
+        description: "Patient ID is required",
         variant: "destructive",
       });
       return;
