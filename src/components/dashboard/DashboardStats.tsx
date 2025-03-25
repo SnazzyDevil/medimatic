@@ -8,46 +8,101 @@ import {
   TrendingDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
-const stats = [
-  {
-    label: "Total Inventory Items",
-    value: "2487",
-    change: "+5.2% vs. last month",
-    trend: "up",
-    icon: Package,
-    gradientClasses: "from-blue-500 to-blue-700"
-  },
-  {
-    label: "Active Patients",
-    value: "356",
-    change: "+2.8% vs. last month",
-    trend: "up",
-    icon: Users,
-    gradientClasses: "from-purple-500 to-violet-700"
-  },
-  {
-    label: "Dispensed Today",
-    value: "78",
-    change: "-1.2% vs. yesterday",
-    trend: "down",
-    icon: Pill,
-    gradientClasses: "from-emerald-500 to-teal-700"
-  },
-  {
-    label: "Scheduled Dispensing",
-    value: "24",
-    change: "For today",
-    trend: "neutral",
-    icon: Calendar,
-    gradientClasses: "from-pink-500 to-rose-700"
-  },
-];
+// Function to fetch dashboard stats from Supabase
+const fetchDashboardStats = async () => {
+  // Get inventory count
+  const { data: inventoryData, error: inventoryError } = await supabase
+    .from('inventory')
+    .select('id', { count: 'exact' });
+  
+  if (inventoryError) throw inventoryError;
+  
+  // Get patients count
+  const { data: patientsData, error: patientsError } = await supabase
+    .from('patients')
+    .select('id', { count: 'exact' });
+  
+  if (patientsError) throw patientsError;
+  
+  // Get dispensing count for today
+  const today = new Date().toISOString().split('T')[0];
+  const { data: dispensingTodayData, error: dispensingTodayError } = await supabase
+    .from('dispensing')
+    .select('id', { count: 'exact' })
+    .eq('dispensing_date', today);
+  
+  if (dispensingTodayError) throw dispensingTodayError;
+  
+  // Get scheduled dispensing count for today
+  const { data: scheduledDispensingData, error: scheduledDispensingError } = await supabase
+    .from('dispensing')
+    .select('id', { count: 'exact' })
+    .eq('dispensing_date', today)
+    .gt('created_at', new Date(new Date().setDate(new Date().getDate() - 1)).toISOString());
+  
+  if (scheduledDispensingError) throw scheduledDispensingError;
+  
+  return {
+    inventoryCount: inventoryData.length,
+    patientsCount: patientsData.length,
+    dispensingTodayCount: dispensingTodayData.length,
+    scheduledDispensingCount: scheduledDispensingData.length
+  };
+};
 
 export function DashboardStats() {
+  const { data: stats, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: fetchDashboardStats
+  });
+  
+  // Default stats while loading
+  const defaultStats = [
+    {
+      label: "Total Inventory Items",
+      value: isLoading ? "..." : (stats?.inventoryCount || 0).toString(),
+      change: "+5.2% vs. last month",
+      trend: "up",
+      icon: Package,
+      gradientClasses: "from-blue-500 to-blue-700"
+    },
+    {
+      label: "Active Patients",
+      value: isLoading ? "..." : (stats?.patientsCount || 0).toString(),
+      change: "+2.8% vs. last month",
+      trend: "up",
+      icon: Users,
+      gradientClasses: "from-purple-500 to-violet-700"
+    },
+    {
+      label: "Dispensed Today",
+      value: isLoading ? "..." : (stats?.dispensingTodayCount || 0).toString(),
+      change: "-1.2% vs. yesterday",
+      trend: "down",
+      icon: Pill,
+      gradientClasses: "from-emerald-500 to-teal-700"
+    },
+    {
+      label: "Scheduled Dispensing",
+      value: isLoading ? "..." : (stats?.scheduledDispensingCount || 0).toString(),
+      change: "For today",
+      trend: "neutral",
+      icon: Calendar,
+      gradientClasses: "from-pink-500 to-rose-700"
+    },
+  ];
+
+  if (isError) {
+    console.error("Error fetching dashboard stats");
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-      {stats.map((stat) => (
+      {defaultStats.map((stat) => (
         <div 
           key={stat.label} 
           className={cn(

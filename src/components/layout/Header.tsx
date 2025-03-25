@@ -26,15 +26,28 @@ export const useDoctorSettings = () => {
   useEffect(() => {
     const storedSettings = localStorage.getItem("doctorSettings");
     if (storedSettings) {
-      setDoctorSettings(JSON.parse(storedSettings));
+      try {
+        const parsedSettings = JSON.parse(storedSettings);
+        console.log("Loaded settings from localStorage:", parsedSettings);
+        setDoctorSettings(parsedSettings);
+      } catch (error) {
+        console.error("Error parsing stored settings:", error);
+      }
     }
   }, []);
 
   // Update settings function
   const updateDoctorSettings = (newSettings) => {
     const updatedSettings = { ...doctorSettings, ...newSettings };
+    console.log("Updating doctor settings:", updatedSettings);
     setDoctorSettings(updatedSettings);
-    localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
+    
+    try {
+      localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
+      console.log("Settings saved to localStorage");
+    } catch (error) {
+      console.error("Error saving settings to localStorage:", error);
+    }
   };
 
   return { doctorSettings, updateDoctorSettings };

@@ -12,9 +12,15 @@ import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { useEffect } from "react";
 
 const Dashboard = () => {
   const { doctorSettings } = useDoctorSettings();
+  
+  // Log doctor settings to verify they're being loaded correctly
+  useEffect(() => {
+    console.log("Doctor settings loaded:", doctorSettings);
+  }, [doctorSettings]);
   
   return (
     <div className="min-h-screen flex w-full bg-[#f8fafc]">
