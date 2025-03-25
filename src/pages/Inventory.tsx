@@ -250,7 +250,7 @@ const Inventory = () => {
           <main className="page-container">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <h2 className="text-red-800 font-medium">Error loading inventory data</h2>
-              <p className="text-red-700">Please try refreshing the page or contact support if the issue persists.</p>
+              <p className="text-red-700">Please try refreshing the page or contact support.</p>
             </div>
           </main>
         </div>
@@ -264,437 +264,284 @@ const Inventory = () => {
       <div className="flex-1 ml-16">
         <Header />
         <main className="page-container">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="font-semibold text-2xl">Inventory Management</h1>
-            <Button className="btn-hover" onClick={() => setOpenAddDialog(true)}>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Inventory Management</h1>
+            <Button onClick={() => setOpenAddDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add New Item
+              Add Item
             </Button>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card className="border-healthcare-primary/30">
-              <CardContent className="p-4 flex items-center">
-                <div className="bg-blue-100 rounded-full p-3 mr-4">
-                  <span className="text-blue-500 text-xl font-bold">{getLowStockCount()}</span>
-                </div>
-                <div>
-                  <p className="text-sm text-healthcare-gray">Low Stock Items</p>
-                  <p className="font-medium">Needs Attention</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+            <Card className="bg-white">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium">Total Inventory Items</h3>
+                  <span className="text-2xl font-bold">{inventoryData?.length || 0}</span>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-healthcare-primary/30">
-              <CardContent className="p-4 flex items-center">
-                <div className="bg-amber-100 rounded-full p-3 mr-4">
-                  <span className="text-amber-500 text-xl font-bold">{getExpiringCount()}</span>
-                </div>
-                <div>
-                  <p className="text-sm text-healthcare-gray">Expiring Soon</p>
-                  <p className="font-medium">Within 30 Days</p>
+            
+            <Card className="bg-white">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium text-amber-700">Low Stock Items</h3>
+                  <span className="text-2xl font-bold text-amber-600">{getLowStockCount()}</span>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-healthcare-primary/30">
-              <CardContent className="p-4 flex items-center">
-                <div className="bg-green-100 rounded-full p-3 mr-4">
-                  <span className="text-green-500 text-xl font-bold">
-                    {isLoading ? "..." : inventoryData?.length || 0}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-healthcare-gray">Total Items</p>
-                  <p className="font-medium">In Inventory</p>
+            
+            <Card className="bg-white">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium text-red-700">Expiring Soon</h3>
+                  <span className="text-2xl font-bold text-red-600">{getExpiringCount()}</span>
                 </div>
               </CardContent>
             </Card>
           </div>
           
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search inventory..." 
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="bg-white rounded-lg border p-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search inventory..." 
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setOpenFilterDialog(true)}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </Button>
+              </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="btn-hover"
-              onClick={() => setOpenFilterDialog(true)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
+            
+            {showFilters && (
+              <div className="mb-4 p-3 border rounded-md bg-slate-50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Active filters:</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="h-7 text-xs"
+                  >
+                    Clear all
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {categoryFilter && (
+                    <Badge variant="outline" className="bg-white">
+                      Category: {categoryFilter}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-1 h-4 w-4 p-0"
+                        onClick={() => setCategoryFilter("")}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {statusFilter && (
+                    <Badge variant="outline" className="bg-white">
+                      Status: {statusFilter}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-1 h-4 w-4 p-0"
+                        onClick={() => setStatusFilter("")}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <Tabs defaultValue="medications" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-6">
+                <TabsTrigger value="medications">Medications</TabsTrigger>
+                <TabsTrigger value="supplies">Supplies</TabsTrigger>
+                <TabsTrigger value="equipment">Equipment</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="medications">
+                {isLoading ? (
+                  <div className="text-center py-8">Loading medications inventory...</div>
+                ) : (
+                  <InventoryTable items={getMedicationsData()} />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="supplies">
+                {isLoading ? (
+                  <div className="text-center py-8">Loading supplies inventory...</div>
+                ) : (
+                  <InventoryTable items={getSuppliesData()} />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="equipment">
+                {isLoading ? (
+                  <div className="text-center py-8">Loading equipment inventory...</div>
+                ) : (
+                  <InventoryTable items={getEquipmentData()} />
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
-          
-          {showFilters && (
-            <div className="border rounded-lg p-4 mb-4 bg-slate-50 flex flex-wrap gap-2 items-center">
-              <p className="text-sm text-muted-foreground mr-2">Active filters:</p>
-              {categoryFilter && (
-                <Badge variant="outline" className="flex items-center gap-1 bg-white">
-                  Category: {categoryFilter}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-4 w-4 p-0" 
-                    onClick={() => setCategoryFilter("")}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              )}
-              {statusFilter && (
-                <Badge variant="outline" className="flex items-center gap-1 bg-white">
-                  Status: {statusFilter}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-4 w-4 p-0" 
-                    onClick={() => setStatusFilter("")}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              )}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs ml-auto"
-                onClick={resetFilters}
-              >
-                Clear all
-              </Button>
-            </div>
-          )}
-
-          <Tabs defaultValue="medications" className="w-full" onValueChange={setActiveTab} value={activeTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="medications">Medications</TabsTrigger>
-              <TabsTrigger value="supplies">Supplies</TabsTrigger>
-              <TabsTrigger value="equipment">Equipment</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="medications" className="animate-fade-in">
-              <div className="border rounded-lg overflow-hidden bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Current Stock</TableHead>
-                      <TableHead>Expiry Date</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10">
-                          <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
-                            <p>Loading inventory data...</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : getMedicationsData().length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                          No medication items found. Add some to get started.
-                        </TableCell>
-                      </TableRow>
-                    ) : getMedicationsData().map((item) => (
-                      <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <span className={`mr-2 ${item.stock < item.threshold ? "text-red-500" : ""}`}>
-                              {item.stock}
-                            </span>
-                            {item.stock < item.threshold && (
-                              <AlertTriangle className="h-4 w-4 text-amber-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <span>{item.expiry_date || "N/A"}</span>
-                            {item.status === "expiring" && (
-                              <Clock className="h-4 w-4 text-amber-500 ml-2" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={
-                              item.status === "normal" 
-                                ? "default" 
-                                : item.status === "low" 
-                                  ? "outline" 
-                                  : "secondary"
-                            }
-                            className={
-                              item.status === "low" 
-                                ? "border-amber-500 text-amber-700 bg-amber-50" 
-                                : item.status === "expiring"
-                                  ? "border-red-500 text-red-700 bg-red-50"
-                                  : ""
-                            }
-                          >
-                            {item.status === "normal" ? "Normal" : item.status === "low" ? "Low Stock" : "Expiring Soon"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="supplies" className="animate-fade-in">
-              <div className="border rounded-lg overflow-hidden bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Current Stock</TableHead>
-                      <TableHead>Expiry Date</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10">
-                          <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
-                            <p>Loading inventory data...</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : getSuppliesData().length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                          No supplies items found. Add some to get started.
-                        </TableCell>
-                      </TableRow>
-                    ) : getSuppliesData().map((item) => (
-                      <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <span className={`mr-2 ${item.stock < item.threshold ? "text-red-500" : ""}`}>
-                              {item.stock}
-                            </span>
-                            {item.stock < item.threshold && (
-                              <AlertTriangle className="h-4 w-4 text-amber-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.expiry_date || "N/A"}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={item.status === "normal" ? "default" : "outline"}
-                            className={
-                              item.status === "low" 
-                                ? "border-amber-500 text-amber-700 bg-amber-50" 
-                                : ""
-                            }
-                          >
-                            {item.status === "normal" ? "Normal" : "Low Stock"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="equipment" className="animate-fade-in">
-              <div className="border rounded-lg overflow-hidden bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10">
-                          <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
-                            <p>Loading inventory data...</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : getEquipmentData().length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                          No equipment items found. Add some to get started.
-                        </TableCell>
-                      </TableRow>
-                    ) : getEquipmentData().map((item) => (
-                      <TableRow key={item.id} className="group hover:bg-healthcare-secondary">
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <span className={`mr-2 ${item.stock < item.threshold ? "text-red-500" : ""}`}>
-                              {item.stock}
-                            </span>
-                            {item.stock < item.threshold && (
-                              <AlertTriangle className="h-4 w-4 text-amber-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.supplier_name}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={item.status === "normal" ? "default" : "outline"}
-                            className={
-                              item.status === "low" 
-                                ? "border-amber-500 text-amber-700 bg-amber-50" 
-                                : ""
-                            }
-                          >
-                            {item.status === "normal" ? "Operational" : "Maintenance Required"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
           
           {/* Add Item Dialog */}
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add New Item to Inventory</DialogTitle>
-                <DialogDescription>Fill in the details below to add a new item to your inventory.</DialogDescription>
+                <DialogTitle>Add New Inventory Item</DialogTitle>
+                <DialogDescription>
+                  Add a new item to your inventory management system.
+                </DialogDescription>
               </DialogHeader>
+              
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">Item Type</Label>
-                  <Select
-                    value={newItem.type}
-                    onValueChange={handleTypeChange}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select item type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="medications">Medication</SelectItem>
-                      <SelectItem value="supplies">Supplies</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="itemName">Item Name</Label>
+                    <Input
+                      id="itemName"
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                      placeholder="Enter item name"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="itemCode">Item Code</Label>
+                    <Input
+                      id="itemCode"
+                      value={newItem.itemCode}
+                      onChange={(e) => setNewItem({...newItem, itemCode: e.target.value})}
+                      placeholder="e.g., MED-001"
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="itemCode" className="text-right">Item Code</Label>
-                  <Input
-                    id="itemCode"
-                    value={newItem.itemCode}
-                    onChange={(e) => setNewItem({...newItem, itemCode: e.target.value})}
-                    className="col-span-3"
-                  />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="itemType">Item Type</Label>
+                    <Select
+                      value={newItem.type}
+                      onValueChange={handleTypeChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="medications">Medication</SelectItem>
+                        <SelectItem value="supplies">Supply</SelectItem>
+                        <SelectItem value="equipment">Equipment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={newItem.category}
+                      onValueChange={(value) => setNewItem({...newItem, category: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {newItem.type && ITEM_CATEGORIES[newItem.type]?.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Name</Label>
-                  <Input
-                    id="name"
-                    value={newItem.name}
-                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                    className="col-span-3"
-                  />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Current Stock</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      min="0"
+                      value={newItem.stock}
+                      onChange={(e) => setNewItem({...newItem, stock: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="threshold">Low Stock Threshold</Label>
+                    <Input
+                      id="threshold"
+                      type="number"
+                      min="0"
+                      value={newItem.threshold}
+                      onChange={(e) => setNewItem({...newItem, threshold: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">Category</Label>
-                  <Select
-                    value={newItem.category}
-                    onValueChange={(value) => setNewItem({...newItem, category: value})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ITEM_CATEGORIES[newItem.type as keyof typeof ITEM_CATEGORIES].map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="unitCost" className="text-right">Unit Cost</Label>
-                  <Input
-                    id="unitCost"
-                    type="number"
-                    value={newItem.unitCost}
-                    onChange={(e) => setNewItem({...newItem, unitCost: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplierName" className="text-right">Supplier</Label>
-                  <Input
-                    id="supplierName"
-                    value={newItem.supplierName}
-                    onChange={(e) => setNewItem({...newItem, supplierName: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="stock" className="text-right">Current Stock</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={newItem.stock}
-                    onChange={(e) => setNewItem({...newItem, stock: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="threshold" className="text-right">Threshold</Label>
-                  <Input
-                    id="threshold"
-                    type="number"
-                    value={newItem.threshold}
-                    onChange={(e) => setNewItem({...newItem, threshold: e.target.value})}
-                    className="col-span-3"
-                  />
-                </div>
-                {newItem.type !== "equipment" && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="expiryDate" className="text-right">Expiry Date</Label>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="unitCost">Unit Cost (R)</Label>
+                    <Input
+                      id="unitCost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newItem.unitCost}
+                      onChange={(e) => setNewItem({...newItem, unitCost: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="expiryDate">Expiry Date (if applicable)</Label>
                     <Input
                       id="expiryDate"
                       type="date"
                       value={newItem.expiryDate}
                       onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
-                      className="col-span-3"
                     />
                   </div>
-                )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="supplierName">Supplier</Label>
+                  <Input
+                    id="supplierName"
+                    value={newItem.supplierName}
+                    onChange={(e) => setNewItem({...newItem, supplierName: e.target.value})}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
               </div>
+              
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-                <Button onClick={handleAddItem}>Add Item</Button>
+                <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddItem}>
+                  Add Item
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -705,52 +552,52 @@ const Inventory = () => {
               <DialogHeader>
                 <DialogTitle>Filter Inventory</DialogTitle>
                 <DialogDescription>
-                  Filter inventory items by category and status
+                  Filter inventory by category and status
                 </DialogDescription>
               </DialogHeader>
+              
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="filterCategory">Category</Label>
-                  <Select 
-                    value={categoryFilter} 
+                <div className="space-y-2">
+                  <Label htmlFor="categoryFilter">Category</Label>
+                  <Select
+                    value={categoryFilter}
                     onValueChange={setCategoryFilter}
                   >
-                    <SelectTrigger id="filterCategory">
+                    <SelectTrigger id="categoryFilter">
                       <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All categories</SelectItem>
-                      {ITEM_CATEGORIES[activeTab as keyof typeof ITEM_CATEGORIES].map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      <SelectItem value="all-categories">All categories</SelectItem>
+                      {activeTab && ITEM_CATEGORIES[activeTab]?.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="filterStatus">Status</Label>
-                  <Select 
-                    value={statusFilter} 
+                
+                <div className="space-y-2">
+                  <Label htmlFor="statusFilter">Status</Label>
+                  <Select
+                    value={statusFilter}
                     onValueChange={setStatusFilter}
                   >
-                    <SelectTrigger id="filterStatus">
+                    <SelectTrigger id="statusFilter">
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value="all-statuses">All statuses</SelectItem>
                       <SelectItem value="normal">Normal</SelectItem>
                       <SelectItem value="low">Low Stock</SelectItem>
-                      <SelectItem value="expiring">Expiring Soon</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              
               <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  setCategoryFilter("");
-                  setStatusFilter("");
-                  setOpenFilterDialog(false);
-                }}>
-                  Reset
+                <Button variant="outline" onClick={() => setOpenFilterDialog(false)}>
+                  Cancel
                 </Button>
                 <Button onClick={() => {
                   setShowFilters(categoryFilter !== "" || statusFilter !== "");
@@ -764,6 +611,66 @@ const Inventory = () => {
         </main>
       </div>
     </div>
+  );
+};
+
+// Inventory Table Component
+const InventoryTable = ({ items }) => {
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-8 border rounded-md">
+        <p className="text-muted-foreground">No inventory items found</p>
+      </div>
+    );
+  }
+  
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Item Name</TableHead>
+          <TableHead>Code</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Current Stock</TableHead>
+          <TableHead>Threshold</TableHead>
+          <TableHead>Expiry Date</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item.id}>
+            <TableCell className="font-medium">{item.name}</TableCell>
+            <TableCell>{item.item_code}</TableCell>
+            <TableCell>{item.category}</TableCell>
+            <TableCell>{item.stock}</TableCell>
+            <TableCell>{item.threshold}</TableCell>
+            <TableCell>
+              {item.expiry_date ? (
+                new Date(item.expiry_date) < new Date() ? (
+                  <div className="flex items-center text-red-600">
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    {new Date(item.expiry_date).toLocaleDateString()}
+                  </div>
+                ) : (
+                  new Date(item.expiry_date).toLocaleDateString()
+                )
+              ) : (
+                "N/A"
+              )}
+            </TableCell>
+            <TableCell>
+              <Badge 
+                variant={item.status === "normal" ? "outline" : "destructive"} 
+                className={item.status === "normal" ? "bg-green-50 text-green-700 border-green-200" : ""}
+              >
+                {item.status === "low" ? "Low Stock" : "Normal"}
+              </Badge>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 
