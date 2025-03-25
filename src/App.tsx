@@ -20,8 +20,6 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 
-const queryClient = new QueryClient();
-
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -61,99 +59,106 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/patients" 
-            element={
-              <ProtectedRoute>
-                <Patients />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/patients/new" 
-            element={
-              <ProtectedRoute>
-                <AddPatient />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/patients/:id" 
-            element={
-              <ProtectedRoute>
-                <PatientDetail />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/scheduler" 
-            element={
-              <ProtectedRoute>
-                <Scheduler />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/billing" 
-            element={
-              <ProtectedRoute>
-                <Billing />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/inventory" 
-            element={
-              <ProtectedRoute>
-                <Inventory />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dispensing" 
-            element={
-              <ProtectedRoute>
-                <Dispensing />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/reports" 
-            element={
-              <ProtectedRoute>
-                <Reports />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Move QueryClient instantiation inside the App component to ensure
+// it's properly scoped and doesn't cause hook errors
+const App = () => {
+  // Create a new client for each component instance
+  const queryClient = new QueryClient();
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/patients" 
+              element={
+                <ProtectedRoute>
+                  <Patients />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/patients/new" 
+              element={
+                <ProtectedRoute>
+                  <AddPatient />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/patients/:id" 
+              element={
+                <ProtectedRoute>
+                  <PatientDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/scheduler" 
+              element={
+                <ProtectedRoute>
+                  <Scheduler />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/billing" 
+              element={
+                <ProtectedRoute>
+                  <Billing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/inventory" 
+              element={
+                <ProtectedRoute>
+                  <Inventory />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dispensing" 
+              element={
+                <ProtectedRoute>
+                  <Dispensing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/reports" 
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
