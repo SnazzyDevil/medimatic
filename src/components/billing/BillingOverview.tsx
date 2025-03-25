@@ -1,4 +1,3 @@
-
 import { 
   ArrowRight, 
   Calendar, 
@@ -39,7 +38,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Sample invoices data
 const invoices = [
   {
     id: "INV-2023-001",
@@ -83,7 +81,6 @@ const invoices = [
   },
 ];
 
-// Sample revenue data for chart
 const revenueData = [
   { month: "Jan", amount: 4200 },
   { month: "Feb", amount: 4800 },
@@ -145,7 +142,6 @@ export function BillingOverview() {
   const removeFilter = (filter: string) => {
     const newFilters = activeFilters.filter(f => f !== filter);
     
-    // Reset the corresponding filter option
     if (filter.startsWith("Amount:") || filter.startsWith("Min Amount:") || filter.startsWith("Max Amount:")) {
       setFilterOptions(prev => ({...prev, minAmount: "", maxAmount: ""}));
     } else if (filter.startsWith("Date:")) {
@@ -158,23 +154,18 @@ export function BillingOverview() {
     setShowFilters(newFilters.length > 0);
   };
 
-  // Filter invoices based on search, tab, and filters
   const filteredInvoices = invoices.filter(invoice => {
-    // First, apply tab filter
     if (activeTab !== 'all' && invoice.status !== activeTab) {
       return false;
     }
 
-    // Apply search filter
     const matchesSearch = searchQuery.trim() === '' || 
       invoice.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.service.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Apply custom filters
     let matchesCustomFilters = true;
     
-    // Amount filter
     if (filterOptions.minAmount && parseFloat(filterOptions.minAmount) > invoice.amount) {
       matchesCustomFilters = false;
     }
@@ -183,12 +174,10 @@ export function BillingOverview() {
       matchesCustomFilters = false;
     }
     
-    // Date filter - simplified for demo
     if (filterOptions.date && !invoice.date.includes(filterOptions.date)) {
       matchesCustomFilters = false;
     }
     
-    // Service filter
     if (filterOptions.service && !invoice.service.includes(filterOptions.service)) {
       matchesCustomFilters = false;
     }
@@ -456,7 +445,6 @@ export function BillingOverview() {
         </CardContent>
       </Card>
       
-      {/* Filter Dialog */}
       <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -501,7 +489,7 @@ export function BillingOverview() {
                   <SelectValue placeholder="Select date" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All dates</SelectItem>
+                  <SelectItem value="all-dates">All dates</SelectItem>
                   <SelectItem value="May">May 2023</SelectItem>
                   <SelectItem value="June">June 2023</SelectItem>
                 </SelectContent>
@@ -518,7 +506,7 @@ export function BillingOverview() {
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All services</SelectItem>
+                  <SelectItem value="all-services">All services</SelectItem>
                   <SelectItem value="Check-up">Check-up</SelectItem>
                   <SelectItem value="Consultation">Consultation</SelectItem>
                   <SelectItem value="Physical">Physical</SelectItem>
@@ -536,3 +524,4 @@ export function BillingOverview() {
     </div>
   );
 }
+
