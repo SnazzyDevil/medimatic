@@ -10,7 +10,8 @@ import {
   Phone, 
   Plus, 
   Search, 
-  User 
+  User,
+  X 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ export function PatientList({ onPatientSelect }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showActiveFilters, setShowActiveFilters] = useState(false);
   const [patients, setPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -100,7 +102,13 @@ export function PatientList({ onPatientSelect }) {
 
   const handleFilterChange = (status) => {
     setStatusFilter(status);
+    setShowActiveFilters(status !== "all");
     setFilterDialogOpen(false);
+  };
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setShowActiveFilters(false);
   };
 
   const filteredPatients = patients.filter(patient => {
@@ -155,6 +163,33 @@ export function PatientList({ onPatientSelect }) {
           </Button>
         </div>
       </div>
+
+      {showActiveFilters && (
+        <div className="border rounded-lg p-4 mb-2 bg-slate-50 flex flex-wrap gap-2 items-center">
+          <p className="text-sm text-muted-foreground mr-2">Active filters:</p>
+          {statusFilter !== "all" && (
+            <Badge variant="outline" className="flex items-center gap-1 bg-white">
+              Status: {statusFilter}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-4 w-4 p-0" 
+                onClick={clearFilters}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          )}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs ml-auto"
+            onClick={clearFilters}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
 
       {patients.length === 0 ? (
         <div className="bg-white rounded-lg p-8 text-center">
@@ -308,7 +343,7 @@ export function PatientList({ onPatientSelect }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => setStatusFilter("all")}>Reset</Button>
+            <Button onClick={clearFilters}>Reset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

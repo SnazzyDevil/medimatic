@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { AlertTriangle, Clock, Filter, Plus, Search } from "lucide-react";
+import { AlertTriangle, Clock, Filter, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +38,7 @@ const ITEM_CATEGORIES = {
 
 const Inventory = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openFilterDialog, setOpenFilterDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("medications");
   const [newItem, setNewItem] = useState({
     name: "",
@@ -51,7 +52,11 @@ const Inventory = () => {
     type: "medications",
   });
   
+  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   
   // Fetch inventory data from Supabase
   const fetchInventory = async () => {
@@ -80,29 +85,49 @@ const Inventory = () => {
     queryFn: fetchInventory
   });
   
+  // Filter helper function
+  const filterItems = (items) => {
+    if (!items) return [];
+    
+    return items.filter(item => {
+      // Search filter
+      const matchesSearch = searchTerm === "" || 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.item_code.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Category filter
+      const matchesCategory = categoryFilter === "" || item.category === categoryFilter;
+      
+      // Status filter
+      const matchesStatus = statusFilter === "" || item.status === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  };
+  
   // Process inventory data into medication, supplies and equipment categories
   const getMedicationsData = () => {
     if (!inventoryData) return [];
-    return inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.medications.includes(item.category) &&
-      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const medicationItems = inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.medications.includes(item.category));
+    
+    return filterItems(medicationItems);
   };
   
   const getSuppliesData = () => {
     if (!inventoryData) return [];
-    return inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.supplies.includes(item.category) &&
-      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const suppliesItems = inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.supplies.includes(item.category));
+    
+    return filterItems(suppliesItems);
   };
   
   const getEquipmentData = () => {
     if (!inventoryData) return [];
-    return inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.equipment.includes(item.category) &&
-      (searchTerm === "" || item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const equipmentItems = inventoryData.filter(item => item.category && 
+      ITEM_CATEGORIES.equipment.includes(item.category));
+    
+    return filterItems(equipmentItems);
   };
   
   // Calculate statistics
@@ -207,6 +232,14 @@ const Inventory = () => {
     });
   };
   
+  // Reset all filters
+  const resetFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("");
+    setStatusFilter("");
+    setShowFilters(false);
+  };
+  
   if (isError) {
     console.error("Error fetching data:", error);
     return (
@@ -287,11 +320,56 @@ const Inventory = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="sm" className="btn-hover">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="btn-hover"
+              onClick={() => setOpenFilterDialog(true)}
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
           </div>
+          
+          {showFilters && (
+            <div className="border rounded-lg p-4 mb-4 bg-slate-50 flex flex-wrap gap-2 items-center">
+              <p className="text-sm text-muted-foreground mr-2">Active filters:</p>
+              {categoryFilter && (
+                <Badge variant="outline" className="flex items-center gap-1 bg-white">
+                  Category: {categoryFilter}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-4 w-4 p-0" 
+                    onClick={() => setCategoryFilter("")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              )}
+              {statusFilter && (
+                <Badge variant="outline" className="flex items-center gap-1 bg-white">
+                  Status: {statusFilter}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-4 w-4 p-0" 
+                    onClick={() => setStatusFilter("")}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs ml-auto"
+                onClick={resetFilters}
+              >
+                Clear all
+              </Button>
+            </div>
+          )}
 
           <Tabs defaultValue="medications" className="w-full" onValueChange={setActiveTab} value={activeTab}>
             <TabsList className="mb-4">
@@ -502,6 +580,7 @@ const Inventory = () => {
             </TabsContent>
           </Tabs>
           
+          {/* Add Item Dialog */}
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
@@ -616,6 +695,69 @@ const Inventory = () => {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpenAddDialog(false)}>Cancel</Button>
                 <Button onClick={handleAddItem}>Add Item</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          {/* Filter Dialog */}
+          <Dialog open={openFilterDialog} onOpenChange={setOpenFilterDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Filter Inventory</DialogTitle>
+                <DialogDescription>
+                  Filter inventory items by category and status
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="filterCategory">Category</Label>
+                  <Select 
+                    value={categoryFilter} 
+                    onValueChange={setCategoryFilter}
+                  >
+                    <SelectTrigger id="filterCategory">
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All categories</SelectItem>
+                      {ITEM_CATEGORIES[activeTab as keyof typeof ITEM_CATEGORIES].map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="filterStatus">Status</Label>
+                  <Select 
+                    value={statusFilter} 
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger id="filterStatus">
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All statuses</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="low">Low Stock</SelectItem>
+                      <SelectItem value="expiring">Expiring Soon</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setCategoryFilter("");
+                  setStatusFilter("");
+                  setOpenFilterDialog(false);
+                }}>
+                  Reset
+                </Button>
+                <Button onClick={() => {
+                  setShowFilters(categoryFilter !== "" || statusFilter !== "");
+                  setOpenFilterDialog(false);
+                }}>
+                  Apply Filters
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

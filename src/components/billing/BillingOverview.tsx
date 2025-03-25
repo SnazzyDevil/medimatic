@@ -10,7 +10,8 @@ import {
   Filter, 
   Search, 
   TrendingUp, 
-  User 
+  User,
+  X 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 // Sample invoices data
 const invoices = [
@@ -81,6 +94,115 @@ const revenueData = [
 ];
 
 export function BillingOverview() {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filterOptions, setFilterOptions] = useState({
+    minAmount: "",
+    maxAmount: "",
+    date: "",
+    service: ""
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+
+  const applyFilters = () => {
+    const newFilters: string[] = [];
+    
+    if (filterOptions.minAmount && filterOptions.maxAmount) {
+      newFilters.push(`Amount: R${filterOptions.minAmount} - R${filterOptions.maxAmount}`);
+    } else if (filterOptions.minAmount) {
+      newFilters.push(`Min Amount: R${filterOptions.minAmount}`);
+    } else if (filterOptions.maxAmount) {
+      newFilters.push(`Max Amount: R${filterOptions.maxAmount}`);
+    }
+    
+    if (filterOptions.date) {
+      newFilters.push(`Date: ${filterOptions.date}`);
+    }
+    
+    if (filterOptions.service) {
+      newFilters.push(`Service: ${filterOptions.service}`);
+    }
+    
+    setActiveFilters(newFilters);
+    setShowFilters(newFilters.length > 0);
+    setFilterDialogOpen(false);
+  };
+  
+  const clearFilters = () => {
+    setFilterOptions({
+      minAmount: "",
+      maxAmount: "",
+      date: "",
+      service: ""
+    });
+    setActiveFilters([]);
+    setShowFilters(false);
+  };
+  
+  const removeFilter = (filter: string) => {
+    const newFilters = activeFilters.filter(f => f !== filter);
+    
+    // Reset the corresponding filter option
+    if (filter.startsWith("Amount:") || filter.startsWith("Min Amount:") || filter.startsWith("Max Amount:")) {
+      setFilterOptions(prev => ({...prev, minAmount: "", maxAmount: ""}));
+    } else if (filter.startsWith("Date:")) {
+      setFilterOptions(prev => ({...prev, date: ""}));
+    } else if (filter.startsWith("Service:")) {
+      setFilterOptions(prev => ({...prev, service: ""}));
+    }
+    
+    setActiveFilters(newFilters);
+    setShowFilters(newFilters.length > 0);
+  };
+
+  // Filter invoices based on search, tab, and filters
+  const filteredInvoices = invoices.filter(invoice => {
+    // First, apply tab filter
+    if (activeTab !== 'all' && invoice.status !== activeTab) {
+      return false;
+    }
+
+    // Apply search filter
+    const matchesSearch = searchQuery.trim() === '' || 
+      invoice.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.service.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Apply custom filters
+    let matchesCustomFilters = true;
+    
+    // Amount filter
+    if (filterOptions.minAmount && parseFloat(filterOptions.minAmount) > invoice.amount) {
+      matchesCustomFilters = false;
+    }
+    
+    if (filterOptions.maxAmount && parseFloat(filterOptions.maxAmount) < invoice.amount) {
+      matchesCustomFilters = false;
+    }
+    
+    // Date filter - simplified for demo
+    if (filterOptions.date && !invoice.date.includes(filterOptions.date)) {
+      matchesCustomFilters = false;
+    }
+    
+    // Service filter
+    if (filterOptions.service && !invoice.service.includes(filterOptions.service)) {
+      matchesCustomFilters = false;
+    }
+    
+    return matchesSearch && matchesCustomFilters;
+  });
+
+  const handleExport = () => {
+    toast({
+      title: "Export started",
+      description: "Invoices are being exported to CSV",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -180,7 +302,7 @@ export function BillingOverview() {
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <CardTitle className="text-xl font-semibold">Invoices</CardTitle>
-            <Tabs defaultValue="all">
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="p-0 h-8 bg-transparent">
                 <TabsTrigger 
                   value="all"
@@ -215,20 +337,61 @@ export function BillingOverview() {
               <Input 
                 placeholder="Search invoices..." 
                 className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setFilterDialogOpen(true)}
+              >
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
                 <ChevronDown className="h-4 w-4 ml-1" />
               </Button>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExport}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
             </div>
           </div>
+          
+          {showFilters && (
+            <div className="border rounded-lg p-4 mt-4 bg-slate-50">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-medium">Active filters</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-xs"
+                  onClick={clearFilters}
+                >
+                  Clear all
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeFilters.map((filter, index) => (
+                  <Badge key={index} variant="outline" className="bg-white flex items-center gap-1">
+                    {filter}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 ml-1"
+                      onClick={() => removeFilter(filter)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -243,47 +406,133 @@ export function BillingOverview() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">{invoice.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <User className="h-4 w-4 mr-2 text-healthcare-gray" />
-                      {invoice.patientName}
-                    </div>
-                  </TableCell>
-                  <TableCell>{invoice.service}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-healthcare-gray" />
-                      {invoice.date}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1 text-healthcare-gray" />
-                      R {invoice.amount.toFixed(2)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={
-                        invoice.status === "paid" 
-                          ? "default" 
-                          : invoice.status === "pending" 
-                            ? "outline" 
-                            : "destructive"
-                      }
-                    >
-                      {invoice.status}
-                    </Badge>
+              {filteredInvoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    No invoices found matching your filters
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredInvoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.id}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-healthcare-gray" />
+                        {invoice.patientName}
+                      </div>
+                    </TableCell>
+                    <TableCell>{invoice.service}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-2 text-healthcare-gray" />
+                        {invoice.date}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-healthcare-gray" />
+                        R {invoice.amount.toFixed(2)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          invoice.status === "paid" 
+                            ? "default" 
+                            : invoice.status === "pending" 
+                              ? "outline" 
+                              : "destructive"
+                        }
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+      
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Filter Invoices</DialogTitle>
+            <DialogDescription>
+              Filter invoices by amount, date, and service type
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="minAmount">Min Amount</Label>
+                <Input
+                  id="minAmount"
+                  placeholder="0.00"
+                  type="number"
+                  step="0.01"
+                  value={filterOptions.minAmount}
+                  onChange={(e) => setFilterOptions({...filterOptions, minAmount: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxAmount">Max Amount</Label>
+                <Input
+                  id="maxAmount"
+                  placeholder="1000.00"
+                  type="number"
+                  step="0.01"
+                  value={filterOptions.maxAmount}
+                  onChange={(e) => setFilterOptions({...filterOptions, maxAmount: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Select
+                value={filterOptions.date}
+                onValueChange={(value) => setFilterOptions({...filterOptions, date: value})}
+              >
+                <SelectTrigger id="date">
+                  <SelectValue placeholder="Select date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All dates</SelectItem>
+                  <SelectItem value="May">May 2023</SelectItem>
+                  <SelectItem value="June">June 2023</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="service">Service Type</Label>
+              <Select
+                value={filterOptions.service}
+                onValueChange={(value) => setFilterOptions({...filterOptions, service: value})}
+              >
+                <SelectTrigger id="service">
+                  <SelectValue placeholder="Select service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All services</SelectItem>
+                  <SelectItem value="Check-up">Check-up</SelectItem>
+                  <SelectItem value="Consultation">Consultation</SelectItem>
+                  <SelectItem value="Physical">Physical</SelectItem>
+                  <SelectItem value="Lab Tests">Lab Tests</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+            <Button onClick={applyFilters}>Apply Filters</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
