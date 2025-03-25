@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +45,7 @@ const currencies = [
 
 const Settings = () => {
   const { doctorSettings, updateDoctorSettings } = useDoctorSettings();
+  const { toast } = useToast();
   
   const [notificationSettings, setNotificationSettings] = useState({
     emailAppointments: true,
@@ -91,15 +92,15 @@ const Settings = () => {
   const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const [doctorName, setDoctorName] = useState(doctorSettings.name);
-  const [practiceName, setPracticeName] = useState(doctorSettings.practiceName);
-  const [email, setEmail] = useState(doctorSettings.email);
+  const [doctorName, setDoctorName] = useState("");
+  const [practiceName, setPracticeName] = useState("");
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     setPracticeImage(doctorSettings.practiceImage || null);
-    setDoctorName(doctorSettings.name);
-    setPracticeName(doctorSettings.practiceName);
-    setEmail(doctorSettings.email);
+    setDoctorName(doctorSettings.name || "");
+    setPracticeName(doctorSettings.practiceName || "");
+    setEmail(doctorSettings.email || "");
   }, [doctorSettings]);
 
   const handleNotificationChange = (key: string) => {

@@ -36,12 +36,15 @@ export const useDoctorSettings = () => {
     }
   }, []);
 
-  // Update settings function
+  // Update settings function - improved to ensure settings are saved properly
   const updateDoctorSettings = (newSettings) => {
     const updatedSettings = { ...doctorSettings, ...newSettings };
     console.log("Updating doctor settings:", updatedSettings);
+    
+    // First update state
     setDoctorSettings(updatedSettings);
     
+    // Then save to localStorage
     try {
       localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
       console.log("Settings saved to localStorage");
