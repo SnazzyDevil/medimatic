@@ -1,5 +1,4 @@
-
-import { ArrowRight, CreditCard, DollarSign, Receipt, TrendingUp } from "lucide-react";
+import { ArrowRight, CreditCard, Banknote, Receipt, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -79,7 +78,7 @@ export function PaymentSummary() {
     <Card className="border-none shadow-md bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
       <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-white border-b">
         <CardTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
-          <DollarSign className="h-5 w-5 text-emerald-500" />
+          <Banknote className="h-5 w-5 text-emerald-500" />
           Payment Summary
         </CardTitle>
         <p className="text-sm text-muted-foreground">Current billing period</p>
@@ -99,7 +98,7 @@ export function PaymentSummary() {
               <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3">
                 <div className="text-sm text-gray-600">Revenue</div>
                 <div className="text-xl font-bold text-emerald-700 flex items-center">
-                  <DollarSign className="h-4 w-4 mr-1" />
+                  <Banknote className="h-4 w-4 mr-1" />
                   R {paymentData?.revenue.toFixed(2) || '0.00'}
                 </div>
                 <div className="flex items-center text-xs text-emerald-600 mt-1">

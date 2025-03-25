@@ -1,4 +1,4 @@
-import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, DollarSign } from "lucide-react";
+import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -426,7 +426,7 @@ const Settings = () => {
                     
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
+                        <Banknote className="h-4 w-4" />
                         <Label htmlFor="currency">Currency</Label>
                       </div>
                       <Select value={currency} onValueChange={setCurrency}>

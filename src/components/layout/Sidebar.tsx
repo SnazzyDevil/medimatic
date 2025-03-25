@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { Calendar, CreditCard, Home, Settings, Users, Package, Pill, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,9 +20,9 @@ export function Sidebar() {
 
   return (
     <aside className="h-screen w-16 fixed left-0 top-0 border-r border-border bg-white shadow-md z-10 flex flex-col items-center py-6 animate-fade-in">
-      <div className="h-10 w-10 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg mb-8 flex items-center justify-center">
+      <Link to="/" className="h-10 w-10 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg mb-8 flex items-center justify-center">
         <span className="text-white font-bold">M</span>
-      </div>
+      </Link>
       
       <nav className="flex-1 flex flex-col items-center space-y-4 mt-8">
         <TooltipProvider>

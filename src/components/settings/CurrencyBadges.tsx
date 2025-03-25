@@ -1,6 +1,5 @@
-
 import { 
-  DollarSign, 
+  Banknote, 
   PoundSterling, 
   Euro, 
   JapaneseYen, 
@@ -20,7 +19,7 @@ const CurrencyBadge = ({ value, label, isSelected, onClick }: CurrencyBadgeProps
   const getBadgeIcon = () => {
     switch (value) {
       case "USD":
-        return <DollarSign className="h-4 w-4 text-green-700" />;
+        return <Banknote className="h-4 w-4 text-green-700" />;
       case "GBP":
         return <PoundSterling className="h-4 w-4 text-blue-700" />;
       case "EUR":
@@ -35,9 +34,9 @@ const CurrencyBadge = ({ value, label, isSelected, onClick }: CurrencyBadgeProps
       case "RUB":
         return <RussianRuble className="h-4 w-4 text-blue-800" />;
       case "ZAR":
-        return <DollarSign className="h-4 w-4 text-green-600" />;
+        return <Banknote className="h-4 w-4 text-green-600" />;
       default:
-        return <DollarSign className="h-4 w-4" />;
+        return <Banknote className="h-4 w-4" />;
     }
   };
 

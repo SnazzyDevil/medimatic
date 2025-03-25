@@ -3,7 +3,7 @@ import {
   Calendar, 
   ChevronDown, 
   CreditCard, 
-  DollarSign, 
+  Banknote, 
   Download, 
   File, 
   Filter, 
@@ -198,7 +198,7 @@ export function BillingOverview() {
         <Card className="bg-white border border-healthcare-gray-light">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center">
-              <DollarSign className="h-4 w-4 mr-1 text-healthcare-primary" />
+              <Banknote className="h-4 w-4 mr-1 text-healthcare-primary" />
               Monthly Revenue
             </CardTitle>
           </CardHeader>
@@ -420,7 +420,7 @@ export function BillingOverview() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-healthcare-gray" />
+                        <Banknote className="h-4 w-4 mr-1 text-healthcare-gray" />
                         R {invoice.amount.toFixed(2)}
                       </div>
                     </TableCell>

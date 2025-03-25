@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { FileText, Download, Calendar, DollarSign, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
+import { FileText, Download, Calendar, Banknote, Plus, X, Edit2, ChevronsDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
