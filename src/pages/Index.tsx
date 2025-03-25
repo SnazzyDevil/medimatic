@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,42 +14,41 @@ const Index = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-    
     setIsLoading(true);
-    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const {
+        data,
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-      
       if (error) {
         toast({
           title: "Login failed",
           description: error.message,
-          variant: "destructive",
+          variant: "destructive"
         });
       } else if (data?.user) {
         toast({
           title: "Login successful",
-          description: "Welcome back!",
+          description: "Welcome back!"
         });
         navigate("/dashboard");
       }
@@ -59,28 +56,21 @@ const Index = () => {
       toast({
         title: "Login error",
         description: error.message || "An unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleSignUp = () => {
     navigate("/register"); // This would be created in a future update if needed
   };
-
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+  return <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left side - Login form */}
       <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-500 to-cyan-500 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
           <div className="flex items-center mb-6">
-            <img 
-              src="/lovable-uploads/dbf5d263-25df-4aca-91c1-4be014b5a80d.png" 
-              alt="Logo" 
-              className="h-10 w-auto"
-            />
+            
           </div>
           
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
@@ -92,15 +82,7 @@ const Index = () => {
                   Email
                 </Label>
                 <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-md bg-white"
-                    required
-                  />
+                  <Input id="email" type="email" placeholder="your.email@example.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full rounded-md bg-white" required />
                 </div>
               </div>
               
@@ -109,20 +91,8 @@ const Index = () => {
                   Password
                 </Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-md bg-white pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                  >
+                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-md bg-white pr-10" required />
+                  <button type="button" onClick={togglePasswordVisibility} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
@@ -130,11 +100,7 @@ const Index = () => {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember" 
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
+                  <Checkbox id="remember" checked={rememberMe} onCheckedChange={checked => setRememberMe(checked as boolean)} />
                   <Label htmlFor="remember" className="text-sm text-gray-600">
                     Remember me
                   </Label>
@@ -145,22 +111,14 @@ const Index = () => {
                 </a>
               </div>
               
-              <Button 
-                type="submit" 
-                className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Log In"}
               </Button>
               
               <div className="text-center mt-4">
                 <p className="text-sm text-gray-600">
                   Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={handleSignUp}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
+                  <button type="button" onClick={handleSignUp} className="text-blue-600 hover:text-blue-800 font-medium">
                     Sign Up
                   </button>
                 </p>
@@ -208,8 +166,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
