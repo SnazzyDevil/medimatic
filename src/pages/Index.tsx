@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,9 +18,11 @@ const Index = () => {
   const {
     toast
   } = useToast();
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -62,12 +65,13 @@ const Index = () => {
       setIsLoading(false);
     }
   };
+
   const handleSignUp = () => {
-    navigate("/register"); // This would be created in a future update if needed
+    navigate("/register");
   };
+
   return <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left side - Login form */}
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-500 to-cyan-500 p-6 md:p-10">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-cyan-50 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
           <div className="flex items-center mb-6">
             
@@ -128,38 +132,44 @@ const Index = () => {
         </div>
       </div>
       
-      {/* Right side - Content */}
-      <div className="hidden md:flex md:flex-1 bg-gray-50 items-center justify-center p-10">
+      <div className="hidden md:flex md:flex-1 bg-gradient-to-r from-blue-50 to-cyan-50 items-center justify-center p-10">
         <div className="max-w-lg">
           <div className="relative">
-            <div className="absolute -top-10 -left-10 w-40 h-40 bg-yellow-300 rounded-full opacity-70"></div>
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-200 rounded-full opacity-50"></div>
             <div className="relative z-10 bg-white rounded-xl shadow-lg p-8 overflow-hidden">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Welcome to MediMatic</h2>
-              <p className="text-gray-600 mb-6">
-                Your comprehensive healthcare management system, designed to streamline your practice and improve patient care.
-              </p>
-              
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">Efficient Patient Management</h3>
-                  <p className="text-sm text-gray-600">Access patient records instantly and securely</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">HIPAA Compliant</h3>
-                  <p className="text-sm text-gray-600">Your data is secure and protected</p>
+              <div className="flex flex-col items-center space-y-6">
+                <img 
+                  src="/public/lovable-uploads/acda2d34-8ebf-474f-b370-d75f0485f074.png" 
+                  alt="Medryx" 
+                  className="max-w-[250px] mb-4 object-contain"
+                />
+                <h2 className="text-2xl font-bold text-gray-800 text-center">Welcome to Medryx</h2>
+                <p className="text-gray-600 text-center mb-6">
+                  Your comprehensive healthcare management system, designed to streamline your practice and improve patient care.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-lg">
+                    <div className="bg-blue-100 p-3 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-sm">Efficient Management</h3>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-lg">
+                    <div className="bg-green-100 p-3 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-sm">HIPAA Compliant</h3>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -168,4 +178,5 @@ const Index = () => {
       </div>
     </div>;
 };
+
 export default Index;
