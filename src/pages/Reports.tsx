@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Download, Filter, X } from "lucide-react";
@@ -451,7 +450,7 @@ export default function Reports() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all-statuses">All</SelectItem>
                   <SelectItem value="In Stock">In Stock</SelectItem>
                   <SelectItem value="Low Stock">Low Stock</SelectItem>
                   <SelectItem value="Out of Stock">Out of Stock</SelectItem>
@@ -472,7 +471,7 @@ export default function Reports() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all-categories">All</SelectItem>
                   {getFilterCategories().map((category, index) => (
                     <SelectItem key={index} value={category}>{category}</SelectItem>
                   ))}
