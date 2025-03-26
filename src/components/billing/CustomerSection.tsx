@@ -50,13 +50,24 @@ export const CustomerSection = ({
   const { toast } = useToast();
 
   // Fetch practice information
-  const { data: practice } = useQuery({
+  const { data: practice, isLoading: isPracticeLoading, error: practiceError } = useQuery({
     queryKey: ['practiceInfo'],
     queryFn: () => PracticeService.getCurrentPractice(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Derived practice info
+  // Show error toast if practice info fetch fails
+  useEffect(() => {
+    if (practiceError) {
+      toast({
+        title: "Error fetching practice information",
+        description: "Could not load practice details. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [practiceError, toast]);
+
+  // Derived practice info - use fetched data or fallback
   const formattedPracticeInfo: PracticeInfo = practice ? {
     name: practice.name,
     address: `${practice.addressLine1}${practice.addressLine2 ? `, ${practice.addressLine2}` : ''}, ${practice.city}, ${practice.postalCode}`,
@@ -126,15 +137,23 @@ export const CustomerSection = ({
         <div className="flex flex-col">
           <h3 className="text-sm font-semibold mb-2">Bill from</h3>
           <div className="space-y-1 bg-slate-50 p-3 rounded-md border">
-            <div className="font-medium text-lg">{formattedPracticeInfo.name}</div>
-            <div className="text-sm">{formattedPracticeInfo.address}</div>
-            <div className="text-sm">Phone: {formattedPracticeInfo.phone}</div>
-            <div className="text-sm">Email: {formattedPracticeInfo.email}</div>
-            {formattedPracticeInfo.website && (
-              <div className="text-sm">Website: {formattedPracticeInfo.website}</div>
+            {isPracticeLoading ? (
+              <div className="text-sm text-gray-500">Loading practice information...</div>
+            ) : practiceError ? (
+              <div className="text-sm text-red-500">Could not load practice information</div>
+            ) : (
+              <>
+                <div className="font-medium text-lg">{formattedPracticeInfo.name}</div>
+                <div className="text-sm">{formattedPracticeInfo.address}</div>
+                <div className="text-sm">Phone: {formattedPracticeInfo.phone}</div>
+                <div className="text-sm">Email: {formattedPracticeInfo.email}</div>
+                {formattedPracticeInfo.website && (
+                  <div className="text-sm">Website: {formattedPracticeInfo.website}</div>
+                )}
+                <div className="text-sm">Reg #: {formattedPracticeInfo.regNumber}</div>
+                <div className="text-sm">VAT #: {formattedPracticeInfo.vatNumber}</div>
+              </>
             )}
-            <div className="text-sm">Reg #: {formattedPracticeInfo.regNumber}</div>
-            <div className="text-sm">VAT #: {formattedPracticeInfo.vatNumber}</div>
           </div>
         </div>
       </div>

@@ -17,6 +17,8 @@ import { CustomerSection, type Patient, type PracticeInfo } from "@/components/b
 import { InvoicePreview } from "@/components/billing/InvoicePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useQuery } from "@tanstack/react-query";
+import { PracticeService } from "@/services/practiceService";
 
 interface InvoiceItem {
   id: number;
@@ -65,15 +67,30 @@ const Billing = () => {
   
   const currentDate = new Date().toISOString().split('T')[0];
 
-  const practiceInfo: PracticeInfo = {
-    name: "PharmaCare Clinic",
-    address: "123 Healthcare Avenue, Medical District, 12345",
-    phone: "+27 12 345 6789",
-    email: "info@pharmacare.co.za",
-    website: "www.pharmacare.co.za",
-    regNumber: "REG-12345-ZA",
-    vatNumber: "VAT4567890123"
+  const { data: practice } = useQuery({
+    queryKey: ['practiceInfo'],
+    queryFn: () => PracticeService.getCurrentPractice(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const defaultPracticeInfo: PracticeInfo = {
+    name: "Loading...",
+    address: "",
+    phone: "",
+    email: "",
+    regNumber: "",
+    vatNumber: ""
   };
+
+  const practiceInfo: PracticeInfo = practice ? {
+    name: practice.name,
+    address: `${practice.addressLine1}${practice.addressLine2 ? `, ${practice.addressLine2}` : ''}, ${practice.city}, ${practice.postalCode}`,
+    phone: practice.phone,
+    email: practice.email,
+    website: practice.website,
+    regNumber: practice.registrationNumber,
+    vatNumber: practice.vatNumber || '',
+  } : defaultPracticeInfo;
   
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
     { id: 1, description: "", quantity: 1, price: "", amount: 0 }
@@ -93,6 +110,23 @@ const Billing = () => {
     notes: "",
     practiceInfo: practiceInfo
   });
+  
+  useEffect(() => {
+    if (practice) {
+      setNewInvoice(prev => ({
+        ...prev,
+        practiceInfo: {
+          name: practice.name,
+          address: `${practice.addressLine1}${practice.addressLine2 ? `, ${practice.addressLine2}` : ''}, ${practice.city}, ${practice.postalCode}`,
+          phone: practice.phone,
+          email: practice.email,
+          website: practice.website,
+          regNumber: practice.registrationNumber,
+          vatNumber: practice.vatNumber || '',
+        }
+      }));
+    }
+  }, [practice]);
   
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [paymentDueDate, setPaymentDueDate] = useState<Date>(new Date());
@@ -494,7 +528,6 @@ const Billing = () => {
                 <CustomerSection 
                   selectedPatient={selectedPatient} 
                   onPatientSelect={handlePatientSelect}
-                  practiceInfo={practiceInfo}
                 />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -881,4 +914,3 @@ const Billing = () => {
 };
 
 export default Billing;
-
