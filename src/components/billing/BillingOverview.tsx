@@ -1,3 +1,4 @@
+
 import { 
   ArrowRight, 
   Calendar, 
@@ -57,7 +58,8 @@ interface Invoice {
   service: string;
 }
 
-const invoices = [
+// Fixed the invoices data to use proper typed status values
+const invoices: Invoice[] = [
   {
     id: "INV-2023-001",
     patientName: "Sarah Johnson",
