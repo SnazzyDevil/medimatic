@@ -10,7 +10,8 @@ import {
   Search, 
   TrendingUp, 
   User,
-  X 
+  X,
+  MoreHorizontal 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Invoice {
+  id: string;
+  patientName: string;
+  date: string;
+  amount: number;
+  status: "paid" | "pending" | "overdue";
+  service: string;
+}
 
 const invoices = [
   {
@@ -103,6 +122,8 @@ export function BillingOverview() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [localInvoices, setLocalInvoices] = useState<Invoice[]>(invoices);
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState<string | null>(null);
 
   const applyFilters = () => {
     const newFilters: string[] = [];
@@ -154,7 +175,7 @@ export function BillingOverview() {
     setShowFilters(newFilters.length > 0);
   };
 
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = localInvoices.filter(invoice => {
     if (activeTab !== 'all' && invoice.status !== activeTab) {
       return false;
     }
@@ -190,6 +211,41 @@ export function BillingOverview() {
       title: "Export started",
       description: "Invoices are being exported to CSV",
     });
+  };
+
+  const updateInvoiceStatus = async (invoiceId: string, newStatus: "paid" | "pending" | "overdue") => {
+    setStatusUpdateLoading(invoiceId);
+    
+    try {
+      if (invoiceId.length === 36) {
+        const { error } = await supabase
+          .from('invoices')
+          .update({ status: newStatus })
+          .eq('id', invoiceId);
+          
+        if (error) throw error;
+      }
+      
+      setLocalInvoices(prevInvoices => 
+        prevInvoices.map(invoice => 
+          invoice.id === invoiceId ? { ...invoice, status: newStatus } : invoice
+        )
+      );
+      
+      toast({
+        title: "Status updated",
+        description: `Invoice ${invoiceId} status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      toast({
+        title: "Update failed",
+        description: "Could not update invoice status. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setStatusUpdateLoading(null);
+    }
   };
 
   return (
@@ -392,12 +448,13 @@ export function BillingOverview() {
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                     No invoices found matching your filters
                   </TableCell>
                 </TableRow>
@@ -436,6 +493,48 @@ export function BillingOverview() {
                       >
                         {invoice.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0"
+                            disabled={statusUpdateLoading === invoice.id}
+                          >
+                            {statusUpdateLoading === invoice.id ? (
+                              <div className="h-4 w-4 border-2 border-t-transparent border-healthcare-primary animate-spin rounded-full"></div>
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => updateInvoiceStatus(invoice.id, "paid")}
+                            disabled={invoice.status === "paid"}
+                            className={invoice.status === "paid" ? "bg-gray-100" : ""}
+                          >
+                            Mark as Paid
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => updateInvoiceStatus(invoice.id, "pending")}
+                            disabled={invoice.status === "pending"}
+                            className={invoice.status === "pending" ? "bg-gray-100" : ""}
+                          >
+                            Mark as Pending
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => updateInvoiceStatus(invoice.id, "overdue")}
+                            disabled={invoice.status === "overdue"}
+                            className={invoice.status === "overdue" ? "bg-gray-100" : ""}
+                          >
+                            Mark as Overdue
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -524,4 +623,3 @@ export function BillingOverview() {
     </div>
   );
 }
-
