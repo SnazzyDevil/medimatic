@@ -1081,9 +1081,9 @@ const Settings = () => {
                           <SelectValue placeholder="Select complexity" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem key="low" value="low">Low (minimum 6 characters)</SelectItem>
-                          <SelectItem key="medium" value="medium">Medium (8+ chars, letters & numbers)</SelectItem>
-                          <SelectItem key="high" value="high">High (10+ chars, letters, numbers, symbols)</SelectItem>
+                          <SelectItem value="low">Low (minimum 6 characters)</SelectItem>
+                          <SelectItem value="medium">Medium (8+ chars, letters & numbers)</SelectItem>
+                          <SelectItem value="high">High (10+ chars, letters, numbers, symbols)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1309,10 +1309,10 @@ const Settings = () => {
                             <SelectValue placeholder="Select events" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem key="all" value="all">All Events</SelectItem>
-                            <SelectItem key="appointments" value="appointments">Appointments Only</SelectItem>
-                            <SelectItem key="patients" value="patients">Patient Updates Only</SelectItem>
-                            <SelectItem key="billing" value="billing">Billing Events Only</SelectItem>
+                            <SelectItem value="all">All Events</SelectItem>
+                            <SelectItem value="appointments">Appointments Only</SelectItem>
+                            <SelectItem value="patients">Patient Updates Only</SelectItem>
+                            <SelectItem value="billing">Billing Events Only</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

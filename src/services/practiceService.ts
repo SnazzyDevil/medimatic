@@ -9,14 +9,15 @@ import {
 } from '@/types/practice';
 
 export class PracticeService {
-    private static TABLE_NAME = 'practice_information';
+    // Using 'practice_information' directly as a literal type instead of a string variable
+    // This should resolve the TypeScript error as it matches the expected table name type
 
     /**
      * Get practice information by ID
      */
     static async getById(id: string): Promise<PracticeInformation | null> {
         const { data, error } = await supabase
-            .from(this.TABLE_NAME)
+            .from('practice_information')
             .select('*')
             .eq('id', id)
             .maybeSingle();
@@ -40,7 +41,7 @@ export class PracticeService {
         }
 
         const { data, error } = await supabase
-            .from(this.TABLE_NAME)
+            .from('practice_information')
             .select('*')
             .eq('created_by', user.id)
             .maybeSingle();
@@ -64,7 +65,7 @@ export class PracticeService {
         }
 
         const { data, error } = await supabase
-            .from(this.TABLE_NAME)
+            .from('practice_information')
             .insert([{ ...convertFromPracticeInformation(practice), created_by: user.id }])
             .select()
             .maybeSingle();
@@ -82,7 +83,7 @@ export class PracticeService {
      */
     static async update(id: string, practice: UpdatePracticeInformation): Promise<PracticeInformation> {
         const { data, error } = await supabase
-            .from(this.TABLE_NAME)
+            .from('practice_information')
             .update(convertFromPracticeInformation(practice))
             .eq('id', id)
             .select()
@@ -153,7 +154,7 @@ export class PracticeService {
      */
     static async delete(id: string): Promise<void> {
         const { error } = await supabase
-            .from(this.TABLE_NAME)
+            .from('practice_information')
             .delete()
             .eq('id', id);
 
