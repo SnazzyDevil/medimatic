@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { PracticeService } from "@/services/practiceService";
 
 export interface Patient {
   id: string;
@@ -38,22 +40,39 @@ interface CustomerSectionProps {
 
 export const CustomerSection = ({ 
   selectedPatient, 
-  onPatientSelect, 
-  practiceInfo = {
-    name: "PharmaCare Clinic",
-    address: "123 Healthcare Avenue, Medical District, 12345",
-    phone: "+27 12 345 6789",
-    email: "info@pharmacare.co.za",
-    website: "www.pharmacare.co.za",
-    regNumber: "REG-12345-ZA",
-    vatNumber: "VAT4567890123"
-  }
+  onPatientSelect,
+  practiceInfo
 }: CustomerSectionProps) => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  // Fetch practice information
+  const { data: practice } = useQuery({
+    queryKey: ['practiceInfo'],
+    queryFn: () => PracticeService.getCurrentPractice(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Derived practice info
+  const formattedPracticeInfo: PracticeInfo = practice ? {
+    name: practice.name,
+    address: `${practice.addressLine1}${practice.addressLine2 ? `, ${practice.addressLine2}` : ''}, ${practice.city}, ${practice.postalCode}`,
+    phone: practice.phone,
+    email: practice.email,
+    website: practice.website,
+    regNumber: practice.registrationNumber,
+    vatNumber: practice.vatNumber || '',
+  } : practiceInfo || {
+    name: "Loading...",
+    address: "",
+    phone: "",
+    email: "",
+    regNumber: "",
+    vatNumber: ""
+  };
 
   useEffect(() => {
     if (dialogOpen) {
@@ -107,15 +126,15 @@ export const CustomerSection = ({
         <div className="flex flex-col">
           <h3 className="text-sm font-semibold mb-2">Bill from</h3>
           <div className="space-y-1 bg-slate-50 p-3 rounded-md border">
-            <div className="font-medium text-lg">{practiceInfo.name}</div>
-            <div className="text-sm">{practiceInfo.address}</div>
-            <div className="text-sm">Phone: {practiceInfo.phone}</div>
-            <div className="text-sm">Email: {practiceInfo.email}</div>
-            {practiceInfo.website && (
-              <div className="text-sm">Website: {practiceInfo.website}</div>
+            <div className="font-medium text-lg">{formattedPracticeInfo.name}</div>
+            <div className="text-sm">{formattedPracticeInfo.address}</div>
+            <div className="text-sm">Phone: {formattedPracticeInfo.phone}</div>
+            <div className="text-sm">Email: {formattedPracticeInfo.email}</div>
+            {formattedPracticeInfo.website && (
+              <div className="text-sm">Website: {formattedPracticeInfo.website}</div>
             )}
-            <div className="text-sm">Reg #: {practiceInfo.regNumber}</div>
-            <div className="text-sm">VAT #: {practiceInfo.vatNumber}</div>
+            <div className="text-sm">Reg #: {formattedPracticeInfo.regNumber}</div>
+            <div className="text-sm">VAT #: {formattedPracticeInfo.vatNumber}</div>
           </div>
         </div>
       </div>
