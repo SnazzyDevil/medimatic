@@ -1,3 +1,4 @@
+
 import { Save, Lock, Key, Download, ImageIcon, Upload, Clock, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ const Settings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // State for practice information
   const [practiceInfo, setPracticeInfo] = useState<Partial<PracticeInformation>>({
     name: "",
     practiceType: "medical",
@@ -83,6 +85,7 @@ const Settings = () => {
     twoFactorAuthRequired: false,
   });
   
+  // Fetch practice information
   const { data: practice, isLoading } = useQuery({
     queryKey: ['practiceInfo'],
     queryFn: async () => {
@@ -96,6 +99,7 @@ const Settings = () => {
     }
   });
   
+  // Create practice mutation
   const createPracticeMutation = useMutation({
     mutationFn: (data: any) => PracticeService.create(data),
     onSuccess: () => {
@@ -115,6 +119,7 @@ const Settings = () => {
     }
   });
   
+  // Update practice mutation
   const updatePracticeMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: any }) => PracticeService.update(id, data),
     onSuccess: () => {
@@ -134,6 +139,7 @@ const Settings = () => {
     }
   });
   
+  // Load practice information when available
   useEffect(() => {
     if (practice) {
       setPracticeInfo(practice);
@@ -183,6 +189,7 @@ const Settings = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
+  // Update practice info field
   const updatePracticeField = (field: string, value: any) => {
     setPracticeInfo(prev => ({
       ...prev,
@@ -198,6 +205,7 @@ const Settings = () => {
     
     setNotificationSettings(newSettings);
     
+    // If we have practice info, also update the related fields
     if (practice?.id) {
       const practiceUpdates = {
         settings: {
@@ -227,6 +235,7 @@ const Settings = () => {
         data: updates 
       });
     } else {
+      // Store in local practice info until we can save to DB
       setPracticeInfo(prev => ({
         ...prev,
         settings: {
@@ -252,6 +261,7 @@ const Settings = () => {
     
     setSecuritySettings(newSettings);
     
+    // If we have practice info, also update the related fields
     if (practice?.id) {
       const practiceUpdates = {
         settings: {
@@ -283,6 +293,7 @@ const Settings = () => {
         data: updates 
       });
     } else {
+      // Store in local practice info until we can save to DB
       setPracticeInfo(prev => ({
         ...prev,
         settings: {
@@ -307,6 +318,7 @@ const Settings = () => {
     
     setIntegrations(newSettings);
     
+    // If we have practice info, also update the related fields
     if (practice?.id) {
       const practiceUpdates = {
         settings: {
@@ -339,6 +351,7 @@ const Settings = () => {
         data: updates 
       });
     } else {
+      // Store in local practice info until we can save to DB
       setPracticeInfo(prev => ({
         ...prev,
         settings: {
@@ -359,14 +372,17 @@ const Settings = () => {
 
   const saveGeneralSettings = () => {
     if (practice?.id) {
+      // Update existing practice
       updatePracticeMutation.mutate({ 
         id: practice.id, 
         data: practiceInfo 
       });
     } else {
+      // Create new practice
       createPracticeMutation.mutate(practiceInfo);
     }
     
+    // Also update doctor settings for UI components
     updateDoctorSettings({
       name: practiceInfo.name || "Doctor",
       practiceName: practiceInfo.name || "Practice",
@@ -385,6 +401,7 @@ const Settings = () => {
     
     setApiKeys(newApiKeys);
     
+    // If we have practice info, also update the API keys in settings
     if (practice?.id) {
       const updates = {
         settings: {
@@ -442,6 +459,7 @@ const Settings = () => {
       }
 
       if (!practice?.id) {
+        // Need to create practice first
         toast({
           title: "Please save practice information first",
           description: "You need to save your practice information before uploading images.",
@@ -457,6 +475,7 @@ const Settings = () => {
       } else {
         const imageUrl = await PracticeService.updatePracticeImage(practice.id, file);
         updatePracticeField('practiceImageUrl', imageUrl);
+        // Also update in doctor settings
         updateDoctorSettings({
           ...doctorSettings,
           practiceImage: imageUrl
@@ -479,6 +498,7 @@ const Settings = () => {
     }
   };
 
+  // Load settings from practice if available
   useEffect(() => {
     if (practice?.settings) {
       if (practice.settings.notificationSettings) {
@@ -488,6 +508,7 @@ const Settings = () => {
       if (practice.settings.securitySettings) {
         setSecuritySettings(practice.settings.securitySettings);
       } else {
+        // Initialize security settings based on practice fields
         setSecuritySettings(prev => ({
           ...prev,
           twoFactorAuth: practice.twoFactorAuthRequired
@@ -531,6 +552,7 @@ const Settings = () => {
             </TabsList>
             
             <TabsContent value="general">
+              {/* General Settings Content */}
               <Card className="border border-healthcare-gray-light">
                 <CardHeader>
                   <CardTitle>Practice Information</CardTitle>
@@ -844,7 +866,9 @@ const Settings = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+            
             <TabsContent value="notifications">
+              {/* Notification Settings Content */}
               <Card className="border border-healthcare-gray-light">
                 <CardHeader>
                   <CardTitle>Notification Preferences</CardTitle>
@@ -984,7 +1008,9 @@ const Settings = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+            
             <TabsContent value="security">
+              {/* Security Settings Content */}
               <Card className="border border-healthcare-gray-light">
                 <CardHeader>
                   <CardTitle>Security Settings</CardTitle>
@@ -1096,7 +1122,9 @@ const Settings = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+            
             <TabsContent value="api">
+              {/* API Settings Content */}
               <Card className="border border-healthcare-gray-light">
                 <CardHeader>
                   <CardTitle>API Keys & Integrations</CardTitle>
@@ -1333,4 +1361,3 @@ const Settings = () => {
 };
 
 export default Settings;
-

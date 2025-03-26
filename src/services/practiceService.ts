@@ -19,7 +19,7 @@ export class PracticeService {
             .from(this.TABLE_NAME)
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Error fetching practice information:', error);
@@ -43,7 +43,7 @@ export class PracticeService {
             .from(this.TABLE_NAME)
             .select('*')
             .eq('created_by', user.id)
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Error fetching current practice information:', error);
@@ -67,7 +67,7 @@ export class PracticeService {
             .from(this.TABLE_NAME)
             .insert([{ ...convertFromPracticeInformation(practice), created_by: user.id }])
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Error creating practice information:', error);
@@ -86,7 +86,7 @@ export class PracticeService {
             .update(convertFromPracticeInformation(practice))
             .eq('id', id)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Error updating practice information:', error);
