@@ -1,3 +1,4 @@
+
 export type PracticeType = 'medical' | 'dental' | 'pharmacy' | 'clinic' | 'hospital' | 'other';
 
 export interface BusinessHours {
@@ -127,4 +128,4 @@ export function convertFromPracticeInformation(data: CreatePracticeInformation |
         settings: data.settings,
         metadata: data.metadata
     };
-} 
+}

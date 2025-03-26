@@ -325,6 +325,102 @@ export type Database = {
         }
         Relationships: []
       }
+      practice_information: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          appointment_reminder_enabled: boolean | null
+          business_hours: Json | null
+          city: string
+          country: string
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          email: string
+          email_notifications_enabled: boolean | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          metadata: Json | null
+          name: string
+          phone: string
+          postal_code: string
+          practice_image_url: string | null
+          practice_type: Database["public"]["Enums"]["practice_type"]
+          registration_number: string
+          settings: Json | null
+          sms_notifications_enabled: boolean | null
+          state_province: string | null
+          tax_percentage: number | null
+          two_factor_auth_required: boolean | null
+          updated_at: string | null
+          vat_number: string | null
+          website: string | null
+        }
+        Insert: {
+          address_line1: string
+          address_line2?: string | null
+          appointment_reminder_enabled?: boolean | null
+          business_hours?: Json | null
+          city: string
+          country?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          email: string
+          email_notifications_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name: string
+          phone: string
+          postal_code: string
+          practice_image_url?: string | null
+          practice_type?: Database["public"]["Enums"]["practice_type"]
+          registration_number: string
+          settings?: Json | null
+          sms_notifications_enabled?: boolean | null
+          state_province?: string | null
+          tax_percentage?: number | null
+          two_factor_auth_required?: boolean | null
+          updated_at?: string | null
+          vat_number?: string | null
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          appointment_reminder_enabled?: boolean | null
+          business_hours?: Json | null
+          city?: string
+          country?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          email?: string
+          email_notifications_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string
+          phone?: string
+          postal_code?: string
+          practice_image_url?: string | null
+          practice_type?: Database["public"]["Enums"]["practice_type"]
+          registration_number?: string
+          settings?: Json | null
+          sms_notifications_enabled?: boolean | null
+          state_province?: string | null
+          tax_percentage?: number | null
+          two_factor_auth_required?: boolean | null
+          updated_at?: string | null
+          vat_number?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       visit_vitals: {
         Row: {
           bp: string | null
@@ -409,7 +505,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      practice_type:
+        | "medical"
+        | "dental"
+        | "pharmacy"
+        | "clinic"
+        | "hospital"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never

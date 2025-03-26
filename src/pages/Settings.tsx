@@ -12,6 +12,10 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PracticeService } from "@/services/practiceService";
+import { PracticeInformation, PracticeType } from "@/types/practice";
+import CurrencyBadge from "@/components/settings/CurrencyBadges";
 
 const timeZones = [
   { value: "Africa/Johannesburg", label: "South Africa (SAST)" },
@@ -43,9 +47,103 @@ const currencies = [
   { value: "BRL", label: "Brazilian Real (R$)", symbol: "R$" },
 ];
 
+const practiceTypes: { value: PracticeType; label: string }[] = [
+  { value: "medical", label: "Medical Practice" },
+  { value: "dental", label: "Dental Practice" },
+  { value: "pharmacy", label: "Pharmacy" },
+  { value: "clinic", label: "Clinic" },
+  { value: "hospital", label: "Hospital" },
+  { value: "other", label: "Other" },
+];
+
 const Settings = () => {
   const { doctorSettings, updateDoctorSettings } = useDoctorSettings();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // State for practice information
+  const [practiceInfo, setPracticeInfo] = useState<Partial<PracticeInformation>>({
+    name: "",
+    practiceType: "medical",
+    registrationNumber: "",
+    vatNumber: "",
+    email: "",
+    phone: "",
+    website: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    stateProvince: "",
+    postalCode: "",
+    country: "South Africa",
+    currency: "ZAR",
+    taxPercentage: 15,
+    appointmentReminderEnabled: true,
+    smsNotificationsEnabled: true,
+    emailNotificationsEnabled: true,
+    twoFactorAuthRequired: false,
+  });
+  
+  // Fetch practice information
+  const { data: practice, isLoading } = useQuery({
+    queryKey: ['practiceInfo'],
+    queryFn: async () => {
+      try {
+        const data = await PracticeService.getCurrentPractice();
+        return data;
+      } catch (error) {
+        console.error("Error fetching practice info:", error);
+        return null;
+      }
+    }
+  });
+  
+  // Create practice mutation
+  const createPracticeMutation = useMutation({
+    mutationFn: (data: any) => PracticeService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practiceInfo'] });
+      toast({
+        title: "Practice information created",
+        description: "Your practice information has been created successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error("Error creating practice info:", error);
+      toast({
+        title: "Error creating practice information",
+        description: "There was an error creating your practice information. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update practice mutation
+  const updatePracticeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => PracticeService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practiceInfo'] });
+      toast({
+        title: "Settings saved",
+        description: "Your practice information has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating practice info:", error);
+      toast({
+        title: "Error saving settings",
+        description: "There was an error updating your practice information. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Load practice information when available
+  useEffect(() => {
+    if (practice) {
+      setPracticeInfo(practice);
+    }
+  }, [practice]);
   
   const [notificationSettings, setNotificationSettings] = useState({
     emailAppointments: true,
@@ -83,89 +181,239 @@ const Settings = () => {
     patientPortal: true
   });
 
-  const [timeZone, setTimeZone] = useState("America/New_York");
+  const [timeZone, setTimeZone] = useState("Africa/Johannesburg");
   const [currency, setCurrency] = useState("USD");
   const [webhookUrl, setWebhookUrl] = useState('https://api.example.com/webhook');
   const [webhookEvents, setWebhookEvents] = useState('all');
 
-  const [practiceImage, setPracticeImage] = useState<string | null>(null);
-  const [practiceLogo, setPracticeLogo] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const [doctorName, setDoctorName] = useState("");
-  const [practiceName, setPracticeName] = useState("");
-  const [email, setEmail] = useState("");
-
-  useEffect(() => {
-    setPracticeImage(doctorSettings.practiceImage || null);
-    setDoctorName(doctorSettings.name || "");
-    setPracticeName(doctorSettings.practiceName || "");
-    setEmail(doctorSettings.email || "");
-  }, [doctorSettings]);
+  // Update practice info field
+  const updatePracticeField = (field: string, value: any) => {
+    setPracticeInfo(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const handleNotificationChange = (key: string) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev]
-    }));
+    const newSettings = {
+      ...notificationSettings,
+      [key]: !notificationSettings[key as keyof typeof notificationSettings]
+    };
+    
+    setNotificationSettings(newSettings);
+    
+    // If we have practice info, also update the related fields
+    if (practice?.id) {
+      const practiceUpdates = {
+        settings: {
+          ...practice.settings,
+          notificationSettings: newSettings
+        }
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: practiceUpdates 
+      });
+    }
   };
 
   const saveNotificationSettings = () => {
-    toast({
-      title: "Settings saved",
-      description: "Your notification preferences have been updated successfully.",
-    });
+    if (practice?.id) {
+      const updates = {
+        settings: {
+          ...practice.settings,
+          notificationSettings
+        }
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: updates 
+      });
+    } else {
+      // Store in local practice info until we can save to DB
+      setPracticeInfo(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          notificationSettings
+        }
+      }));
+      
+      toast({
+        title: "Settings saved locally",
+        description: "Your notification preferences have been updated locally. Save practice information to persist.",
+      });
+    }
   };
 
   const handleSecurityChange = (key: string, value: any) => {
-    setSecuritySettings(prev => ({
-      ...prev,
-      [key]: typeof value === 'boolean' ? !prev[key as keyof typeof prev] : value
-    }));
+    const newValue = typeof value === 'boolean' ? !securitySettings[key as keyof typeof securitySettings] : value;
+    
+    const newSettings = {
+      ...securitySettings,
+      [key]: newValue
+    };
+    
+    setSecuritySettings(newSettings);
+    
+    // If we have practice info, also update the related fields
+    if (practice?.id) {
+      const practiceUpdates = {
+        settings: {
+          ...practice.settings,
+          securitySettings: newSettings
+        },
+        twoFactorAuthRequired: key === 'twoFactorAuth' ? newValue : practiceInfo.twoFactorAuthRequired
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: practiceUpdates 
+      });
+    }
   };
 
   const saveSecuritySettings = () => {
-    toast({
-      title: "Security settings saved",
-      description: "Your security preferences have been updated successfully.",
-    });
+    if (practice?.id) {
+      const updates = {
+        settings: {
+          ...practice.settings,
+          securitySettings
+        },
+        twoFactorAuthRequired: securitySettings.twoFactorAuth
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: updates 
+      });
+    } else {
+      // Store in local practice info until we can save to DB
+      setPracticeInfo(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          securitySettings
+        },
+        twoFactorAuthRequired: securitySettings.twoFactorAuth
+      }));
+      
+      toast({
+        title: "Settings saved locally",
+        description: "Your security preferences have been updated locally. Save practice information to persist.",
+      });
+    }
   };
 
   const handleIntegrationChange = (key: string) => {
-    setIntegrations(prev => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev]
-    }));
+    const newSettings = {
+      ...integrations,
+      [key]: !integrations[key as keyof typeof integrations]
+    };
+    
+    setIntegrations(newSettings);
+    
+    // If we have practice info, also update the related fields
+    if (practice?.id) {
+      const practiceUpdates = {
+        settings: {
+          ...practice.settings,
+          integrations: newSettings
+        }
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: practiceUpdates 
+      });
+    }
   };
 
   const saveApiSettings = () => {
-    toast({
-      title: "API settings saved",
-      description: "Your API and integration preferences have been updated successfully.",
-    });
+    if (practice?.id) {
+      const updates = {
+        settings: {
+          ...practice.settings,
+          apiKeys,
+          integrations,
+          webhookUrl,
+          webhookEvents
+        }
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: updates 
+      });
+    } else {
+      // Store in local practice info until we can save to DB
+      setPracticeInfo(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          apiKeys,
+          integrations,
+          webhookUrl,
+          webhookEvents
+        }
+      }));
+      
+      toast({
+        title: "Settings saved locally",
+        description: "Your API and integration preferences have been updated locally. Save practice information to persist.",
+      });
+    }
   };
 
   const saveGeneralSettings = () => {
+    if (practice?.id) {
+      // Update existing practice
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: practiceInfo 
+      });
+    } else {
+      // Create new practice
+      createPracticeMutation.mutate(practiceInfo);
+    }
+    
+    // Also update doctor settings for UI components
     updateDoctorSettings({
-      name: doctorName,
-      practiceName: practiceName,
-      email: email,
-      practiceImage: practiceImage || doctorSettings.practiceImage,
-    });
-
-    toast({
-      title: "Settings saved",
-      description: "Your general settings have been updated successfully.",
+      name: practiceInfo.name || "Doctor",
+      practiceName: practiceInfo.name || "Practice",
+      email: practiceInfo.email || "",
+      practiceImage: practiceInfo.practiceImageUrl || doctorSettings.practiceImage,
     });
   };
 
   const regenerateApiKey = (keyType: string) => {
     const newKey = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
     
-    setApiKeys(prev => ({
-      ...prev,
+    const newApiKeys = {
+      ...apiKeys,
       [keyType]: newKey
-    }));
+    };
+    
+    setApiKeys(newApiKeys);
+    
+    // If we have practice info, also update the API keys in settings
+    if (practice?.id) {
+      const updates = {
+        settings: {
+          ...practice.settings,
+          apiKeys: newApiKeys
+        }
+      };
+      
+      updatePracticeMutation.mutate({ 
+        id: practice.id, 
+        data: updates 
+      });
+    }
 
     toast({
       title: "API key regenerated",
@@ -209,26 +457,28 @@ const Settings = () => {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${type}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('practice-assets')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
+      if (!practice?.id) {
+        // Need to create practice first
+        toast({
+          title: "Please save practice information first",
+          description: "You need to save your practice information before uploading images.",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        return;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('practice-assets')
-        .getPublicUrl(filePath);
-
       if (type === 'logo') {
-        setPracticeLogo(publicUrl);
+        const logoUrl = await PracticeService.updateLogo(practice.id, file);
+        updatePracticeField('logoUrl', logoUrl);
       } else {
-        setPracticeImage(publicUrl);
+        const imageUrl = await PracticeService.updatePracticeImage(practice.id, file);
+        updatePracticeField('practiceImageUrl', imageUrl);
+        // Also update in doctor settings
+        updateDoctorSettings({
+          ...doctorSettings,
+          practiceImage: imageUrl
+        });
       }
 
       toast({
@@ -246,6 +496,41 @@ const Settings = () => {
       setIsUploading(false);
     }
   };
+
+  // Load settings from practice if available
+  useEffect(() => {
+    if (practice?.settings) {
+      if (practice.settings.notificationSettings) {
+        setNotificationSettings(practice.settings.notificationSettings);
+      }
+      
+      if (practice.settings.securitySettings) {
+        setSecuritySettings(practice.settings.securitySettings);
+      } else {
+        // Initialize security settings based on practice fields
+        setSecuritySettings(prev => ({
+          ...prev,
+          twoFactorAuth: practice.twoFactorAuthRequired
+        }));
+      }
+      
+      if (practice.settings.apiKeys) {
+        setApiKeys(practice.settings.apiKeys);
+      }
+      
+      if (practice.settings.integrations) {
+        setIntegrations(practice.settings.integrations);
+      }
+      
+      if (practice.settings.webhookUrl) {
+        setWebhookUrl(practice.settings.webhookUrl);
+      }
+      
+      if (practice.settings.webhookEvents) {
+        setWebhookEvents(practice.settings.webhookEvents);
+      }
+    }
+  }, [practice]);
 
   return (
     <div className="min-h-screen flex w-full">
@@ -278,10 +563,10 @@ const Settings = () => {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Practice Logo</Label>
-                        {practiceLogo ? (
+                        {practiceInfo.logoUrl ? (
                           <div className="relative w-48 h-24">
                             <img
-                              src={practiceLogo}
+                              src={practiceInfo.logoUrl}
                               alt="Practice Logo"
                               className="w-full h-full object-contain rounded-md"
                             />
@@ -289,7 +574,7 @@ const Settings = () => {
                               variant="outline"
                               size="sm"
                               className="absolute top-2 right-2"
-                              onClick={() => setPracticeLogo(null)}
+                              onClick={() => updatePracticeField('logoUrl', '')}
                             >
                               Change
                             </Button>
@@ -315,10 +600,10 @@ const Settings = () => {
 
                       <div className="space-y-2">
                         <Label>Practice Image (Doctor Profile)</Label>
-                        {practiceImage ? (
+                        {practiceInfo.practiceImageUrl ? (
                           <div className="relative w-full h-48">
                             <img
-                              src={practiceImage}
+                              src={practiceInfo.practiceImageUrl}
                               alt="Practice Image"
                               className="w-full h-full object-cover rounded-md"
                             />
@@ -326,7 +611,7 @@ const Settings = () => {
                               variant="outline"
                               size="sm"
                               className="absolute top-2 right-2"
-                              onClick={() => setPracticeImage(null)}
+                              onClick={() => updatePracticeField('practiceImageUrl', '')}
                             >
                               Change
                             </Button>
@@ -351,58 +636,134 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="practiceName">Practice Name</Label>
-                      <Input 
-                        id="practiceName" 
-                        value={practiceName} 
-                        onChange={(e) => setPracticeName(e.target.value)} 
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="practiceType">Practice Type</Label>
+                        <Select 
+                          value={practiceInfo.practiceType} 
+                          onValueChange={(value) => updatePracticeField('practiceType', value)}
+                        >
+                          <SelectTrigger id="practiceType">
+                            <SelectValue placeholder="Select practice type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {practiceTypes.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="practiceName">Practice Name</Label>
+                        <Input 
+                          id="practiceName" 
+                          value={practiceInfo.name || ''} 
+                          onChange={(e) => updatePracticeField('name', e.target.value)} 
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="registrationNumber">Registration Number</Label>
+                        <Input 
+                          id="registrationNumber" 
+                          value={practiceInfo.registrationNumber || ''} 
+                          onChange={(e) => updatePracticeField('registrationNumber', e.target.value)} 
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="vatNumber">VAT Number</Label>
+                        <Input 
+                          id="vatNumber" 
+                          value={practiceInfo.vatNumber || ''} 
+                          onChange={(e) => updatePracticeField('vatNumber', e.target.value)} 
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="doctorName">Doctor's Name</Label>
-                      <Input 
-                        id="doctorName" 
-                        value={doctorName} 
-                        onChange={(e) => setDoctorName(e.target.value)} 
-                      />
-                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
                       <Input 
                         id="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
+                        type="email"
+                        value={practiceInfo.email || ''} 
+                        onChange={(e) => updatePracticeField('email', e.target.value)} 
                       />
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number</Label>
-                      <Input id="phone" defaultValue="(555) 123-4567" />
+                      <Input 
+                        id="phone" 
+                        value={practiceInfo.phone || ''} 
+                        onChange={(e) => updatePracticeField('phone', e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>
-                      <Input id="website" defaultValue="https://medicare-clinic.com" />
+                      <Input 
+                        id="website" 
+                        value={practiceInfo.website || ''} 
+                        onChange={(e) => updatePracticeField('website', e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="address">Address</Label>
-                      <Input id="address" defaultValue="123 Medical Plaza, Suite 101" />
+                      <Label htmlFor="address">Address Line 1</Label>
+                      <Input 
+                        id="address" 
+                        value={practiceInfo.addressLine1 || ''} 
+                        onChange={(e) => updatePracticeField('addressLine1', e.target.value)} 
+                      />
                     </div>
+                    
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="addressLine2">Address Line 2</Label>
+                      <Input 
+                        id="addressLine2" 
+                        value={practiceInfo.addressLine2 || ''} 
+                        onChange={(e) => updatePracticeField('addressLine2', e.target.value)} 
+                      />
+                    </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
-                      <Input id="city" defaultValue="San Francisco" />
+                      <Input 
+                        id="city" 
+                        value={practiceInfo.city || ''} 
+                        onChange={(e) => updatePracticeField('city', e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input id="state" defaultValue="CA" />
+                      <Label htmlFor="state">State/Province</Label>
+                      <Input 
+                        id="state" 
+                        value={practiceInfo.stateProvince || ''} 
+                        onChange={(e) => updatePracticeField('stateProvince', e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="zip">ZIP Code</Label>
-                      <Input id="zip" defaultValue="94107" />
+                      <Label htmlFor="zip">Postal Code</Label>
+                      <Input 
+                        id="zip" 
+                        value={practiceInfo.postalCode || ''} 
+                        onChange={(e) => updatePracticeField('postalCode', e.target.value)} 
+                      />
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <Input id="country" defaultValue="United States" />
+                      <Input 
+                        id="country" 
+                        value={practiceInfo.country || 'South Africa'} 
+                        onChange={(e) => updatePracticeField('country', e.target.value)} 
+                      />
                     </div>
                     
                     <div className="space-y-2">
@@ -427,20 +788,19 @@ const Settings = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Banknote className="h-4 w-4" />
-                        <Label htmlFor="currency">Currency</Label>
+                        <Label>Currency</Label>
                       </div>
-                      <Select value={currency} onValueChange={setCurrency}>
-                        <SelectTrigger id="currency">
-                          <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {currencies.map((curr) => (
-                            <SelectItem key={curr.value} value={curr.value}>
-                              {curr.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {currencies.slice(0, 6).map((curr) => (
+                          <CurrencyBadge
+                            key={curr.value}
+                            value={curr.value}
+                            label={curr.label}
+                            isSelected={practiceInfo.currency === curr.value}
+                            onClick={() => updatePracticeField('currency', curr.value)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
@@ -449,36 +809,54 @@ const Settings = () => {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label htmlFor="switch-1" className="font-medium">Enable Appointment Reminders</Label>
+                          <Label htmlFor="appointmentReminders" className="font-medium">Enable Appointment Reminders</Label>
                           <p className="text-sm text-healthcare-gray">
                             Send automated reminders to patients before appointments
                           </p>
                         </div>
-                        <Switch id="switch-1" defaultChecked />
+                        <Switch 
+                          id="appointmentReminders" 
+                          checked={practiceInfo.appointmentReminderEnabled} 
+                          onCheckedChange={(checked) => updatePracticeField('appointmentReminderEnabled', checked)} 
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label htmlFor="switch-2" className="font-medium">Two-Factor Authentication</Label>
+                          <Label htmlFor="twoFactorAuth" className="font-medium">Two-Factor Authentication</Label>
                           <p className="text-sm text-healthcare-gray">
                             Require additional verification for all staff logins
                           </p>
                         </div>
-                        <Switch id="switch-2" defaultChecked />
+                        <Switch 
+                          id="twoFactorAuth" 
+                          checked={practiceInfo.twoFactorAuthRequired} 
+                          onCheckedChange={(checked) => updatePracticeField('twoFactorAuthRequired', checked)} 
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label htmlFor="switch-3" className="font-medium">AI Diagnostic Suggestions</Label>
+                          <Label htmlFor="taxPercentage" className="font-medium">Tax Percentage</Label>
                           <p className="text-sm text-healthcare-gray">
-                            Enable AI to analyze patient data and suggest possible diagnoses
+                            Default tax percentage for invoices
                           </p>
                         </div>
-                        <Switch id="switch-3" defaultChecked />
+                        <Input 
+                          id="taxPercentage" 
+                          type="number" 
+                          className="w-24 text-right" 
+                          value={practiceInfo.taxPercentage || 15} 
+                          onChange={(e) => updatePracticeField('taxPercentage', parseFloat(e.target.value))} 
+                        />
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex justify-end">
-                    <Button className="btn-hover" onClick={saveGeneralSettings}>
+                    <Button 
+                      className="btn-hover" 
+                      onClick={saveGeneralSettings}
+                      disabled={isLoading || createPracticeMutation.isPending || updatePracticeMutation.isPending}
+                    >
                       <Save className="h-4 w-4 mr-2" />
                       Save Changes
                     </Button>
@@ -588,490 +966,4 @@ const Settings = () => {
                     
                     <h3 className="text-lg font-medium mb-2 mt-6">Other Notifications</h3>
                     <div className="space-y-4 pl-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="marketing-emails" className="font-medium">Marketing Emails</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Receive promotional emails about new services and special offers
-                          </p>
-                        </div>
-                        <Switch 
-                          id="marketing-emails" 
-                          checked={notificationSettings.marketingEmails} 
-                          onCheckedChange={() => handleNotificationChange('marketingEmails')}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="system-updates" className="font-medium">System Updates</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Receive notifications about system maintenance and new features
-                          </p>
-                        </div>
-                        <Switch 
-                          id="system-updates" 
-                          checked={notificationSettings.systemUpdates} 
-                          onCheckedChange={() => handleNotificationChange('systemUpdates')}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end pt-4">
-                    <Button onClick={saveNotificationSettings} className="btn-hover">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Notification Settings
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="security">
-              <Card className="border border-healthcare-gray-light">
-                <CardHeader>
-                  <CardTitle>Security Settings</CardTitle>
-                  <CardDescription>
-                    Manage your security preferences and access controls
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium mb-2">Account Security</h3>
-                    <div className="space-y-4 pl-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="two-factor-auth" className="font-medium">Two-Factor Authentication</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Add an extra layer of security to your account with two-factor authentication
-                          </p>
-                        </div>
-                        <Switch 
-                          id="two-factor-auth" 
-                          checked={securitySettings.twoFactorAuth} 
-                          onCheckedChange={() => handleSecurityChange('twoFactorAuth', true)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="password-change" className="font-medium">Require Password Change</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Require password change every 90 days for enhanced security
-                          </p>
-                        </div>
-                        <Switch 
-                          id="password-change" 
-                          checked={securitySettings.requirePasswordChange} 
-                          onCheckedChange={() => handleSecurityChange('requirePasswordChange', true)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="session-timeout" className="font-medium">Session Timeout (minutes)</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Automatically log out after period of inactivity
-                          </p>
-                        </div>
-                        <div className="w-24">
-                          <Input 
-                            id="session-timeout"
-                            type="number"
-                            min="5"
-                            max="120"
-                            value={securitySettings.sessionTimeout}
-                            onChange={(e) => handleSecurityChange('sessionTimeout', parseInt(e.target.value))}
-                            className="text-right"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-lg font-medium mb-2 mt-6">Access Controls</h3>
-                    <div className="space-y-4 pl-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="ip-restriction" className="font-medium">IP Address Restriction</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Limit access to specific IP addresses for increased security
-                          </p>
-                        </div>
-                        <Switch 
-                          id="ip-restriction" 
-                          checked={securitySettings.ipRestriction} 
-                          onCheckedChange={() => handleSecurityChange('ipRestriction', true)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor="activity-logging" className="font-medium">Activity Logging</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Log all user activity for security monitoring
-                          </p>
-                        </div>
-                        <Switch 
-                          id="activity-logging" 
-                          checked={securitySettings.activityLogging} 
-                          onCheckedChange={() => handleSecurityChange('activityLogging', true)}
-                        />
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-lg font-medium mb-2 mt-6">Password Requirements</h3>
-                    <div className="space-y-4 pl-2">
-                      <div className="grid grid-cols-3 gap-4">
-                        <Button
-                          variant={securitySettings.passwordComplexity === "low" ? "default" : "outline"}
-                          onClick={() => handleSecurityChange('passwordComplexity', 'low')}
-                          className="w-full"
-                        >
-                          Basic
-                        </Button>
-                        <Button
-                          variant={securitySettings.passwordComplexity === "medium" ? "default" : "outline"}
-                          onClick={() => handleSecurityChange('passwordComplexity', 'medium')}
-                          className="w-full"
-                        >
-                          Standard
-                        </Button>
-                        <Button
-                          variant={securitySettings.passwordComplexity === "high" ? "default" : "outline"}
-                          onClick={() => handleSecurityChange('passwordComplexity', 'high')}
-                          className="w-full"
-                        >
-                          Strong
-                        </Button>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-md text-sm">
-                        {securitySettings.passwordComplexity === "low" && (
-                          <p>Basic: At least 8 characters in length</p>
-                        )}
-                        {securitySettings.passwordComplexity === "medium" && (
-                          <p>Standard: At least 10 characters, must include numbers and special characters</p>
-                        )}
-                        {securitySettings.passwordComplexity === "high" && (
-                          <p>Strong: At least 12 characters, must include uppercase, lowercase, numbers and special characters</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="mt-4">
-                          <Lock className="h-4 w-4 mr-2" />
-                          Change Password
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Change Your Password</DialogTitle>
-                          <DialogDescription>
-                            Update your password to maintain account security.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="current-password">Current Password</Label>
-                            <Input id="current-password" type="password" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="new-password">New Password</Label>
-                            <Input id="new-password" type="password" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="confirm-password">Confirm New Password</Label>
-                            <Input id="confirm-password" type="password" />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button type="submit" onClick={() => {
-                            toast({
-                              title: "Password changed",
-                              description: "Your password has been updated successfully.",
-                            });
-                          }}>
-                            Update Password
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  
-                  <div className="flex justify-end pt-4">
-                    <Button onClick={saveSecuritySettings} className="btn-hover">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Security Settings
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="api">
-              <div className="space-y-6">
-                <Card className="border border-healthcare-gray-light">
-                  <CardHeader>
-                    <CardTitle>API Keys</CardTitle>
-                    <CardDescription>
-                      Manage your API keys for third-party integrations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">EHR System API Key</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Used for connecting to your electronic health record system
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={apiKeys.ehrApiKey} 
-                            readOnly 
-                            className="w-64 font-mono text-sm bg-slate-50"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => regenerateApiKey('ehrApiKey')}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Pharmacy Integration API Key</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Used for connecting to pharmacy systems
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={apiKeys.pharmacyApiKey} 
-                            readOnly 
-                            className="w-64 font-mono text-sm bg-slate-50"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => regenerateApiKey('pharmacyApiKey')}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Billing System API Key</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Used for connecting to your billing and insurance systems
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={apiKeys.billingApiKey} 
-                            readOnly 
-                            className="w-64 font-mono text-sm bg-slate-50"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => regenerateApiKey('billingApiKey')}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Analytics API Key</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Used for connecting to analytics and reporting
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            value={apiKeys.analyticsApiKey} 
-                            readOnly 
-                            className="w-64 font-mono text-sm bg-slate-50"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => regenerateApiKey('analyticsApiKey')}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-end pt-4">
-                      <Button onClick={saveApiSettings} className="btn-hover">
-                        <Save className="h-4 w-4 mr-2" />
-                        Save API Settings
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border border-healthcare-gray-light">
-                  <CardHeader>
-                    <CardTitle>Integrations</CardTitle>
-                    <CardDescription>
-                      Manage your third-party service integrations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">EHR System Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to your electronic health record system
-                          </p>
-                        </div>
-                        <Switch 
-                          id="ehr-integration" 
-                          checked={integrations.ehr} 
-                          onCheckedChange={() => handleIntegrationChange('ehr')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Pharmacy Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to pharmacy systems
-                          </p>
-                        </div>
-                        <Switch 
-                          id="pharmacy-integration" 
-                          checked={integrations.pharmacy} 
-                          onCheckedChange={() => handleIntegrationChange('pharmacy')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Insurance Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to insurance systems
-                          </p>
-                        </div>
-                        <Switch 
-                          id="insurance-integration" 
-                          checked={integrations.insurance} 
-                          onCheckedChange={() => handleIntegrationChange('insurance')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Lab System Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to lab systems
-                          </p>
-                        </div>
-                        <Switch 
-                          id="lab-system-integration" 
-                          checked={integrations.labSystem} 
-                          onCheckedChange={() => handleIntegrationChange('labSystem')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Telemedicine Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to telemedicine systems
-                          </p>
-                        </div>
-                        <Switch 
-                          id="telemedicine-integration" 
-                          checked={integrations.telemedicine} 
-                          onCheckedChange={() => handleIntegrationChange('telemedicine')}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Patient Portal Integration</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Connect to patient portal systems
-                          </p>
-                        </div>
-                        <Switch 
-                          id="patient-portal-integration" 
-                          checked={integrations.patientPortal} 
-                          onCheckedChange={() => handleIntegrationChange('patientPortal')}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border border-healthcare-gray-light">
-                  <CardHeader>
-                    <CardTitle>Webhooks</CardTitle>
-                    <CardDescription>
-                      Configure webhooks for real-time data synchronization
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Webhook URL</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Enter the URL for your webhook
-                          </p>
-                        </div>
-                        <Input 
-                          id="webhook-url" 
-                          value={webhookUrl} 
-                          onChange={(e) => setWebhookUrl(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="font-medium">Webhook Events</Label>
-                          <p className="text-sm text-healthcare-gray">
-                            Select the events you want to receive webhooks for
-                          </p>
-                        </div>
-                        <Select value={webhookEvents} onValueChange={setWebhookEvents}>
-                          <SelectTrigger id="webhook-events">
-                            <SelectValue placeholder="Select webhook events" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Events</SelectItem>
-                            <SelectItem value="appointments">Appointments</SelectItem>
-                            <SelectItem value="prescriptions">Prescriptions</SelectItem>
-                            <SelectItem value="billing">Billing</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
-    </div>
-  );
-};
-
-export default Settings;
+                      <div className="flex items-center justify-
