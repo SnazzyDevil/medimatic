@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { AlertTriangle, Clock, Filter, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { supabase, ilike } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 const ITEM_CATEGORIES = {
@@ -161,16 +162,17 @@ const Inventory = () => {
     try {
       // Normalize input data
       const itemName = newItem.name.trim();
-      const itemCode = newItem.itemCode.trim();
+      const itemCode = newItem.itemCode.trim().toUpperCase();
       const stock = parseInt(newItem.stock);
       const threshold = parseInt(newItem.threshold);
       const unitCost = parseFloat(newItem.unitCost);
       
-      // First, check if an item with the same name AND code exists using case-insensitive search
+      console.log("Checking for existing item:", { itemName, itemCode });
+      
+      // First, search for similar items using exact match but ignoring case
       const { data: existingItems, error: searchError } = await supabase
         .from('inventory')
-        .select('*')
-        .or(`name.ilike.${itemName},item_code.ilike.${itemCode}`);
+        .select('*');
       
       if (searchError) {
         console.error("Error searching for existing item:", searchError);
@@ -182,17 +184,21 @@ const Inventory = () => {
         return;
       }
       
-      // Find exact match for both name and code (case insensitive)
-      const exactMatch = existingItems?.find(
-        item => item.name.toLowerCase() === itemName.toLowerCase() && 
-               item.item_code.toLowerCase() === itemCode.toLowerCase()
+      // Find exact match for name OR code (case insensitive)
+      const exactMatches = existingItems?.filter(
+        item => 
+          item.name.toLowerCase() === itemName.toLowerCase() || 
+          item.item_code.toLowerCase() === itemCode.toLowerCase()
       );
       
-      if (exactMatch) {
+      console.log("Found matches:", exactMatches);
+      
+      if (exactMatches && exactMatches.length > 0) {
         // Item exists, update the stock and other fields
-        console.log("Existing item found, updating stock:", exactMatch);
+        const existingItem = exactMatches[0];
+        console.log("Existing item found, updating:", existingItem);
         
-        const newStock = exactMatch.stock + stock;
+        const newStock = existingItem.stock + stock;
         const newStatus = newStock < threshold ? "low" : "normal";
         
         const { data, error: updateError } = await supabase
@@ -202,12 +208,12 @@ const Inventory = () => {
             status: newStatus,
             // Update other fields that might have changed
             threshold: threshold,
-            expiry_date: newItem.expiryDate || exactMatch.expiry_date,
+            expiry_date: newItem.expiryDate || existingItem.expiry_date,
             unit_cost: unitCost,
             supplier_name: newItem.supplierName,
             updated_at: new Date().toISOString()
           })
-          .eq('id', exactMatch.id)
+          .eq('id', existingItem.id)
           .select();
         
         if (updateError) {
@@ -223,10 +229,10 @@ const Inventory = () => {
         console.log("Item updated successfully:", data);
         toast({
           title: "Item updated",
-          description: `${itemName} stock has been updated to ${newStock}.`,
+          description: `${existingItem.name} stock has been updated to ${newStock}.`,
         });
       } else {
-        // Item doesn't exist with both the same name AND code, create a new one
+        // Item doesn't exist, create a new one
         const status = stock < threshold ? "low" : "normal";
         const itemToAdd = {
           name: itemName,

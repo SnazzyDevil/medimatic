@@ -15,3 +15,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 export const ilike = (column: string, value: string) => {
   return `${column}.ilike.${value}`;
 };
+
+// Helper function to check if an item exists in inventory (case insensitive)
+export const findInventoryItem = async (name: string, code: string) => {
+  const { data, error } = await supabase
+    .from('inventory')
+    .select('*')
+    .or(`name.ilike.${name},item_code.ilike.${code}`);
+    
+  if (error) {
+    console.error("Error finding inventory item:", error);
+    throw error;
+  }
+  
+  return data || [];
+};
