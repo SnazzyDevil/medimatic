@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { AlertTriangle, Clock, Filter, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -159,44 +158,101 @@ const Inventory = () => {
       return;
     }
     
-    const stock = parseInt(newItem.stock);
-    const threshold = parseInt(newItem.threshold);
-    const status = stock < threshold ? "low" : "normal";
+    // Check if an item with the same name and code already exists
+    const { data: existingItems, error: searchError } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('name', newItem.name)
+      .eq('item_code', newItem.itemCode);
     
-    const itemToAdd = {
-      name: newItem.name,
-      category: newItem.category,
-      stock: stock,
-      threshold: threshold,
-      expiry_date: newItem.expiryDate || null,
-      status: status,
-      item_code: newItem.itemCode,
-      unit_cost: parseFloat(newItem.unitCost),
-      supplier_name: newItem.supplierName,
-    };
+    if (searchError) {
+      console.error("Error searching for existing item:", searchError);
+      toast({
+        title: "Error",
+        description: `Failed to check for existing items: ${searchError.message}`,
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      console.log("Adding item to inventory:", itemToAdd);
-      const { data, error } = await supabase
-        .from('inventory')
-        .insert(itemToAdd)
-        .select();
+      const stock = parseInt(newItem.stock);
+      const threshold = parseInt(newItem.threshold);
+      const status = stock < threshold ? "low" : "normal";
+      const unitCost = parseFloat(newItem.unitCost);
       
-      if (error) {
-        console.error("Error adding item to inventory:", error);
+      if (existingItems && existingItems.length > 0) {
+        // Item exists, update the stock
+        const existingItem = existingItems[0];
+        const newStock = existingItem.stock + stock;
+        const newStatus = newStock < threshold ? "low" : "normal";
+        
+        const { data, error: updateError } = await supabase
+          .from('inventory')
+          .update({ 
+            stock: newStock,
+            status: newStatus,
+            // Update other fields that might have changed
+            threshold: threshold,
+            expiry_date: newItem.expiryDate || existingItem.expiry_date,
+            unit_cost: unitCost,
+            supplier_name: newItem.supplierName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingItem.id)
+          .select();
+        
+        if (updateError) {
+          console.error("Error updating inventory item:", updateError);
+          toast({
+            title: "Error",
+            description: `Failed to update item: ${updateError.message}`,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("Item updated successfully:", data);
         toast({
-          title: "Error",
-          description: `Failed to add item: ${error.message}`,
-          variant: "destructive",
+          title: "Item updated",
+          description: `${newItem.name} stock has been updated to ${newStock}.`,
         });
-        return;
+      } else {
+        // Item doesn't exist, create a new one
+        const itemToAdd = {
+          name: newItem.name,
+          category: newItem.category,
+          stock: stock,
+          threshold: threshold,
+          expiry_date: newItem.expiryDate || null,
+          status: status,
+          item_code: newItem.itemCode,
+          unit_cost: unitCost,
+          supplier_name: newItem.supplierName,
+        };
+        
+        console.log("Adding new item to inventory:", itemToAdd);
+        const { data, error: insertError } = await supabase
+          .from('inventory')
+          .insert(itemToAdd)
+          .select();
+        
+        if (insertError) {
+          console.error("Error adding new item to inventory:", insertError);
+          toast({
+            title: "Error",
+            description: `Failed to add item: ${insertError.message}`,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("New item added successfully:", data);
+        toast({
+          title: "Item added",
+          description: `${itemToAdd.name} has been added to inventory.`,
+        });
       }
-      
-      console.log("Item added successfully:", data);
-      toast({
-        title: "Item added",
-        description: `${itemToAdd.name} has been added to inventory.`,
-      });
       
       // Reset form and close dialog
       setNewItem({
@@ -215,10 +271,10 @@ const Inventory = () => {
       // Refresh inventory data
       refetch();
     } catch (err) {
-      console.error("Exception adding item:", err);
+      console.error("Exception processing inventory item:", err);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while adding the item.",
+        description: "An unexpected error occurred while processing the item.",
         variant: "destructive",
       });
     }
