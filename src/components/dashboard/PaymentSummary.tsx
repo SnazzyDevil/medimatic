@@ -11,7 +11,7 @@ const fetchPaymentSummary = async () => {
   // Get all invoices
   const { data: invoicesData, error: invoicesError } = await supabase
     .from('invoices')
-    .select('id, total_amount, paid_amount, invoice_date, status, created_at')
+    .select('id, total_amount, paid_amount, invoice_date, status, created_at, patient_id')
     .order('invoice_date', { ascending: false });
   
   if (invoicesError) throw invoicesError;
