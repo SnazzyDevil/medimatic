@@ -82,7 +82,6 @@ const Dispensing = () => {
         prescriber: item.prescriber,
         prescribedDate: new Date(item.created_at).toISOString().split('T')[0],
         status: "pending",
-        // Add warnings array using duration_of_treatment if available
         warnings: item.duration_of_treatment ? [item.duration_of_treatment] : [],
         interactions: []
       }));
@@ -141,7 +140,8 @@ const Dispensing = () => {
 
   const handleCompleteDispensing = async () => {
     const matchingInventoryItem = inventoryData.find(
-      item => item.name.toLowerCase() === selectedMedication.name.toLowerCase()
+      item => item.name.toLowerCase() === selectedMedication.name.toLowerCase() && 
+             (item.dosage === selectedMedication.dosage || !item.dosage)
     );
     
     if (matchingInventoryItem) {
@@ -217,6 +217,15 @@ const Dispensing = () => {
       
       if (matchingInventoryItem) {
         medicationId = matchingInventoryItem.id;
+        
+        if (matchingInventoryItem.stock < parseInt(newPrescription.quantity)) {
+          toast({
+            title: "Insufficient Stock",
+            description: `Only ${matchingInventoryItem.stock} units of ${newPrescription.medicationName} available.`,
+            variant: "destructive"
+          });
+          return;
+        }
       }
       
       const { data, error } = await supabase
@@ -240,7 +249,8 @@ const Dispensing = () => {
       if (error) throw error;
       
       if (matchingInventoryItem) {
-        const newStock = Math.max(0, matchingInventoryItem.stock - parseInt(newPrescription.quantity));
+        const quantity = parseInt(newPrescription.quantity);
+        const newStock = Math.max(0, matchingInventoryItem.stock - quantity);
         const status = newStock < matchingInventoryItem.threshold ? "low" : "normal";
         
         const { error: updateError } = await supabase

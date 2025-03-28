@@ -26,7 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, ilike } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 const ITEM_CATEGORIES = {
@@ -158,33 +158,41 @@ const Inventory = () => {
       return;
     }
     
-    // Check if an item with the same name and code already exists
-    const { data: existingItems, error: searchError } = await supabase
-      .from('inventory')
-      .select('*')
-      .eq('name', newItem.name)
-      .eq('item_code', newItem.itemCode);
-    
-    if (searchError) {
-      console.error("Error searching for existing item:", searchError);
-      toast({
-        title: "Error",
-        description: `Failed to check for existing items: ${searchError.message}`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
     try {
+      // Normalize input data
+      const itemName = newItem.name.trim();
+      const itemCode = newItem.itemCode.trim();
       const stock = parseInt(newItem.stock);
       const threshold = parseInt(newItem.threshold);
-      const status = stock < threshold ? "low" : "normal";
       const unitCost = parseFloat(newItem.unitCost);
       
-      if (existingItems && existingItems.length > 0) {
-        // Item exists, update the stock
-        const existingItem = existingItems[0];
-        const newStock = existingItem.stock + stock;
+      // First, check if an item with the same name AND code exists using case-insensitive search
+      const { data: existingItems, error: searchError } = await supabase
+        .from('inventory')
+        .select('*')
+        .or(`name.ilike.${itemName},item_code.ilike.${itemCode}`);
+      
+      if (searchError) {
+        console.error("Error searching for existing item:", searchError);
+        toast({
+          title: "Error",
+          description: `Failed to check for existing items: ${searchError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Find exact match for both name and code (case insensitive)
+      const exactMatch = existingItems?.find(
+        item => item.name.toLowerCase() === itemName.toLowerCase() && 
+               item.item_code.toLowerCase() === itemCode.toLowerCase()
+      );
+      
+      if (exactMatch) {
+        // Item exists, update the stock and other fields
+        console.log("Existing item found, updating stock:", exactMatch);
+        
+        const newStock = exactMatch.stock + stock;
         const newStatus = newStock < threshold ? "low" : "normal";
         
         const { data, error: updateError } = await supabase
@@ -194,12 +202,12 @@ const Inventory = () => {
             status: newStatus,
             // Update other fields that might have changed
             threshold: threshold,
-            expiry_date: newItem.expiryDate || existingItem.expiry_date,
+            expiry_date: newItem.expiryDate || exactMatch.expiry_date,
             unit_cost: unitCost,
             supplier_name: newItem.supplierName,
             updated_at: new Date().toISOString()
           })
-          .eq('id', existingItem.id)
+          .eq('id', exactMatch.id)
           .select();
         
         if (updateError) {
@@ -215,18 +223,19 @@ const Inventory = () => {
         console.log("Item updated successfully:", data);
         toast({
           title: "Item updated",
-          description: `${newItem.name} stock has been updated to ${newStock}.`,
+          description: `${itemName} stock has been updated to ${newStock}.`,
         });
       } else {
-        // Item doesn't exist, create a new one
+        // Item doesn't exist with both the same name AND code, create a new one
+        const status = stock < threshold ? "low" : "normal";
         const itemToAdd = {
-          name: newItem.name,
+          name: itemName,
           category: newItem.category,
           stock: stock,
           threshold: threshold,
           expiry_date: newItem.expiryDate || null,
           status: status,
-          item_code: newItem.itemCode,
+          item_code: itemCode,
           unit_cost: unitCost,
           supplier_name: newItem.supplierName,
         };
