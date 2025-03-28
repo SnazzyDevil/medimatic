@@ -13,7 +13,7 @@ const fetchRecentActivity = async () => {
     .from('dispensing')
     .select('id, patient_name, medication_name, created_at')
     .order('created_at', { ascending: false })
-    .limit(2);
+    .limit(3);
   
   if (dispensingError) throw dispensingError;
   
@@ -22,7 +22,7 @@ const fetchRecentActivity = async () => {
     .from('inventory')
     .select('id, name, updated_at')
     .order('updated_at', { ascending: false })
-    .limit(1);
+    .limit(2);
   
   if (inventoryError) throw inventoryError;
   
@@ -31,9 +31,26 @@ const fetchRecentActivity = async () => {
     .from('appointments')
     .select('id, patient_id, appointment_date, created_at')
     .order('created_at', { ascending: false })
-    .limit(1);
+    .limit(2);
   
   if (appointmentsError) throw appointmentsError;
+  
+  // Get patient data for appointment records
+  let patientMap = {};
+  if (appointmentsData && appointmentsData.length > 0) {
+    const patientIds = appointmentsData.map(a => a.patient_id);
+    const { data: patientData, error: patientError } = await supabase
+      .from('patients')
+      .select('id, first_name, last_name')
+      .in('id', patientIds);
+    
+    if (!patientError && patientData) {
+      patientMap = patientData.reduce((acc, patient) => {
+        acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
+        return acc;
+      }, {});
+    }
+  }
   
   const activities = [];
   
@@ -45,11 +62,13 @@ const fetchRecentActivity = async () => {
     const time = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     activities.push({
-      id: item.id,
+      id: `dispensing-${item.id}`,
       action: "Prescription filled",
       patient: item.patient_name,
+      medication: item.medication_name,
       time: isToday ? time : "Yesterday",
-      date: isToday ? "Today" : createdAt.toLocaleDateString()
+      date: isToday ? "Today" : createdAt.toLocaleDateString(),
+      timestamp: createdAt.getTime()
     });
   });
   
@@ -61,11 +80,12 @@ const fetchRecentActivity = async () => {
     const time = updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     activities.push({
-      id: item.id,
+      id: `inventory-${item.id}`,
       action: "Inventory updated",
       item: item.name,
       time: isToday ? time : "Yesterday",
-      date: isToday ? "Today" : updatedAt.toLocaleDateString()
+      date: isToday ? "Today" : updatedAt.toLocaleDateString(),
+      timestamp: updatedAt.getTime()
     });
   });
   
@@ -75,24 +95,23 @@ const fetchRecentActivity = async () => {
     const today = new Date();
     const isToday = createdAt.toDateString() === today.toDateString();
     const time = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const patientName = patientMap[item.patient_id] || `Patient ID: ${item.patient_id}`;
     
     activities.push({
-      id: item.id,
+      id: `appointment-${item.id}`,
       action: "Appointment scheduled",
-      patient: `Patient ID: ${item.patient_id}`,
+      patient: patientName,
+      appointmentDate: new Date(item.appointment_date).toLocaleDateString(),
       time: isToday ? time : "Yesterday",
-      date: isToday ? "Today" : createdAt.toLocaleDateString()
+      date: isToday ? "Today" : createdAt.toLocaleDateString(),
+      timestamp: createdAt.getTime()
     });
   });
   
-  // Sort by time (assuming most recent first)
-  activities.sort((a, b) => {
-    if (a.date === "Today" && b.date !== "Today") return -1;
-    if (a.date !== "Today" && b.date === "Today") return 1;
-    return 0;
-  });
+  // Sort by timestamp (most recent first)
+  activities.sort((a, b) => b.timestamp - a.timestamp);
   
-  return activities;
+  return activities.slice(0, 5); // Return only the 5 most recent activities
 };
 
 export function RecentActivity() {
@@ -131,7 +150,10 @@ export function RecentActivity() {
                   </div>
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
-                  {item.patient ? `Patient: ${item.patient}` : `Item: ${item.item}`}
+                  {item.patient && `Patient: ${item.patient}`}
+                  {item.medication && `, Medication: ${item.medication}`}
+                  {item.item && `Item: ${item.item}`}
+                  {item.appointmentDate && `, Date: ${item.appointmentDate}`}
                 </div>
                 <div className="flex items-center text-xs text-gray-500 mt-1">
                   <Calendar className="h-3 w-3 mr-1" />

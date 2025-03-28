@@ -10,7 +10,7 @@ const fetchInventoryAlerts = async () => {
   // Get low stock items
   const { data: lowStockData, error: lowStockError } = await supabase
     .from('inventory')
-    .select('id, name, stock, threshold, category')
+    .select('id, name, stock, threshold, category, updated_at')
     .lt('stock', 10)
     .limit(5);
   
@@ -21,10 +21,10 @@ const fetchInventoryAlerts = async () => {
   thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
   const { data: expiringData, error: expiringError } = await supabase
     .from('inventory')
-    .select('id, name, expiry_date, category')
+    .select('id, name, expiry_date, category, updated_at')
     .lt('expiry_date', thirtyDaysLater.toISOString().split('T')[0])
     .gt('expiry_date', new Date().toISOString().split('T')[0])
-    .limit(2);
+    .limit(5);
   
   if (expiringError) throw expiringError;
   
@@ -33,13 +33,17 @@ const fetchInventoryAlerts = async () => {
   
   // Add low stock alerts
   lowStockData.forEach(item => {
+    const updatedAt = new Date(item.updated_at);
+    const now = new Date();
+    const hoursDiff = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60));
+    
     if (item.stock === 0) {
       alerts.push({
         id: item.id,
         type: "Out of Stock",
         description: `${item.name} - ${item.category}`,
         severity: "Critical",
-        time: `${Math.floor(Math.random() * 24)} hours ago`,
+        time: `${hoursDiff} hours ago`,
         icon: AlertTriangle,
         color: "#f43f5e", // rose-500
       });
@@ -49,7 +53,7 @@ const fetchInventoryAlerts = async () => {
         type: "Low Stock",
         description: `${item.name} - ${item.stock} units remaining`,
         severity: "Low Stock",
-        time: `${Math.floor(Math.random() * 24)} hours ago`,
+        time: `${hoursDiff} hours ago`,
         icon: AlertTriangle,
         color: "#f97316", // orange-500
       });
@@ -59,12 +63,16 @@ const fetchInventoryAlerts = async () => {
   // Add expiring alerts
   expiringData.forEach(item => {
     const daysToExpiry = Math.floor((new Date(item.expiry_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const updatedAt = new Date(item.updated_at);
+    const now = new Date();
+    const hoursDiff = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60));
+    
     alerts.push({
       id: item.id,
       type: "Expiring Soon",
       description: `${item.name}`,
       severity: `Expires in ${daysToExpiry} days`,
-      time: `${Math.floor(Math.random() * 12)} hours ago`,
+      time: `${hoursDiff} hours ago`,
       icon: Clock,
       color: "#f59e0b", // amber-500
     });

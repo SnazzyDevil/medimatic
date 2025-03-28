@@ -1,5 +1,4 @@
 
-import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 const fetchTopMedications = async () => {
   const { data, error } = await supabase
     .from('inventory')
-    .select('name, stock, category')
+    .select('id, name, stock, category, unit_cost')
     .order('stock', { ascending: false })
     .limit(6);
   
@@ -38,9 +37,12 @@ export function InventoryLevels() {
   
   // Transform data for chart
   const chartData = inventoryData?.map((item, index) => ({
+    id: item.id,
     name: item.name,
     quantity: item.stock,
     color: colors[index % colors.length],
+    cost: item.unit_cost,
+    category: item.category
   })) || [];
   
   return (
@@ -93,6 +95,12 @@ export function InventoryLevels() {
                     border: "none"
                   }}
                   labelStyle={{ fontWeight: "bold", color: "#1e293b" }}
+                  formatter={(value, name, props) => {
+                    if (name === "quantity") {
+                      return [`${value} units`, "Quantity"];
+                    }
+                    return [value, name];
+                  }}
                 />
                 <Bar 
                   dataKey="quantity" 

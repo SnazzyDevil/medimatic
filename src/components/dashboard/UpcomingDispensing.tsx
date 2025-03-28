@@ -10,10 +10,9 @@ const fetchUpcomingDispensing = async () => {
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase
     .from('dispensing')
-    .select('id, patient_name, medication_name, dispensing_date')
+    .select('id, patient_name, medication_name, dispensing_date, created_at, dispensing_staff')
     .eq('dispensing_date', today)
-    .order('created_at', { ascending: false })
-    .limit(3);
+    .order('created_at', { ascending: false });
   
   if (error) throw error;
   
@@ -21,8 +20,9 @@ const fetchUpcomingDispensing = async () => {
     id: item.id,
     patientName: item.patient_name,
     medication: item.medication_name,
-    time: new Date().getHours() + ":" + (Math.floor(Math.random() * 6) * 10).toString().padStart(2, '0') + " " + (new Date().getHours() < 12 ? "AM" : "PM"),
+    time: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     status: "Scheduled",
+    staff: item.dispensing_staff
   }));
 };
 
@@ -72,7 +72,7 @@ export function UpcomingDispensing() {
                 </div>
                 <div className="flex items-center text-gray-500 mt-1 text-xs">
                   <Clock className="h-3 w-3 mr-1.5" />
-                  Today at {schedule.time}
+                  Today at {schedule.time} by {schedule.staff}
                 </div>
               </div>
             ))}

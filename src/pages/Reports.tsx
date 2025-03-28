@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Download, Filter, X } from "lucide-react";
@@ -37,8 +38,90 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/layout/Header";
 
 type ReportType = "inventory" | "patients" | "financials" | "dispensing";
+
+// Function to fetch inventory data
+const fetchInventoryData = async () => {
+  const { data, error } = await supabase
+    .from('inventory')
+    .select('id, item_code, name, category, stock, unit_cost, supplier_name, status')
+    .order('name', { ascending: true });
+  
+  if (error) throw error;
+  
+  return data || [];
+};
+
+// Function to fetch patients data
+const fetchPatientsData = async () => {
+  const { data, error } = await supabase
+    .from('patients')
+    .select('id, first_name, last_name, contact_number, email, medical_aid_number, address')
+    .order('last_name', { ascending: true });
+  
+  if (error) throw error;
+  
+  return data.map(patient => ({
+    id: patient.id,
+    name: `${patient.first_name} ${patient.last_name}`,
+    contact: patient.contact_number,
+    email: patient.email || 'N/A',
+    medicalAid: patient.medical_aid_number || 'N/A',
+    address: patient.address || 'N/A'
+  })) || [];
+};
+
+// Function to fetch financial data
+const fetchFinancialData = async () => {
+  const { data: invoicesData, error: invoicesError } = await supabase
+    .from('invoices')
+    .select('id, patient_id, invoice_date, total_amount, status, paid_amount')
+    .order('invoice_date', { ascending: false });
+  
+  if (invoicesError) throw invoicesError;
+  
+  // Get patient names
+  const patientIds = invoicesData.map(inv => inv.patient_id);
+  const { data: patientsData, error: patientsError } = await supabase
+    .from('patients')
+    .select('id, first_name, last_name')
+    .in('id', patientIds);
+  
+  if (patientsError) throw patientsError;
+  
+  // Create patient lookup
+  const patientMap = patientsData.reduce((acc, p) => {
+    acc[p.id] = `${p.first_name} ${p.last_name}`;
+    return acc;
+  }, {});
+  
+  // Format financial data
+  return invoicesData.map(inv => ({
+    id: inv.id,
+    invoiceNumber: `INV-${inv.id.substring(0, 8)}`,
+    patient: patientMap[inv.patient_id] || 'Unknown Patient',
+    date: new Date(inv.invoice_date).toLocaleDateString(),
+    amount: inv.total_amount,
+    status: inv.status,
+    paymentMethod: inv.paid_amount > 0 ? 'Credit Card' : 'Pending'
+  })) || [];
+};
+
+// Function to fetch dispensing data
+const fetchDispensingData = async () => {
+  const { data, error } = await supabase
+    .from('dispensing')
+    .select('id, medication_name, patient_name, quantity, dosage, frequency, dispensing_staff, dispensing_date')
+    .order('dispensing_date', { ascending: false });
+  
+  if (error) throw error;
+  
+  return data || [];
+};
 
 export default function Reports() {
   const [fromDate, setFromDate] = useState<Date | undefined>(
@@ -60,6 +143,78 @@ export default function Reports() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Fetch data based on report type
+  const { data: reportData, isLoading } = useQuery({
+    queryKey: ['report-data', reportType],
+    queryFn: () => {
+      switch (reportType) {
+        case 'inventory':
+          return fetchInventoryData();
+        case 'patients':
+          return fetchPatientsData();
+        case 'financials':
+          return fetchFinancialData();
+        case 'dispensing':
+          return fetchDispensingData();
+        default:
+          return [];
+      }
+    }
+  });
+  
+  // Apply filters to the data
+  const getFilteredData = () => {
+    if (!reportData) return [];
+    
+    let filtered = [...reportData];
+    
+    // Apply amount filter if present
+    if (filterOptions.minAmount && filterOptions.maxAmount) {
+      const min = parseFloat(filterOptions.minAmount);
+      const max = parseFloat(filterOptions.maxAmount);
+      
+      if (reportType === 'inventory') {
+        filtered = filtered.filter(item => 
+          item.unit_cost >= min && item.unit_cost <= max
+        );
+      } else if (reportType === 'financials') {
+        filtered = filtered.filter(item => 
+          item.amount >= min && item.amount <= max
+        );
+      }
+    } else if (filterOptions.minAmount) {
+      const min = parseFloat(filterOptions.minAmount);
+      
+      if (reportType === 'inventory') {
+        filtered = filtered.filter(item => item.unit_cost >= min);
+      } else if (reportType === 'financials') {
+        filtered = filtered.filter(item => item.amount >= min);
+      }
+    } else if (filterOptions.maxAmount) {
+      const max = parseFloat(filterOptions.maxAmount);
+      
+      if (reportType === 'inventory') {
+        filtered = filtered.filter(item => item.unit_cost <= max);
+      } else if (reportType === 'financials') {
+        filtered = filtered.filter(item => item.amount <= max);
+      }
+    }
+    
+    // Apply status filter if present
+    if (filterOptions.status && filterOptions.status !== 'all-statuses') {
+      filtered = filtered.filter(item => item.status === filterOptions.status);
+    }
+    
+    // Apply category filter if present
+    if (filterOptions.category && filterOptions.category !== 'all-categories') {
+      if (reportType === 'inventory') {
+        filtered = filtered.filter(item => item.category === filterOptions.category);
+      }
+    }
+    
+    return filtered;
+  };
+
   const handleGenerateReport = async () => {
     if (!fromDate || !toDate) {
       toast({
@@ -75,12 +230,10 @@ export default function Reports() {
       const fromDateStr = format(fromDate, "yyyy-MM-dd");
       const toDateStr = format(toDate, "yyyy-MM-dd");
       
-      const headers = getReportHeaders(reportType);
-      const sampleData = getSampleData(reportType);
+      const filteredData = getFilteredData();
+      const csvData = prepareCSVData(filteredData);
       
-      const csvContent = `${headers.join(",")}\n${sampleData.map(row => row.join(",")).join("\n")}`;
-      
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       
       const link = document.createElement("a");
@@ -108,6 +261,25 @@ export default function Reports() {
     }
   };
 
+  const prepareCSVData = (data) => {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvHeader = headers.join(',');
+    const csvRows = data.map(row => {
+      return headers.map(header => {
+        const value = row[header];
+        // Escape quotes and wrap fields with commas in quotes
+        const formatted = typeof value === 'string' && value.includes(',') 
+          ? `"${value.replace(/"/g, '""')}"` 
+          : value;
+        return formatted;
+      }).join(',');
+    });
+    
+    return [csvHeader, ...csvRows].join('\n');
+  };
+
   const applyFilters = () => {
     const newFilters: string[] = [];
     
@@ -119,11 +291,11 @@ export default function Reports() {
       newFilters.push(`Max Amount: R${filterOptions.maxAmount}`);
     }
     
-    if (filterOptions.status) {
+    if (filterOptions.status && filterOptions.status !== 'all-statuses') {
       newFilters.push(`Status: ${filterOptions.status}`);
     }
     
-    if (filterOptions.category) {
+    if (filterOptions.category && filterOptions.category !== 'all-categories') {
       newFilters.push(`Category: ${filterOptions.category}`);
     }
     
@@ -159,79 +331,23 @@ export default function Reports() {
     setShowFilters(newFilters.length > 0);
   };
 
-  const getReportHeaders = (type: ReportType): string[] => {
-    switch (type) {
-      case "inventory":
-        return ["Item Code", "Name", "Category", "Quantity", "Unit Cost", "Supplier", "Status"];
-      case "patients":
-        return ["Patient ID", "Name", "Contact", "Email", "Medical Aid Number", "Address"];
-      case "financials":
-        return ["Invoice Number", "Patient", "Date", "Amount", "Status", "Payment Method"];
-      case "dispensing":
-        return ["Medication", "Patient", "Quantity", "Dosage", "Frequency", "Dispensed By", "Dispensing Date"];
-      default:
-        return [];
+  // Get available categories based on the report type
+  const getFilterCategories = () => {
+    if (!reportData || reportData.length === 0) return [];
+    
+    if (reportType === 'inventory') {
+      const categories = new Set(reportData.map(item => item.category));
+      return Array.from(categories);
     }
-  };
-
-  const getSampleData = (type: ReportType): string[][] => {
-    switch (type) {
-      case "inventory":
-        return [
-          ["MED001", "Paracetamol 500mg", "Analgesics", "240", "R 0.15", "PharmSupply Inc", "In Stock"],
-          ["MED002", "Amoxicillin 250mg", "Antibiotics", "180", "R 0.25", "MedSource Ltd", "Low Stock"],
-          ["MED003", "Salbutamol Inhaler", "Respiratory", "45", "R 12.50", "BreathEasy Co", "In Stock"],
-          ["MED004", "Metformin 500mg", "Diabetes", "320", "R 0.18", "DiaCare Supplies", "In Stock"],
-          ["MED005", "Lisinopril 10mg", "Cardiovascular", "90", "R 0.30", "HeartHealth Ltd", "Out of Stock"]
-        ];
-      case "patients":
-        return [
-          ["PAT001", "John Smith", "555-123-4567", "john.smith@email.com", "MA12345", "123 Main St"],
-          ["PAT002", "Sarah Johnson", "555-234-5678", "sarah.j@email.com", "MA23456", "456 Oak Ave"],
-          ["PAT003", "Michael Brown", "555-345-6789", "m.brown@email.com", "MA34567", "789 Pine Dr"],
-          ["PAT004", "Emily Davis", "555-456-7890", "e.davis@email.com", "MA45678", "101 Cedar Ln"],
-          ["PAT005", "David Wilson", "555-567-8901", "d.wilson@email.com", "MA56789", "202 Maple Rd"]
-        ];
-      case "financials":
-        return [
-          ["INV2024-001", "John Smith", "2024-05-01", "R 125.00", "Paid", "Credit Card"],
-          ["INV2024-002", "Sarah Johnson", "2024-05-03", "R 75.50", "Pending", "Insurance"],
-          ["INV2024-003", "Michael Brown", "2024-05-05", "R 210.25", "Paid", "Cash"],
-          ["INV2024-004", "Emily Davis", "2024-05-08", "R 45.00", "Overdue", "Credit Card"],
-          ["INV2024-005", "David Wilson", "2024-05-10", "R 180.75", "Paid", "Insurance"]
-        ];
-      case "dispensing":
-        return [
-          ["Paracetamol 500mg", "John Smith", "30", "1 tablet", "3x daily", "Dr. Jones", "2024-05-01"],
-          ["Amoxicillin 250mg", "Sarah Johnson", "21", "1 capsule", "3x daily", "Dr. Smith", "2024-05-03"],
-          ["Salbutamol Inhaler", "Michael Brown", "1", "2 puffs", "As needed", "Dr. Wilson", "2024-05-05"],
-          ["Metformin 500mg", "Emily Davis", "60", "1 tablet", "2x daily", "Dr. Harris", "2024-05-08"],
-          ["Lisinopril 10mg", "David Wilson", "30", "1 tablet", "Daily", "Dr. Taylor", "2024-05-10"]
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const getFilterCategories = (): string[] => {
-    switch (reportType) {
-      case "inventory":
-        return ["Antibiotics", "Pain Relief", "Respiratory", "Diabetes", "Cardiovascular"];
-      case "patients":
-        return ["Male", "Female", "Pediatric", "Geriatric", "New Patients"];
-      case "financials":
-        return ["Consultations", "Medications", "Procedures", "Lab Tests", "Supplies"];
-      case "dispensing":
-        return ["Antibiotics", "Pain Relief", "Respiratory", "Diabetes", "Cardiovascular"];
-      default:
-        return [];
-    }
+    
+    return [];
   };
 
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
       <main className="flex-1 pl-16 px-4 py-8 md:px-8 lg:px-12">
+        <Header />
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="font-semibold text-2xl">Reports</h1>
@@ -330,7 +446,7 @@ export default function Reports() {
               <Button 
                 className="gap-2" 
                 onClick={handleGenerateReport} 
-                disabled={isGenerating || !fromDate || !toDate}
+                disabled={isGenerating || !fromDate || !toDate || isLoading || !reportData}
               >
                 <Download className="h-4 w-4" />
                 {isGenerating ? "Generating..." : "Generate Report"}
@@ -379,24 +495,38 @@ export default function Reports() {
             
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {getReportHeaders(reportType).map((header, i) => (
-                        <TableHead key={i}>{header}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getSampleData(reportType).map((row, i) => (
-                      <TableRow key={i}>
-                        {row.map((cell, j) => (
-                          <TableCell key={j}>{cell}</TableCell>
+                {isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : !reportData || reportData.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    No data available for this report type
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {Object.keys(reportData[0]).map((header) => (
+                          <TableHead key={header}>
+                            {header.charAt(0).toUpperCase() + header.slice(1).replace(/([A-Z])/g, ' $1')}
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredData().slice(0, 5).map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                          {Object.values(row).map((cell, cellIndex) => (
+                            <TableCell key={cellIndex}>
+                              {cell !== null && cell !== undefined ? cell.toString() : 'N/A'}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </div>
           </div>
@@ -450,34 +580,44 @@ export default function Reports() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all-statuses">All</SelectItem>
-                  <SelectItem value="In Stock">In Stock</SelectItem>
-                  <SelectItem value="Low Stock">Low Stock</SelectItem>
-                  <SelectItem value="Out of Stock">Out of Stock</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem key="all-statuses" value="all-statuses">All</SelectItem>
+                  {reportType === "inventory" && (
+                    <>
+                      <SelectItem key="In Stock" value="In Stock">In Stock</SelectItem>
+                      <SelectItem key="Low Stock" value="Low Stock">Low Stock</SelectItem>
+                      <SelectItem key="Out of Stock" value="Out of Stock">Out of Stock</SelectItem>
+                    </>
+                  )}
+                  {reportType === "financials" && (
+                    <>
+                      <SelectItem key="paid" value="paid">Paid</SelectItem>
+                      <SelectItem key="pending" value="pending">Pending</SelectItem>
+                      <SelectItem key="overdue" value="overdue">Overdue</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={filterOptions.category}
-                onValueChange={(value) => setFilterOptions({...filterOptions, category: value})}
-              >
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-categories">All</SelectItem>
-                  {getFilterCategories().map((category, index) => (
-                    <SelectItem key={index} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {reportType === "inventory" && (
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={filterOptions.category}
+                  onValueChange={(value) => setFilterOptions({...filterOptions, category: value})}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem key="all-categories" value="all-categories">All</SelectItem>
+                    {getFilterCategories().map((category, index) => (
+                      <SelectItem key={`category-${index}`} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFilterDialogOpen(false)}>Cancel</Button>

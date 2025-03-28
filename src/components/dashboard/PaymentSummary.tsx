@@ -1,3 +1,4 @@
+
 import { ArrowRight, CreditCard, Banknote, Receipt, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Function to fetch payment summary data
 const fetchPaymentSummary = async () => {
-  // Get total revenue
+  // Get all invoices
   const { data: invoicesData, error: invoicesError } = await supabase
     .from('invoices')
-    .select('id, total_amount, paid_amount, invoice_date, status')
-    .order('invoice_date', { ascending: false })
-    .limit(10);
+    .select('id, total_amount, paid_amount, invoice_date, status, created_at')
+    .order('invoice_date', { ascending: false });
   
   if (invoicesError) throw invoicesError;
   
@@ -49,16 +49,39 @@ const fetchPaymentSummary = async () => {
     percentChange = ((currentWeekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100;
   }
   
-  // Get recent payments
-  const recentPayments = invoicesData
+  // Get patient data for recent payments
+  const paidInvoices = invoicesData
     .filter(invoice => invoice.status === 'paid' || invoice.paid_amount > 0)
-    .map(invoice => ({
-      id: invoice.id,
-      invoiceNumber: `INV-${invoice.id.substring(0, 8)}`,
-      date: new Date(invoice.invoice_date).toLocaleDateString(),
-      amount: invoice.paid_amount
-    }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 2);
+  
+  let patientMap = {};
+  if (paidInvoices.length > 0) {
+    const patientIds = paidInvoices.map(invoice => invoice.patient_id).filter(Boolean);
+    
+    if (patientIds.length > 0) {
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('id, first_name, last_name')
+        .in('id', patientIds);
+        
+      if (!patientError && patientData) {
+        patientMap = patientData.reduce((acc, patient) => {
+          acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
+          return acc;
+        }, {});
+      }
+    }
+  }
+  
+  // Format recent payments
+  const recentPayments = paidInvoices.map(invoice => ({
+    id: invoice.id,
+    invoiceNumber: `INV-${invoice.id.substring(0, 8)}`,
+    date: new Date(invoice.invoice_date).toLocaleDateString(),
+    amount: invoice.paid_amount,
+    patientName: patientMap[invoice.patient_id] || "Patient"
+  }));
   
   return {
     revenue: currentWeekRevenue,
@@ -128,7 +151,7 @@ export function PaymentSummary() {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-800">{payment.invoiceNumber}</div>
-                          <div className="text-xs text-gray-500">{payment.date}</div>
+                          <div className="text-xs text-gray-500">{payment.patientName} - {payment.date}</div>
                         </div>
                       </div>
                       <div className="font-medium text-gray-800">R {Number(payment.amount).toFixed(2)}</div>
