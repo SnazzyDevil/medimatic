@@ -1081,9 +1081,9 @@ const SettingsPage = () => {
                           <SelectValue placeholder="Select complexity" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low" key="low">Low</SelectItem>
-                          <SelectItem value="medium" key="medium">Medium</SelectItem>
-                          <SelectItem value="high" key="high">High</SelectItem>
+                          <SelectItem key="low" value="low">Low</SelectItem>
+                          <SelectItem key="medium" value="medium">Medium</SelectItem>
+                          <SelectItem key="high" value="high">High</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1309,20 +1309,20 @@ const SettingsPage = () => {
                             <SelectValue placeholder="Select events" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all" key="all">All Events</SelectItem>
-                            <SelectItem value="appointments" key="appointments">Appointments Only</SelectItem>
-                            <SelectItem value="patients" key="patients">Patient Updates Only</SelectItem>
-                            <SelectItem value="billing" key="billing">Billing Events Only</SelectItem>
-                            <SelectItem value="patient.created" key="patient.created">Patient Created</SelectItem>
-                            <SelectItem value="appointment.scheduled" key="appointment.scheduled">Appointment Scheduled</SelectItem>
-                            <SelectItem value="invoice.paid" key="invoice.paid">Invoice Paid</SelectItem>
-                            <SelectItem value="GET" key="GET">GET</SelectItem>
-                            <SelectItem value="POST" key="POST">POST</SelectItem>
-                            <SelectItem value="PUT" key="PUT">PUT</SelectItem>
-                            <SelectItem value="DELETE" key="DELETE">DELETE</SelectItem>
-                            <SelectItem value="json" key="json">JSON</SelectItem>
-                            <SelectItem value="xml" key="xml">XML</SelectItem>
-                            <SelectItem value="form" key="form">Form Data</SelectItem>
+                            <SelectItem key="all" value="all">All Events</SelectItem>
+                            <SelectItem key="appointments" value="appointments">Appointments Only</SelectItem>
+                            <SelectItem key="patients" value="patients">Patient Updates Only</SelectItem>
+                            <SelectItem key="billing" value="billing">Billing Events Only</SelectItem>
+                            <SelectItem key="patient.created" value="patient.created">Patient Created</SelectItem>
+                            <SelectItem key="appointment.scheduled" value="appointment.scheduled">Appointment Scheduled</SelectItem>
+                            <SelectItem key="invoice.paid" value="invoice.paid">Invoice Paid</SelectItem>
+                            <SelectItem key="GET" value="GET">GET</SelectItem>
+                            <SelectItem key="POST" value="POST">POST</SelectItem>
+                            <SelectItem key="PUT" value="PUT">PUT</SelectItem>
+                            <SelectItem key="DELETE" value="DELETE">DELETE</SelectItem>
+                            <SelectItem key="json" value="json">JSON</SelectItem>
+                            <SelectItem key="xml" value="xml">XML</SelectItem>
+                            <SelectItem key="form" value="form">Form Data</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
