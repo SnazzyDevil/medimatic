@@ -1,1038 +1,756 @@
-
 import { useState, useEffect } from "react";
-import { AlertTriangle, Clock, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Search,
+  Edit,
+  Trash2,
+  PlusCircle,
+  ArrowDown,
+  ArrowUp,
+  AlertTriangle,
+  CheckCircle,
+  XCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-
-const ITEM_CATEGORIES = {
-  medications: ["Antibiotic", "Pain Relief", "Blood Pressure", "Diabetes", "Respiratory", "Other"],
-  supplies: ["PPE", "Equipment", "Consumables", "Other"],
-  equipment: ["Diagnostic", "Surgical", "Monitoring", "Treatment", "Other"]
-};
+import { findInventoryItem } from "@/integrations/supabase/client";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 const Inventory = () => {
-  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [openFilterDialog, setOpenFilterDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState("medications");
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState("");
+
   const [newItem, setNewItem] = useState({
     name: "",
+    item_code: "",
     category: "",
-    stock: "",
-    threshold: "",
-    expiryDate: "",
-    itemCode: "",
-    unitCost: "",
-    supplierName: "",
-    type: "medications",
+    supplier_name: "",
+    unit_cost: 0,
+    stock: 0,
+    threshold: 0,
+    expiry_date: null,
   });
-  
-  const [editItem, setEditItem] = useState({
+
+  const [editedItem, setEditedItem] = useState({
     id: "",
     name: "",
+    item_code: "",
     category: "",
-    stock: "",
-    threshold: "",
-    expiryDate: "",
-    itemCode: "",
-    unitCost: "",
-    supplierName: "",
-    type: "medications",
+    supplier_name: "",
+    unit_cost: 0,
+    stock: 0,
+    threshold: 0,
+    expiry_date: null,
   });
-  
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  
-  // Fetch inventory data from Supabase
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+
   const fetchInventory = async () => {
-    console.log("Fetching inventory data...");
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('*');
-    
-    if (error) {
-      console.error('Error fetching inventory:', error);
-      throw error;
-    }
-    
-    console.log("Inventory data fetched:", data);
-    return data || [];
-  };
-  
-  const { 
-    data: inventoryData, 
-    isLoading, 
-    isError, 
-    error, 
-    refetch 
-  } = useQuery({
-    queryKey: ['inventory'],
-    queryFn: fetchInventory
-  });
-  
-  // Filter helper function
-  const filterItems = (items) => {
-    if (!items) return [];
-    
-    return items.filter(item => {
-      // Search filter
-      const matchesSearch = searchTerm === "" || 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.item_code.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Category filter
-      const matchesCategory = categoryFilter === "" || item.category === categoryFilter;
-      
-      // Status filter
-      const matchesStatus = statusFilter === "" || item.status === statusFilter;
-      
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  };
-  
-  // Process inventory data into medication, supplies and equipment categories
-  const getMedicationsData = () => {
-    if (!inventoryData) return [];
-    const medicationItems = inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.medications.includes(item.category));
-    
-    return filterItems(medicationItems);
-  };
-  
-  const getSuppliesData = () => {
-    if (!inventoryData) return [];
-    const suppliesItems = inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.supplies.includes(item.category));
-    
-    return filterItems(suppliesItems);
-  };
-  
-  const getEquipmentData = () => {
-    if (!inventoryData) return [];
-    const equipmentItems = inventoryData.filter(item => item.category && 
-      ITEM_CATEGORIES.equipment.includes(item.category));
-    
-    return filterItems(equipmentItems);
-  };
-  
-  // Calculate statistics
-  const getLowStockCount = () => {
-    if (!inventoryData) return 0;
-    return inventoryData.filter(item => item.stock < item.threshold).length;
-  };
-  
-  const getExpiringCount = () => {
-    if (!inventoryData) return 0;
-    const today = new Date();
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(today.getDate() + 30);
-    
-    return inventoryData.filter(item => {
-      if (!item.expiry_date) return false;
-      const expiryDate = new Date(item.expiry_date);
-      return expiryDate <= thirtyDaysFromNow && expiryDate >= today;
-    }).length;
-  };
-  
-  const handleAddItem = async () => {
-    if (!newItem.name || !newItem.category || !newItem.stock || !newItem.threshold || !newItem.itemCode || !newItem.unitCost || !newItem.supplierName) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill out all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+    setLoading(true);
     try {
-      // Normalize input data
-      const itemName = newItem.name.trim();
-      const itemCode = newItem.itemCode.trim().toUpperCase();
-      const stock = parseInt(newItem.stock);
-      const threshold = parseInt(newItem.threshold);
-      const unitCost = parseFloat(newItem.unitCost);
-      
-      console.log("Checking for existing item:", { itemName, itemCode });
-      
-      // First, search for similar items using exact match but ignoring case
-      const { data: existingItems, error: searchError } = await supabase
-        .from('inventory')
-        .select('*');
-      
-      if (searchError) {
-        console.error("Error searching for existing item:", searchError);
-        toast({
-          title: "Error",
-          description: `Failed to check for existing items: ${searchError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Find exact match for name OR code (case insensitive)
-      const exactMatches = existingItems?.filter(
-        item => 
-          item.name.toLowerCase() === itemName.toLowerCase() || 
-          item.item_code.toLowerCase() === itemCode.toLowerCase()
-      );
-      
-      console.log("Found matches:", exactMatches);
-      
-      if (exactMatches && exactMatches.length > 0) {
-        // Item exists, update the stock and other fields
-        const existingItem = exactMatches[0];
-        console.log("Existing item found, updating:", existingItem);
-        
-        const newStock = existingItem.stock + stock;
-        const newStatus = newStock < threshold ? "low" : "normal";
-        
-        const { data, error: updateError } = await supabase
-          .from('inventory')
-          .update({ 
-            stock: newStock,
-            status: newStatus,
-            // Update other fields that might have changed
-            threshold: threshold,
-            expiry_date: newItem.expiryDate || existingItem.expiry_date,
-            unit_cost: unitCost,
-            supplier_name: newItem.supplierName,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingItem.id)
-          .select();
-        
-        if (updateError) {
-          console.error("Error updating inventory item:", updateError);
-          toast({
-            title: "Error",
-            description: `Failed to update item: ${updateError.message}`,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        console.log("Item updated successfully:", data);
-        toast({
-          title: "Item updated",
-          description: `${existingItem.name} stock has been updated to ${newStock}.`,
-        });
-      } else {
-        // Item doesn't exist, create a new one
-        const status = stock < threshold ? "low" : "normal";
-        const itemToAdd = {
-          name: itemName,
-          category: newItem.category,
-          stock: stock,
-          threshold: threshold,
-          expiry_date: newItem.expiryDate || null,
-          status: status,
-          item_code: itemCode,
-          unit_cost: unitCost,
-          supplier_name: newItem.supplierName,
-        };
-        
-        console.log("Adding new item to inventory:", itemToAdd);
-        const { data, error: insertError } = await supabase
-          .from('inventory')
-          .insert(itemToAdd)
-          .select();
-        
-        if (insertError) {
-          console.error("Error adding new item to inventory:", insertError);
-          toast({
-            title: "Error",
-            description: `Failed to add item: ${insertError.message}`,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        console.log("New item added successfully:", data);
-        toast({
-          title: "Item added",
-          description: `${itemToAdd.name} has been added to inventory.`,
-        });
-      }
-      
-      // Reset form and close dialog
-      setNewItem({
-        name: "",
-        category: "",
-        stock: "",
-        threshold: "",
-        expiryDate: "",
-        itemCode: "",
-        unitCost: "",
-        supplierName: "",
-        type: "medications",
-      });
-      setOpenAddDialog(false);
-      
-      // Refresh inventory data
-      refetch();
-    } catch (err) {
-      console.error("Exception processing inventory item:", err);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while processing the item.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleEditItem = async () => {
-    if (!editItem.name || !editItem.category || !editItem.stock || !editItem.threshold || !editItem.itemCode || !editItem.unitCost || !editItem.supplierName) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill out all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Normalize input data
-      const itemName = editItem.name.trim();
-      const itemCode = editItem.itemCode.trim().toUpperCase();
-      const stock = parseInt(editItem.stock);
-      const threshold = parseInt(editItem.threshold);
-      const unitCost = parseFloat(editItem.unitCost);
-      const status = stock < threshold ? "low" : "normal";
-      
-      const itemToUpdate = {
-        name: itemName,
-        category: editItem.category,
-        stock: stock,
-        threshold: threshold,
-        expiry_date: editItem.expiryDate || null,
-        status: status,
-        item_code: itemCode,
-        unit_cost: unitCost,
-        supplier_name: editItem.supplierName,
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log("Updating inventory item:", itemToUpdate);
-      const { data, error: updateError } = await supabase
-        .from('inventory')
-        .update(itemToUpdate)
-        .eq('id', editItem.id)
-        .select();
-      
-      if (updateError) {
-        console.error("Error updating inventory item:", updateError);
-        toast({
-          title: "Error",
-          description: `Failed to update item: ${updateError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      console.log("Item updated successfully:", data);
-      toast({
-        title: "Item updated",
-        description: `${itemName} has been updated successfully.`,
-      });
-      
-      // Reset form and close dialog
-      setEditItem({
-        id: "",
-        name: "",
-        category: "",
-        stock: "",
-        threshold: "",
-        expiryDate: "",
-        itemCode: "",
-        unitCost: "",
-        supplierName: "",
-        type: "medications",
-      });
-      setOpenEditDialog(false);
-      
-      // Refresh inventory data
-      refetch();
-    } catch (err) {
-      console.error("Exception updating inventory item:", err);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while updating the item.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleDeleteItem = async () => {
-    if (!selectedItem) return;
-    
-    try {
-      console.log("Deleting inventory item:", selectedItem);
-      const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', selectedItem.id);
-      
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("*")
+        .order("created_at", { ascending: false });
+
       if (error) {
-        console.error("Error deleting inventory item:", error);
+        console.error("Error fetching inventory:", error);
         toast({
           title: "Error",
-          description: `Failed to delete item: ${error.message}`,
+          description: "Failed to fetch inventory",
           variant: "destructive",
         });
         return;
       }
-      
-      toast({
-        title: "Item deleted",
-        description: `${selectedItem.name} has been removed from inventory.`,
-      });
-      
-      setSelectedItem(null);
-      setOpenDeleteDialog(false);
-      
-      // Refresh inventory data
-      refetch();
-    } catch (err) {
-      console.error("Exception deleting inventory item:", err);
+
+      setInventoryData(data);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred while deleting the item.",
+        description: "Failed to fetch inventory",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleTypeChange = (type: string) => {
-    setNewItem({
-      ...newItem,
-      type,
-      category: "",
-    });
-  };
-  
-  const handleEditTypeChange = (type: string) => {
-    setEditItem({
-      ...editItem,
-      type,
-      category: "",
-    });
-  };
-  
-  const openItemForEdit = (item) => {
-    // Determine item type based on category
-    let type = "medications";
-    if (ITEM_CATEGORIES.supplies.includes(item.category)) {
-      type = "supplies";
-    } else if (ITEM_CATEGORIES.equipment.includes(item.category)) {
-      type = "equipment";
-    }
-    
-    setEditItem({
+
+  const handleEditItem = (item) => {
+    setEditedItem({
       id: item.id,
       name: item.name,
+      item_code: item.item_code,
       category: item.category,
-      stock: item.stock.toString(),
-      threshold: item.threshold.toString(),
-      expiryDate: item.expiry_date || "",
-      itemCode: item.item_code,
-      unitCost: item.unit_cost.toString(),
-      supplierName: item.supplier_name,
-      type: type,
+      supplier_name: item.supplier_name,
+      unit_cost: item.unit_cost,
+      stock: item.stock,
+      threshold: item.threshold,
+      expiry_date: item.expiry_date,
     });
-    
+    setSelectedItem(item);
     setOpenEditDialog(true);
   };
-  
-  const openDeleteConfirmation = (item) => {
+
+  const handleDeleteItemConfirmation = (item) => {
     setSelectedItem(item);
     setOpenDeleteDialog(true);
   };
-  
-  // Reset all filters
-  const resetFilters = () => {
-    setSearchTerm("");
-    setCategoryFilter("");
-    setStatusFilter("");
-    setShowFilters(false);
+
+  const handleAddItem = () => {
+    setOpenAddDialog(true);
   };
-  
-  if (isError) {
-    console.error("Error fetching data:", error);
-    return (
-      <div className="min-h-screen flex w-full">
-        <Sidebar />
-        <div className="flex-1 ml-16">
-          <Header />
-          <main className="page-container">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <h2 className="text-red-800 font-medium">Error loading inventory data</h2>
-              <p className="text-red-700">Please try refreshing the page or contact support.</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-  
+
+  const handleUpdateItem = async () => {
+    if (
+      !editedItem.name ||
+      !editedItem.item_code ||
+      !editedItem.category ||
+      !editedItem.supplier_name ||
+      !editedItem.unit_cost ||
+      !editedItem.stock ||
+      !editedItem.threshold
+    ) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("inventory")
+        .update({
+          name: editedItem.name,
+          item_code: editedItem.item_code,
+          category: editedItem.category,
+          supplier_name: editedItem.supplier_name,
+          unit_cost: editedItem.unit_cost,
+          stock: editedItem.stock,
+          threshold: editedItem.threshold,
+          expiry_date: editedItem.expiry_date,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editedItem.id)
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Item Updated",
+        description: `${editedItem.name} has been updated`,
+      });
+
+      fetchInventory();
+      setOpenEditDialog(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Error updating inventory item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update item",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const checkItemReferences = async (itemId) => {
+    try {
+      const { data, error } = await supabase
+        .from('dispensing')
+        .select('id')
+        .eq('medication_id', itemId);
+      
+      if (error) throw error;
+      
+      return data.length > 0;
+    } catch (error) {
+      console.error("Error checking item references:", error);
+      return false;
+    }
+  };
+
+  const handleDeleteItem = async (item) => {
+    console.info("Deleting inventory item:", item);
+
+    try {
+      const isReferenced = await checkItemReferences(item.id);
+      
+      if (isReferenced) {
+        setDeleteError(
+          "Cannot delete this item because it is referenced in dispensing records. Please remove those references first or archive the item instead."
+        );
+        return;
+      }
+
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Item Deleted",
+        description: `${item.name} has been removed from inventory`,
+      });
+
+      fetchInventory();
+      setOpenDeleteDialog(false);
+      setSelectedItem(null);
+      setDeleteError("");
+    } catch (error) {
+      console.error("Error deleting inventory item:", error);
+      setDeleteError(
+        "Failed to delete item. Please try again or contact support."
+      );
+    }
+  };
+
+  const handleCreateItem = async () => {
+    if (
+      !newItem.name ||
+      !newItem.item_code ||
+      !newItem.category ||
+      !newItem.supplier_name ||
+      !newItem.unit_cost ||
+      !newItem.stock ||
+      !newItem.threshold
+    ) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const existingItems = await findInventoryItem(newItem.name, newItem.item_code);
+      if (existingItems && existingItems.length > 0) {
+        toast({
+          title: "Item Already Exists",
+          description: "An item with the same name or item code already exists.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("inventory")
+        .insert([
+          {
+            name: newItem.name,
+            item_code: newItem.item_code,
+            category: newItem.category,
+            supplier_name: newItem.supplier_name,
+            unit_cost: newItem.unit_cost,
+            stock: newItem.stock,
+            threshold: newItem.threshold,
+            expiry_date: newItem.expiry_date,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Item Added",
+        description: `${newItem.name} has been added to inventory`,
+      });
+
+      fetchInventory();
+      setOpenAddDialog(false);
+      setNewItem({
+        name: "",
+        item_code: "",
+        category: "",
+        supplier_name: "",
+        unit_cost: 0,
+        stock: 0,
+        threshold: 0,
+        expiry_date: null,
+      });
+    } catch (error) {
+      console.error("Error adding inventory item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add item",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredInventory = inventoryData.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.item_code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
       <div className="flex-1 ml-16">
         <Header />
         <main className="page-container">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
-            <Button onClick={() => setOpenAddDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="font-semibold text-2xl">Inventory Management</h1>
+            <Button className="btn-hover" onClick={handleAddItem}>
+              <PlusCircle className="h-4 w-4 mr-2" />
               Add Item
             </Button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-            <Card className="bg-white">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Total Inventory Items</h3>
-                  <span className="text-2xl font-bold">{inventoryData?.length || 0}</span>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-amber-700">Low Stock Items</h3>
-                  <span className="text-2xl font-bold text-amber-600">{getLowStockCount()}</span>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-red-700">Expiring Soon</h3>
-                  <span className="text-2xl font-bold text-red-600">{getExpiringCount()}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="bg-white rounded-lg border p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div className="relative w-full sm:w-72">
+
+          <Card className="mb-6 border-healthcare-primary/30">
+            <CardContent className="p-4">
+              <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search inventory..." 
+                <Input
+                  placeholder="Search inventory..."
                   className="pl-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setOpenFilterDialog(true)}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-              </div>
+            </CardContent>
+          </Card>
+
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <p>Loading inventory...</p>
             </div>
-            
-            {showFilters && (
-              <div className="mb-4 p-3 border rounded-md bg-slate-50">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Active filters:</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={resetFilters}
-                    className="h-7 text-xs"
-                  >
-                    Clear all
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {categoryFilter && (
-                    <Badge variant="outline" className="bg-white">
-                      Category: {categoryFilter}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="ml-1 h-4 w-4 p-0"
-                        onClick={() => setCategoryFilter("")}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {statusFilter && (
-                    <Badge variant="outline" className="bg-white">
-                      Status: {statusFilter}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="ml-1 h-4 w-4 p-0"
-                        onClick={() => setStatusFilter("")}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            <Tabs defaultValue="medications" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="medications">Medications</TabsTrigger>
-                <TabsTrigger value="supplies">Supplies</TabsTrigger>
-                <TabsTrigger value="equipment">Equipment</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="medications">
-                {isLoading ? (
-                  <div className="text-center py-8">Loading medications inventory...</div>
-                ) : (
-                  <InventoryTable 
-                    items={getMedicationsData()} 
-                    onEdit={openItemForEdit}
-                    onDelete={openDeleteConfirmation}
-                  />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="supplies">
-                {isLoading ? (
-                  <div className="text-center py-8">Loading supplies inventory...</div>
-                ) : (
-                  <InventoryTable 
-                    items={getSuppliesData()} 
-                    onEdit={openItemForEdit}
-                    onDelete={openDeleteConfirmation}
-                  />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="equipment">
-                {isLoading ? (
-                  <div className="text-center py-8">Loading equipment inventory...</div>
-                ) : (
-                  <InventoryTable 
-                    items={getEquipmentData()} 
-                    onEdit={openItemForEdit}
-                    onDelete={openDeleteConfirmation}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-          
-          {/* Add Item Dialog */}
-          <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add New Inventory Item</DialogTitle>
-                <DialogDescription>
-                  Add a new item to your inventory management system.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="itemName">Item Name</Label>
-                    <Input
-                      id="itemName"
-                      value={newItem.name}
-                      onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                      placeholder="Enter item name"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="itemCode">Item Code</Label>
-                    <Input
-                      id="itemCode"
-                      value={newItem.itemCode}
-                      onChange={(e) => setNewItem({...newItem, itemCode: e.target.value})}
-                      placeholder="e.g., MED-001"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="itemType">Item Type</Label>
-                    <Select
-                      value={newItem.type}
-                      onValueChange={handleTypeChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="medications">Medication</SelectItem>
-                        <SelectItem value="supplies">Supply</SelectItem>
-                        <SelectItem value="equipment">Equipment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select
-                      value={newItem.category}
-                      onValueChange={(value) => setNewItem({...newItem, category: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {newItem.type && ITEM_CATEGORIES[newItem.type]?.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Current Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      min="0"
-                      value={newItem.stock}
-                      onChange={(e) => setNewItem({...newItem, stock: e.target.value})}
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="threshold">Low Stock Threshold</Label>
-                    <Input
-                      id="threshold"
-                      type="number"
-                      min="0"
-                      value={newItem.threshold}
-                      onChange={(e) => setNewItem({...newItem, threshold: e.target.value})}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="unitCost">Unit Cost (R)</Label>
-                    <Input
-                      id="unitCost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newItem.unitCost}
-                      onChange={(e) => setNewItem({...newItem, unitCost: e.target.value})}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="expiryDate">Expiry Date (if applicable)</Label>
-                    <Input
-                      id="expiryDate"
-                      type="date"
-                      value={newItem.expiryDate}
-                      onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="supplierName">Supplier</Label>
-                  <Input
-                    id="supplierName"
-                    value={newItem.supplierName}
-                    onChange={(e) => setNewItem({...newItem, supplierName: e.target.value})}
-                    placeholder="Enter supplier name"
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddItem}>
-                  Add Item
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
-          {/* Edit Item Dialog */}
+          ) : (
+            <Card className="border-healthcare-primary/30">
+              <CardContent className="p-0">
+                <ScrollArea>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Name</TableHead>
+                        <TableHead>Item Code</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Supplier</TableHead>
+                        <TableHead>Unit Cost</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead>Threshold</TableHead>
+                        <TableHead>Expiry Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInventory.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>{item.item_code}</TableCell>
+                          <TableCell>{item.category}</TableCell>
+                          <TableCell>{item.supplier_name}</TableCell>
+                          <TableCell>{item.unit_cost}</TableCell>
+                          <TableCell>
+                            {item.stock}
+                            {item.stock <= item.threshold && (
+                              <AlertTriangle className="inline-block h-4 w-4 ml-1 text-amber-500" />
+                            )}
+                          </TableCell>
+                          <TableCell>{item.threshold}</TableCell>
+                          <TableCell>
+                            {item.expiry_date
+                              ? new Date(item.expiry_date).toLocaleDateString()
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                onClick={() => handleEditItem(item)}
+                                className="btn-hover"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => handleDeleteItemConfirmation(item)}
+                                className="btn-hover"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredInventory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center">
+                            No items found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+
           <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Edit Inventory Item</DialogTitle>
                 <DialogDescription>
-                  Update details for this inventory item.
+                  Make changes to the item details below.
                 </DialogDescription>
               </DialogHeader>
-              
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editItemName">Item Name</Label>
-                    <Input
-                      id="editItemName"
-                      value={editItem.name}
-                      onChange={(e) => setEditItem({...editItem, name: e.target.value})}
-                      placeholder="Enter item name"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="editItemCode">Item Code</Label>
-                    <Input
-                      id="editItemCode"
-                      value={editItem.itemCode}
-                      onChange={(e) => setEditItem({...editItem, itemCode: e.target.value})}
-                      placeholder="e.g., MED-001"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editItemType">Item Type</Label>
-                    <Select
-                      value={editItem.type}
-                      onValueChange={handleEditTypeChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="medications">Medication</SelectItem>
-                        <SelectItem value="supplies">Supply</SelectItem>
-                        <SelectItem value="equipment">Equipment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="editCategory">Category</Label>
-                    <Select
-                      value={editItem.category}
-                      onValueChange={(value) => setEditItem({...editItem, category: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {editItem.type && ITEM_CATEGORIES[editItem.type]?.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editStock">Current Stock</Label>
-                    <Input
-                      id="editStock"
-                      type="number"
-                      min="0"
-                      value={editItem.stock}
-                      onChange={(e) => setEditItem({...editItem, stock: e.target.value})}
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="editThreshold">Low Stock Threshold</Label>
-                    <Input
-                      id="editThreshold"
-                      type="number"
-                      min="0"
-                      value={editItem.threshold}
-                      onChange={(e) => setEditItem({...editItem, threshold: e.target.value})}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editUnitCost">Unit Cost (R)</Label>
-                    <Input
-                      id="editUnitCost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editItem.unitCost}
-                      onChange={(e) => setEditItem({...editItem, unitCost: e.target.value})}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="editExpiryDate">Expiry Date (if applicable)</Label>
-                    <Input
-                      id="editExpiryDate"
-                      type="date"
-                      value={editItem.expiryDate}
-                      onChange={(e) => setEditItem({...editItem, expiryDate: e.target.value})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="editSupplierName">Supplier</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
                   <Input
-                    id="editSupplierName"
-                    value={editItem.supplierName}
-                    onChange={(e) => setEditItem({...editItem, supplierName: e.target.value})}
-                    placeholder="Enter supplier name"
+                    id="name"
+                    value={editedItem.name}
+                    onChange={(e) =>
+                      setEditedItem({ ...editedItem, name: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="item_code" className="text-right">
+                    Item Code
+                  </Label>
+                  <Input
+                    id="item_code"
+                    value={editedItem.item_code}
+                    onChange={(e) =>
+                      setEditedItem({ ...editedItem, item_code: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">
+                    Category
+                  </Label>
+                  <Input
+                    id="category"
+                    value={editedItem.category}
+                    onChange={(e) =>
+                      setEditedItem({ ...editedItem, category: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier_name" className="text-right">
+                    Supplier
+                  </Label>
+                  <Input
+                    id="supplier_name"
+                    value={editedItem.supplier_name}
+                    onChange={(e) =>
+                      setEditedItem({
+                        ...editedItem,
+                        supplier_name: e.target.value,
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="unit_cost" className="text-right">
+                    Unit Cost
+                  </Label>
+                  <Input
+                    id="unit_cost"
+                    type="number"
+                    value={editedItem.unit_cost}
+                    onChange={(e) =>
+                      setEditedItem({
+                        ...editedItem,
+                        unit_cost: parseFloat(e.target.value),
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="stock" className="text-right">
+                    Stock
+                  </Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    value={editedItem.stock}
+                    onChange={(e) =>
+                      setEditedItem({
+                        ...editedItem,
+                        stock: parseInt(e.target.value),
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="threshold" className="text-right">
+                    Threshold
+                  </Label>
+                  <Input
+                    id="threshold"
+                    type="number"
+                    value={editedItem.threshold}
+                    onChange={(e) =>
+                      setEditedItem({
+                        ...editedItem,
+                        threshold: parseInt(e.target.value),
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="expiry_date" className="text-right">
+                    Expiry Date
+                  </Label>
+                  <Input
+                    id="expiry_date"
+                    type="date"
+                    value={editedItem.expiry_date || ""}
+                    onChange={(e) =>
+                      setEditedItem({
+                        ...editedItem,
+                        expiry_date: e.target.value,
+                      })
+                    }
+                    className="col-span-3"
                   />
                 </div>
               </div>
-              
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenEditDialog(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenEditDialog(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleEditItem}>
-                  Save Changes
+                <Button type="submit" onClick={handleUpdateItem}>
+                  Save changes
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          
-          {/* Delete Confirmation Dialog */}
-          <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{selectedItem?.name}"? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setOpenDeleteDialog(false)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteItem} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          {/* Filter Dialog */}
-          <Dialog open={openFilterDialog} onOpenChange={setOpenFilterDialog}>
+
+          <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Filter Inventory</DialogTitle>
+                <DialogTitle>Delete Inventory Item</DialogTitle>
                 <DialogDescription>
-                  Filter inventory by category and status
+                  Are you sure you want to delete this item? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="categoryFilter">Category</Label>
-                  <Select
-                    value={categoryFilter}
-                    onValueChange={setCategoryFilter}
-                  >
-                    <SelectTrigger id="categoryFilter">
-                      <SelectValue placeholder="All categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all-categories">All categories</SelectItem>
-                      {activeTab && ITEM_CATEGORIES[activeTab]?.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="statusFilter">Status</Label>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={setStatusFilter}
-                  >
-                    <SelectTrigger id="statusFilter">
-                      <SelectValue placeholder="All statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all-statuses">All statuses</SelectItem>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="low">Low Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="py-4">
+                {selectedItem && (
+                  <p className="text-sm">
+                    You are about to delete <strong>{selectedItem.name}</strong> ({selectedItem.item_code}).
+                  </p>
+                )}
+                {deleteError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                    {deleteError}
+                  </div>
+                )}
               </div>
-              
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenFilterDialog(false)}>
+                <Button variant="outline" onClick={() => setOpenDeleteDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => {
-                  setShowFilters(categoryFilter !== "" || statusFilter !== "");
-                  setOpenFilterDialog(false);
-                }}>
-                  Apply Filters
+                <Button 
+                  variant="destructive" 
+                  onClick={() => selectedItem && handleDeleteItem(selectedItem)}
+                  disabled={!!deleteError}
+                >
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Inventory Item</DialogTitle>
+                <DialogDescription>
+                  Fill in the details for the new item below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    value={newItem.name}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, name: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="item_code" className="text-right">
+                    Item Code
+                  </Label>
+                  <Input
+                    id="item_code"
+                    value={newItem.item_code}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, item_code: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">
+                    Category
+                  </Label>
+                  <Input
+                    id="category"
+                    value={newItem.category}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, category: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier_name" className="text-right">
+                    Supplier
+                  </Label>
+                  <Input
+                    id="supplier_name"
+                    value={newItem.supplier_name}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, supplier_name: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="unit_cost" className="text-right">
+                    Unit Cost
+                  </Label>
+                  <Input
+                    id="unit_cost"
+                    type="number"
+                    value={newItem.unit_cost}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        unit_cost: parseFloat(e.target.value),
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="stock" className="text-right">
+                    Stock
+                  </Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    value={newItem.stock}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, stock: parseInt(e.target.value) })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="threshold" className="text-right">
+                    Threshold
+                  </Label>
+                  <Input
+                    id="threshold"
+                    type="number"
+                    value={newItem.threshold}
+                    onChange={(e) =>
+                      setNewItem({
+                        ...newItem,
+                        threshold: parseInt(e.target.value),
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="expiry_date" className="text-right">
+                    Expiry Date
+                  </Label>
+                  <Input
+                    id="expiry_date"
+                    type="date"
+                    value={newItem.expiry_date || ""}
+                    onChange={(e) =>
+                      setNewItem({ ...newItem, expiry_date: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenAddDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" onClick={handleCreateItem}>
+                  Create
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1040,88 +758,6 @@ const Inventory = () => {
         </main>
       </div>
     </div>
-  );
-};
-
-// Inventory Table Component
-const InventoryTable = ({ items, onEdit, onDelete }) => {
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-8 border rounded-md">
-        <p className="text-muted-foreground">No inventory items found</p>
-      </div>
-    );
-  }
-  
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Item Name</TableHead>
-          <TableHead>Code</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Current Stock</TableHead>
-          <TableHead>Threshold</TableHead>
-          <TableHead>Expiry Date</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell className="font-medium">{item.name}</TableCell>
-            <TableCell>{item.item_code}</TableCell>
-            <TableCell>{item.category}</TableCell>
-            <TableCell>{item.stock}</TableCell>
-            <TableCell>{item.threshold}</TableCell>
-            <TableCell>
-              {item.expiry_date ? (
-                new Date(item.expiry_date) < new Date() ? (
-                  <div className="flex items-center text-red-600">
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                    {new Date(item.expiry_date).toLocaleDateString()}
-                  </div>
-                ) : (
-                  new Date(item.expiry_date).toLocaleDateString()
-                )
-              ) : (
-                "N/A"
-              )}
-            </TableCell>
-            <TableCell>
-              <Badge 
-                variant={item.status === "normal" ? "outline" : "destructive"} 
-                className={item.status === "normal" ? "bg-green-50 text-green-700 border-green-200" : ""}
-              >
-                {item.status === "low" ? "Low Stock" : "Normal"}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => onEdit(item)}
-                  title="Edit item"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="text-red-500 hover:text-red-700" 
-                  onClick={() => onDelete(item)}
-                  title="Delete item"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
   );
 };
 
