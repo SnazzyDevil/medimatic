@@ -1,11 +1,10 @@
+
 import { useState, useEffect } from "react";
 import {
   Search,
   Edit,
   Trash2,
   PlusCircle,
-  ArrowDown,
-  ArrowUp,
   AlertTriangle,
   CheckCircle,
   XCircle
@@ -35,8 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { findInventoryItem } from "@/integrations/supabase/client";
+import { supabase, findInventoryItem, findExactInventoryItemByName, updateInventoryItemStock, checkItemReferences } from "@/integrations/supabase/client";
 import {
   Table,
   TableBody,
@@ -57,6 +55,8 @@ const Inventory = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState("");
+  const [duplicateItem, setDuplicateItem] = useState(null);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
 
   const [newItem, setNewItem] = useState({
     name: "",
@@ -135,10 +135,23 @@ const Inventory = () => {
   const handleDeleteItemConfirmation = (item) => {
     setSelectedItem(item);
     setOpenDeleteDialog(true);
+    setDeleteError(""); // Clear any previous errors
   };
 
   const handleAddItem = () => {
     setOpenAddDialog(true);
+    // Reset the form fields
+    setNewItem({
+      name: "",
+      item_code: "",
+      category: "",
+      supplier_name: "",
+      unit_cost: 0,
+      stock: 0,
+      threshold: 0,
+      expiry_date: null,
+    });
+    setDuplicateItem(null);
   };
 
   const handleUpdateItem = async () => {
@@ -196,24 +209,9 @@ const Inventory = () => {
     }
   };
 
-  const checkItemReferences = async (itemId) => {
-    try {
-      const { data, error } = await supabase
-        .from('dispensing')
-        .select('id')
-        .eq('medication_id', itemId);
-      
-      if (error) throw error;
-      
-      return data.length > 0;
-    } catch (error) {
-      console.error("Error checking item references:", error);
-      return false;
-    }
-  };
-
   const handleDeleteItem = async (item) => {
     console.info("Deleting inventory item:", item);
+    setDeleteError("");
 
     try {
       const isReferenced = await checkItemReferences(item.id);
@@ -240,12 +238,28 @@ const Inventory = () => {
       fetchInventory();
       setOpenDeleteDialog(false);
       setSelectedItem(null);
-      setDeleteError("");
     } catch (error) {
       console.error("Error deleting inventory item:", error);
       setDeleteError(
         "Failed to delete item. Please try again or contact support."
       );
+    }
+  };
+
+  const checkForDuplicateItem = async () => {
+    if (!newItem.name) return false;
+    
+    try {
+      const existingItems = await findExactInventoryItemByName(newItem.name);
+      if (existingItems && existingItems.length > 0) {
+        setDuplicateItem(existingItems[0]);
+        setShowDuplicateDialog(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking for duplicate item:", error);
+      return false;
     }
   };
 
@@ -268,14 +282,10 @@ const Inventory = () => {
     }
 
     try {
-      const existingItems = await findInventoryItem(newItem.name, newItem.item_code);
-      if (existingItems && existingItems.length > 0) {
-        toast({
-          title: "Item Already Exists",
-          description: "An item with the same name or item code already exists.",
-          variant: "destructive",
-        });
-        return;
+      // Check for duplicates before creating
+      const isDuplicate = await checkForDuplicateItem();
+      if (isDuplicate) {
+        return; // Stop here as the duplicate dialog will be shown
       }
 
       const { data, error } = await supabase
@@ -321,6 +331,81 @@ const Inventory = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleUpdateDuplicateItem = async () => {
+    if (!duplicateItem) return;
+    
+    try {
+      // Calculate the new stock by adding the new quantity to the existing stock
+      const newStock = duplicateItem.stock + parseInt(newItem.stock);
+      
+      // Update the existing item's stock
+      await updateInventoryItemStock(duplicateItem.id, newStock);
+      
+      toast({
+        title: "Stock Updated",
+        description: `${duplicateItem.name}'s stock has been updated to ${newStock}`,
+      });
+      
+      fetchInventory();
+      setShowDuplicateDialog(false);
+      setDuplicateItem(null);
+      setOpenAddDialog(false);
+    } catch (error) {
+      console.error("Error updating duplicate item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update existing item's stock",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateNewAnyway = () => {
+    // Close the duplicate dialog and proceed with creating a new item
+    setShowDuplicateDialog(false);
+    setDuplicateItem(null);
+    
+    // Now create the item
+    const createNewItem = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("inventory")
+          .insert([
+            {
+              name: newItem.name,
+              item_code: newItem.item_code,
+              category: newItem.category,
+              supplier_name: newItem.supplier_name,
+              unit_cost: newItem.unit_cost,
+              stock: newItem.stock,
+              threshold: newItem.threshold,
+              expiry_date: newItem.expiry_date,
+            },
+          ])
+          .select();
+
+        if (error) throw error;
+
+        toast({
+          title: "Item Added",
+          description: `${newItem.name} has been added to inventory`,
+        });
+
+        fetchInventory();
+        setOpenAddDialog(false);
+      } catch (error) {
+        console.error("Error adding inventory item anyway:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add item",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    createNewItem();
   };
 
   const filteredInventory = inventoryData.filter((item) =>
@@ -434,6 +519,7 @@ const Inventory = () => {
             </Card>
           )}
 
+          {/* Edit Item Dialog */}
           <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -582,6 +668,7 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
 
+          {/* Delete Confirmation Dialog */}
           <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -617,6 +704,7 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
 
+          {/* Add New Item Dialog */}
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -753,6 +841,55 @@ const Inventory = () => {
                   Create
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Duplicate Item Dialog */}
+          <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Similar Item Found</DialogTitle>
+                <DialogDescription>
+                  An item with the same name already exists in inventory. Would you like to:
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                {duplicateItem && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 className="font-medium mb-2">Existing Item Details:</h3>
+                    <p><span className="font-medium">Name:</span> {duplicateItem.name}</p>
+                    <p><span className="font-medium">Code:</span> {duplicateItem.item_code}</p>
+                    <p><span className="font-medium">Current stock:</span> {duplicateItem.stock}</p>
+                    <p><span className="font-medium">Unit cost:</span> {duplicateItem.unit_cost}</p>
+                    <p><span className="font-medium">New stock will be:</span> <span className="text-green-600 font-bold">{duplicateItem.stock + parseInt(newItem.stock)}</span></p>
+                  </div>
+                )}
+                <div className="flex flex-col space-y-2">
+                  <Button 
+                    onClick={handleUpdateDuplicateItem}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" /> 
+                    Update Existing Item's Stock
+                  </Button>
+                  <Button 
+                    onClick={handleCreateNewAnyway}
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create as New Item Anyway
+                  </Button>
+                  <Button 
+                    onClick={() => setShowDuplicateDialog(false)}
+                    variant="ghost" 
+                    className="w-full"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </main>
