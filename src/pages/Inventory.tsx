@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { AlertTriangle, Clock, Filter, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, Clock, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +24,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -38,9 +48,25 @@ const ITEM_CATEGORIES = {
 
 const Inventory = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [openFilterDialog, setOpenFilterDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("medications");
   const [newItem, setNewItem] = useState({
+    name: "",
+    category: "",
+    stock: "",
+    threshold: "",
+    expiryDate: "",
+    itemCode: "",
+    unitCost: "",
+    supplierName: "",
+    type: "medications",
+  });
+  
+  const [editItem, setEditItem] = useState({
+    id: "",
     name: "",
     category: "",
     stock: "",
@@ -295,12 +321,172 @@ const Inventory = () => {
     }
   };
   
+  const handleEditItem = async () => {
+    if (!editItem.name || !editItem.category || !editItem.stock || !editItem.threshold || !editItem.itemCode || !editItem.unitCost || !editItem.supplierName) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Normalize input data
+      const itemName = editItem.name.trim();
+      const itemCode = editItem.itemCode.trim().toUpperCase();
+      const stock = parseInt(editItem.stock);
+      const threshold = parseInt(editItem.threshold);
+      const unitCost = parseFloat(editItem.unitCost);
+      const status = stock < threshold ? "low" : "normal";
+      
+      const itemToUpdate = {
+        name: itemName,
+        category: editItem.category,
+        stock: stock,
+        threshold: threshold,
+        expiry_date: editItem.expiryDate || null,
+        status: status,
+        item_code: itemCode,
+        unit_cost: unitCost,
+        supplier_name: editItem.supplierName,
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("Updating inventory item:", itemToUpdate);
+      const { data, error: updateError } = await supabase
+        .from('inventory')
+        .update(itemToUpdate)
+        .eq('id', editItem.id)
+        .select();
+      
+      if (updateError) {
+        console.error("Error updating inventory item:", updateError);
+        toast({
+          title: "Error",
+          description: `Failed to update item: ${updateError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log("Item updated successfully:", data);
+      toast({
+        title: "Item updated",
+        description: `${itemName} has been updated successfully.`,
+      });
+      
+      // Reset form and close dialog
+      setEditItem({
+        id: "",
+        name: "",
+        category: "",
+        stock: "",
+        threshold: "",
+        expiryDate: "",
+        itemCode: "",
+        unitCost: "",
+        supplierName: "",
+        type: "medications",
+      });
+      setOpenEditDialog(false);
+      
+      // Refresh inventory data
+      refetch();
+    } catch (err) {
+      console.error("Exception updating inventory item:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while updating the item.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      console.log("Deleting inventory item:", selectedItem);
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', selectedItem.id);
+      
+      if (error) {
+        console.error("Error deleting inventory item:", error);
+        toast({
+          title: "Error",
+          description: `Failed to delete item: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Item deleted",
+        description: `${selectedItem.name} has been removed from inventory.`,
+      });
+      
+      setSelectedItem(null);
+      setOpenDeleteDialog(false);
+      
+      // Refresh inventory data
+      refetch();
+    } catch (err) {
+      console.error("Exception deleting inventory item:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the item.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const handleTypeChange = (type: string) => {
     setNewItem({
       ...newItem,
       type,
       category: "",
     });
+  };
+  
+  const handleEditTypeChange = (type: string) => {
+    setEditItem({
+      ...editItem,
+      type,
+      category: "",
+    });
+  };
+  
+  const openItemForEdit = (item) => {
+    // Determine item type based on category
+    let type = "medications";
+    if (ITEM_CATEGORIES.supplies.includes(item.category)) {
+      type = "supplies";
+    } else if (ITEM_CATEGORIES.equipment.includes(item.category)) {
+      type = "equipment";
+    }
+    
+    setEditItem({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      stock: item.stock.toString(),
+      threshold: item.threshold.toString(),
+      expiryDate: item.expiry_date || "",
+      itemCode: item.item_code,
+      unitCost: item.unit_cost.toString(),
+      supplierName: item.supplier_name,
+      type: type,
+    });
+    
+    setOpenEditDialog(true);
+  };
+  
+  const openDeleteConfirmation = (item) => {
+    setSelectedItem(item);
+    setOpenDeleteDialog(true);
   };
   
   // Reset all filters
@@ -451,7 +637,11 @@ const Inventory = () => {
                 {isLoading ? (
                   <div className="text-center py-8">Loading medications inventory...</div>
                 ) : (
-                  <InventoryTable items={getMedicationsData()} />
+                  <InventoryTable 
+                    items={getMedicationsData()} 
+                    onEdit={openItemForEdit}
+                    onDelete={openDeleteConfirmation}
+                  />
                 )}
               </TabsContent>
               
@@ -459,7 +649,11 @@ const Inventory = () => {
                 {isLoading ? (
                   <div className="text-center py-8">Loading supplies inventory...</div>
                 ) : (
-                  <InventoryTable items={getSuppliesData()} />
+                  <InventoryTable 
+                    items={getSuppliesData()} 
+                    onEdit={openItemForEdit}
+                    onDelete={openDeleteConfirmation}
+                  />
                 )}
               </TabsContent>
               
@@ -467,7 +661,11 @@ const Inventory = () => {
                 {isLoading ? (
                   <div className="text-center py-8">Loading equipment inventory...</div>
                 ) : (
-                  <InventoryTable items={getEquipmentData()} />
+                  <InventoryTable 
+                    items={getEquipmentData()} 
+                    onEdit={openItemForEdit}
+                    onDelete={openDeleteConfirmation}
+                  />
                 )}
               </TabsContent>
             </Tabs>
@@ -617,6 +815,166 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
           
+          {/* Edit Item Dialog */}
+          <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Edit Inventory Item</DialogTitle>
+                <DialogDescription>
+                  Update details for this inventory item.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editItemName">Item Name</Label>
+                    <Input
+                      id="editItemName"
+                      value={editItem.name}
+                      onChange={(e) => setEditItem({...editItem, name: e.target.value})}
+                      placeholder="Enter item name"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editItemCode">Item Code</Label>
+                    <Input
+                      id="editItemCode"
+                      value={editItem.itemCode}
+                      onChange={(e) => setEditItem({...editItem, itemCode: e.target.value})}
+                      placeholder="e.g., MED-001"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editItemType">Item Type</Label>
+                    <Select
+                      value={editItem.type}
+                      onValueChange={handleEditTypeChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="medications">Medication</SelectItem>
+                        <SelectItem value="supplies">Supply</SelectItem>
+                        <SelectItem value="equipment">Equipment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editCategory">Category</Label>
+                    <Select
+                      value={editItem.category}
+                      onValueChange={(value) => setEditItem({...editItem, category: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {editItem.type && ITEM_CATEGORIES[editItem.type]?.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editStock">Current Stock</Label>
+                    <Input
+                      id="editStock"
+                      type="number"
+                      min="0"
+                      value={editItem.stock}
+                      onChange={(e) => setEditItem({...editItem, stock: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editThreshold">Low Stock Threshold</Label>
+                    <Input
+                      id="editThreshold"
+                      type="number"
+                      min="0"
+                      value={editItem.threshold}
+                      onChange={(e) => setEditItem({...editItem, threshold: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editUnitCost">Unit Cost (R)</Label>
+                    <Input
+                      id="editUnitCost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editItem.unitCost}
+                      onChange={(e) => setEditItem({...editItem, unitCost: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editExpiryDate">Expiry Date (if applicable)</Label>
+                    <Input
+                      id="editExpiryDate"
+                      type="date"
+                      value={editItem.expiryDate}
+                      onChange={(e) => setEditItem({...editItem, expiryDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editSupplierName">Supplier</Label>
+                  <Input
+                    id="editSupplierName"
+                    value={editItem.supplierName}
+                    onChange={(e) => setEditItem({...editItem, supplierName: e.target.value})}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpenEditDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleEditItem}>
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{selectedItem?.name}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setOpenDeleteDialog(false)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteItem} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
           {/* Filter Dialog */}
           <Dialog open={openFilterDialog} onOpenChange={setOpenFilterDialog}>
             <DialogContent className="sm:max-w-[425px]">
@@ -686,7 +1044,7 @@ const Inventory = () => {
 };
 
 // Inventory Table Component
-const InventoryTable = ({ items }) => {
+const InventoryTable = ({ items, onEdit, onDelete }) => {
   if (items.length === 0) {
     return (
       <div className="text-center py-8 border rounded-md">
@@ -706,6 +1064,7 @@ const InventoryTable = ({ items }) => {
           <TableHead>Threshold</TableHead>
           <TableHead>Expiry Date</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -737,6 +1096,27 @@ const InventoryTable = ({ items }) => {
               >
                 {item.status === "low" ? "Low Stock" : "Normal"}
               </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => onEdit(item)}
+                  title="Edit item"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="text-red-500 hover:text-red-700" 
+                  onClick={() => onDelete(item)}
+                  title="Delete item"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         ))}
