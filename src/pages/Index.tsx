@@ -73,10 +73,6 @@ const Index = () => {
   return <div className="min-h-screen flex flex-col md:flex-row">
       <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-cyan-50 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
-          <div className="flex items-center mb-6">
-            
-          </div>
-          
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-left">Sign In</h2>
             
@@ -139,7 +135,7 @@ const Index = () => {
             <div className="relative z-10 bg-white rounded-xl shadow-lg p-8 overflow-hidden">
               <div className="flex flex-col items-center space-y-6">
                 <img 
-                  src="/public/lovable-uploads/acda2d34-8ebf-474f-b370-d75f0485f074.png" 
+                  src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" 
                   alt="Medryx" 
                   className="max-w-[250px] mb-4 object-contain"
                 />
