@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const Index = () => {
   const [email, setEmail] = useState("");
@@ -134,11 +136,15 @@ const Index = () => {
             <div className="absolute -top-10 -left-10 w-40 h-40 bg-cyan-200 rounded-full opacity-50"></div>
             <div className="relative z-10 bg-white rounded-xl shadow-lg p-8 overflow-hidden">
               <div className="flex flex-col items-center space-y-6">
-                <img 
-                  src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" 
-                  alt="Medryx" 
-                  className="max-w-[250px] mb-4 object-contain"
-                />
+                <div className="w-full h-40 mb-4 flex items-center justify-center">
+                  <AspectRatio ratio={16/10} className="w-[250px] bg-white/50 rounded">
+                    <img 
+                      src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" 
+                      alt="Medryx" 
+                      className="h-full w-full object-contain"
+                    />
+                  </AspectRatio>
+                </div>
                 <h2 className="text-2xl font-bold text-gray-800 text-center">Welcome to Medryx</h2>
                 <p className="text-gray-600 text-center mb-6">
                   Your comprehensive healthcare management system, designed to streamline your practice and improve patient care.
