@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "react-router-dom";
 import { Calendar, CreditCard, Home, Settings, Users, Package, Pill, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
-  { name: "Dashboard", icon: Home, href: "/", color: "from-blue-500 to-blue-600" },
+  { name: "Dashboard", icon: Home, href: "/dashboard", color: "from-blue-500 to-blue-600" },
   { name: "Patients", icon: Users, href: "/patients", color: "from-violet-500 to-violet-600" },
   { name: "Scheduler", icon: Calendar, href: "/scheduler", color: "from-emerald-500 to-teal-600" },
   { name: "Inventory", icon: Package, href: "/inventory", color: "from-amber-500 to-orange-600" },
@@ -20,7 +21,7 @@ export function Sidebar() {
 
   return (
     <aside className="h-screen w-16 fixed left-0 top-0 border-r border-border bg-white shadow-md z-10 flex flex-col items-center py-6 animate-fade-in">
-      <Link to="/" className="h-10 w-10 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg mb-8 flex items-center justify-center">
+      <Link to="/dashboard" className="h-10 w-10 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg mb-8 flex items-center justify-center">
         <span className="text-white font-bold">M</span>
       </Link>
       
@@ -28,7 +29,7 @@ export function Sidebar() {
         <TooltipProvider>
           {navItems.map((item) => {
             const isActive = location.pathname === item.href || 
-              (item.href !== "/" && location.pathname.startsWith(item.href));
+              (item.href !== "/dashboard" && location.pathname.startsWith(item.href));
               
             return (
               <Tooltip key={item.name}>
