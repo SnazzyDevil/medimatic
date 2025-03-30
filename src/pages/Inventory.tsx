@@ -1,8 +1,8 @@
+
 import { useState, useEffect } from "react";
 import {
   Search,
-  Edit,
-  Trash2,
+  RefreshCw,
   PlusCircle,
   AlertTriangle,
   CheckCircle,
@@ -48,28 +48,15 @@ import {
 const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openUpdateStockDialog, setOpenUpdateStockDialog] = useState(false);
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [inventoryData, setInventoryData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteError, setDeleteError] = useState("");
   const [duplicateItem, setDuplicateItem] = useState(null);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [stockUpdateAmount, setStockUpdateAmount] = useState(0);
 
   const [newItem, setNewItem] = useState({
-    name: "",
-    item_code: "",
-    category: "",
-    supplier_name: "",
-    unit_cost: 0,
-    stock: 0,
-    threshold: 0,
-    expiry_date: null,
-  });
-
-  const [editedItem, setEditedItem] = useState({
-    id: "",
     name: "",
     item_code: "",
     category: "",
@@ -115,26 +102,10 @@ const Inventory = () => {
     }
   };
 
-  const handleEditItem = (item) => {
-    setEditedItem({
-      id: item.id,
-      name: item.name,
-      item_code: item.item_code,
-      category: item.category,
-      supplier_name: item.supplier_name,
-      unit_cost: item.unit_cost,
-      stock: item.stock,
-      threshold: item.threshold,
-      expiry_date: item.expiry_date,
-    });
+  const handleUpdateStock = (item) => {
     setSelectedItem(item);
-    setOpenEditDialog(true);
-  };
-
-  const handleDeleteItemConfirmation = (item) => {
-    setSelectedItem(item);
-    setOpenDeleteDialog(true);
-    setDeleteError(""); // Clear any previous errors
+    setStockUpdateAmount(0);
+    setOpenUpdateStockDialog(true);
   };
 
   const handleAddItem = () => {
@@ -153,95 +124,53 @@ const Inventory = () => {
     setDuplicateItem(null);
   };
 
-  const handleUpdateItem = async () => {
-    if (
-      !editedItem.name ||
-      !editedItem.item_code ||
-      !editedItem.category ||
-      !editedItem.supplier_name ||
-      !editedItem.unit_cost ||
-      !editedItem.stock ||
-      !editedItem.threshold
-    ) {
+  const handleSaveStockUpdate = async () => {
+    if (!selectedItem) return;
+
+    // Ensure stock update amount is a valid number
+    const updateAmount = parseInt(stockUpdateAmount.toString());
+    if (isNaN(updateAmount)) {
       toast({
-        title: "Missing fields",
-        description: "Please fill out all required fields",
+        title: "Invalid amount",
+        description: "Please enter a valid number",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from("inventory")
-        .update({
-          name: editedItem.name,
-          item_code: editedItem.item_code,
-          category: editedItem.category,
-          supplier_name: editedItem.supplier_name,
-          unit_cost: editedItem.unit_cost,
-          stock: editedItem.stock,
-          threshold: editedItem.threshold,
-          expiry_date: editedItem.expiry_date,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editedItem.id)
-        .select();
-
-      if (error) throw error;
-
-      toast({
-        title: "Item Updated",
-        description: `${editedItem.name} has been updated`,
-      });
-
-      fetchInventory();
-      setOpenEditDialog(false);
-      setSelectedItem(null);
-    } catch (error) {
-      console.error("Error updating inventory item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update item",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteItem = async (item) => {
-    console.info("Deleting inventory item:", item);
-    setDeleteError("");
-
-    try {
-      const isReferenced = await checkItemReferences(item.id);
+      // Calculate new stock by adding the update amount to the current stock
+      const newStock = selectedItem.stock + updateAmount;
       
-      if (isReferenced) {
-        setDeleteError(
-          "Cannot delete this item because it is referenced in dispensing records. Please remove those references first or archive the item instead."
-        );
+      // Don't allow negative stock
+      if (newStock < 0) {
+        toast({
+          title: "Invalid stock amount",
+          description: "Stock quantity cannot be negative",
+          variant: "destructive",
+        });
         return;
       }
 
-      const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', item.id);
-
-      if (error) throw error;
-
+      // Update the stock
+      await updateInventoryItemStock(selectedItem.id, newStock);
+      
       toast({
-        title: "Item Deleted",
-        description: `${item.name} has been removed from inventory`,
+        title: "Stock Updated",
+        description: `${selectedItem.name}'s stock has been updated to ${newStock}`,
       });
-
+      
       fetchInventory();
-      setOpenDeleteDialog(false);
+      setOpenUpdateStockDialog(false);
       setSelectedItem(null);
+      setStockUpdateAmount(0);
     } catch (error) {
-      console.error("Error deleting inventory item:", error);
-      setDeleteError(
-        "Failed to delete item. Please try again or contact support."
-      );
+      console.error("Error updating stock:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update stock",
+        variant: "destructive",
+      });
     }
   };
 
@@ -483,22 +412,15 @@ const Inventory = () => {
                               : "N/A"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end">
                               <Button
-                                variant="secondary"
-                                size="icon"
-                                onClick={() => handleEditItem(item)}
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleUpdateStock(item)}
                                 className="btn-hover"
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => handleDeleteItemConfirmation(item)}
-                                className="btn-hover"
-                              >
-                                <Trash2 className="h-4 w-4" />
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Update
                               </Button>
                             </div>
                           </TableCell>
@@ -518,186 +440,53 @@ const Inventory = () => {
             </Card>
           )}
 
-          {/* Edit Item Dialog */}
-          <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+          {/* Update Stock Dialog */}
+          <Dialog open={openUpdateStockDialog} onOpenChange={setOpenUpdateStockDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Edit Inventory Item</DialogTitle>
+                <DialogTitle>Update Stock Quantity</DialogTitle>
                 <DialogDescription>
-                  Make changes to the item details below.
+                  Enter the amount to add or subtract from the current stock.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Name
-                  </Label>
-                  <Input
-                    id="name"
-                    value={editedItem.name}
-                    onChange={(e) =>
-                      setEditedItem({ ...editedItem, name: e.target.value })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="item_code" className="text-right">
-                    Item Code
-                  </Label>
-                  <Input
-                    id="item_code"
-                    value={editedItem.item_code}
-                    onChange={(e) =>
-                      setEditedItem({ ...editedItem, item_code: e.target.value })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">
-                    Category
-                  </Label>
-                  <Input
-                    id="category"
-                    value={editedItem.category}
-                    onChange={(e) =>
-                      setEditedItem({ ...editedItem, category: e.target.value })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier_name" className="text-right">
-                    Supplier
-                  </Label>
-                  <Input
-                    id="supplier_name"
-                    value={editedItem.supplier_name}
-                    onChange={(e) =>
-                      setEditedItem({
-                        ...editedItem,
-                        supplier_name: e.target.value,
-                      })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="unit_cost" className="text-right">
-                    Unit Cost
-                  </Label>
-                  <Input
-                    id="unit_cost"
-                    type="number"
-                    value={editedItem.unit_cost}
-                    onChange={(e) =>
-                      setEditedItem({
-                        ...editedItem,
-                        unit_cost: parseFloat(e.target.value),
-                      })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="stock" className="text-right">
-                    Stock
-                  </Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={editedItem.stock}
-                    onChange={(e) =>
-                      setEditedItem({
-                        ...editedItem,
-                        stock: parseInt(e.target.value),
-                      })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="threshold" className="text-right">
-                    Threshold
-                  </Label>
-                  <Input
-                    id="threshold"
-                    type="number"
-                    value={editedItem.threshold}
-                    onChange={(e) =>
-                      setEditedItem({
-                        ...editedItem,
-                        threshold: parseInt(e.target.value),
-                      })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="expiry_date" className="text-right">
-                    Expiry Date
-                  </Label>
-                  <Input
-                    id="expiry_date"
-                    type="date"
-                    value={editedItem.expiry_date || ""}
-                    onChange={(e) =>
-                      setEditedItem({
-                        ...editedItem,
-                        expiry_date: e.target.value,
-                      })
-                    }
-                    className="col-span-3"
-                  />
-                </div>
+                {selectedItem && (
+                  <div className="grid gap-2">
+                    <div className="p-3 bg-gray-50 rounded-md mb-2">
+                      <p><span className="font-medium">Item:</span> {selectedItem.name}</p>
+                      <p><span className="font-medium">Current stock:</span> {selectedItem.stock}</p>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="stockUpdate" className="text-right">
+                        Update Amount
+                      </Label>
+                      <div className="col-span-3">
+                        <Input
+                          id="stockUpdate"
+                          type="number"
+                          value={stockUpdateAmount}
+                          onChange={(e) => setStockUpdateAmount(parseInt(e.target.value) || 0)}
+                          className="col-span-3"
+                          placeholder="Enter positive value to add, negative to subtract"
+                        />
+                        <p className="text-sm text-muted-foreground mt-1">
+                          New stock will be: <span className="font-bold">{selectedItem.stock + (stockUpdateAmount || 0)}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setOpenEditDialog(false)}
+                  onClick={() => setOpenUpdateStockDialog(false)}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" onClick={handleUpdateItem}>
-                  Save changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Delete Confirmation Dialog */}
-          <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Delete Inventory Item</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this item? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                {selectedItem && (
-                  <p className="text-sm">
-                    You are about to delete <strong>{selectedItem.name}</strong> ({selectedItem.item_code}).
-                  </p>
-                )}
-                {deleteError && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-                    {deleteError}
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenDeleteDialog(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => selectedItem && handleDeleteItem(selectedItem)}
-                  disabled={!!deleteError}
-                >
-                  Delete
+                <Button type="submit" onClick={handleSaveStockUpdate}>
+                  Update Stock
                 </Button>
               </DialogFooter>
             </DialogContent>
