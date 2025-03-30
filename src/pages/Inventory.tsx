@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -338,7 +337,7 @@ const Inventory = () => {
     
     try {
       // Calculate the new stock by adding the new quantity to the existing stock
-      const newStock = duplicateItem.stock + parseInt(newItem.stock);
+      const newStock = duplicateItem.stock + parseInt(newItem.stock.toString());
       
       // Update the existing item's stock
       await updateInventoryItemStock(duplicateItem.id, newStock);
@@ -861,7 +860,7 @@ const Inventory = () => {
                     <p><span className="font-medium">Code:</span> {duplicateItem.item_code}</p>
                     <p><span className="font-medium">Current stock:</span> {duplicateItem.stock}</p>
                     <p><span className="font-medium">Unit cost:</span> {duplicateItem.unit_cost}</p>
-                    <p><span className="font-medium">New stock will be:</span> <span className="text-green-600 font-bold">{duplicateItem.stock + parseInt(newItem.stock)}</span></p>
+                    <p><span className="font-medium">New stock will be:</span> <span className="text-green-600 font-bold">{duplicateItem.stock + parseInt(newItem.stock.toString())}</span></p>
                   </div>
                 )}
                 <div className="flex flex-col space-y-2">
