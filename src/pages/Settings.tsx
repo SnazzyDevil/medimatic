@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Copy, PlusCircle, Settings as SettingsIcon, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -256,7 +257,7 @@ export default function Settings() {
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium">Personal Information</h3>
+              <h3 className="text-lg font-medium">Practice Information</h3>
               <p className="text-sm text-muted-foreground">
                 Update your practice information
               </p>
