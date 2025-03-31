@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Copy, PlusCircle, Settings as SettingsIcon, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +61,7 @@ import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { CurrencySelect } from "@/components/settings/CurrencySelect";
 import { PracticeService } from "@/services/practiceService";
 import { PracticeInformation } from "@/types/practice";
+import { Textarea } from "@/components/ui/textarea";
 
 const frameworks = [
   {
@@ -161,6 +161,14 @@ export default function Settings() {
   const [apiKey, setApiKey] = useState<ApiKey | null>(null)
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [currency, setCurrency] = useState<string>("ZAR")
+  const [doctorName, setDoctorName] = useState("")
+  const [addressLine1, setAddressLine1] = useState("")
+  const [addressLine2, setAddressLine2] = useState("")
+  const [city, setCity] = useState("")
+  const [postalCode, setPostalCode] = useState("")
+  const [stateProvince, setStateProvince] = useState("")
+  const [registrationNumber, setRegistrationNumber] = useState("")
+  const [vatNumber, setVatNumber] = useState("")
   const { toast } = useToast();
 
   const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
@@ -182,6 +190,15 @@ export default function Settings() {
           setEmail(info.email);
           setPhone(info.phone);
           setCurrency(info.currency);
+          
+          setDoctorName(info.practiceType === "medical" ? info.name : "");
+          setAddressLine1(info.addressLine1 || "");
+          setAddressLine2(info.addressLine2 || "");
+          setCity(info.city || "");
+          setPostalCode(info.postalCode || "");
+          setStateProvince(info.stateProvince || "");
+          setRegistrationNumber(info.registrationNumber || "");
+          setVatNumber(info.vatNumber || "");
         }
       } catch (error) {
         console.error("Error fetching practice information:", error);
@@ -226,6 +243,13 @@ export default function Settings() {
         email,
         phone,
         currency,
+        addressLine1,
+        addressLine2,
+        city,
+        postalCode,
+        stateProvince,
+        registrationNumber,
+        vatNumber
       });
       
       toast({
@@ -265,38 +289,151 @@ export default function Settings() {
             {loading ? (
               <div className="p-4 text-center">Loading...</div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Practice Name</Label>
-                  <Input 
-                    id="name" 
-                    value={name} 
-                    onChange={(e) => setName(e.target.value)}
-                  />
+              <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Practice Name</Label>
+                    <Input 
+                      id="name" 
+                      value={name} 
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="doctorName">Doctor's Name</Label>
+                    <Input 
+                      id="doctorName" 
+                      value={doctorName} 
+                      onChange={(e) => setDoctorName(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input 
+                      id="phone" 
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input 
-                    id="phone" 
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
+                
+                <div>
+                  <h4 className="text-md font-medium mb-2">Practice Address</h4>
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="addressLine1">Address Line 1</Label>
+                      <Input 
+                        id="addressLine1" 
+                        value={addressLine1}
+                        onChange={(e) => setAddressLine1(e.target.value)}
+                        placeholder="Street address"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="addressLine2">Address Line 2</Label>
+                      <Input 
+                        id="addressLine2" 
+                        value={addressLine2}
+                        onChange={(e) => setAddressLine2(e.target.value)}
+                        placeholder="Apartment, suite, etc. (optional)"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input 
+                          id="city" 
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="stateProvince">Province/State</Label>
+                        <Input 
+                          id="stateProvince" 
+                          value={stateProvince}
+                          onChange={(e) => setStateProvince(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input 
+                          id="postalCode" 
+                          value={postalCode}
+                          onChange={(e) => setPostalCode(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="col-span-3">
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber">Practice Registration Number</Label>
+                    <Input 
+                      id="registrationNumber" 
+                      value={registrationNumber}
+                      onChange={(e) => setRegistrationNumber(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vatNumber">VAT Registration Number</Label>
+                    <Input 
+                      id="vatNumber" 
+                      value={vatNumber}
+                      onChange={(e) => setVatNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-1">
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency</Label>
+                    <CurrencySelect 
+                      value={currency} 
+                      onValueChange={(value) => {
+                        setCurrency(value);
+                        if (practiceInfo) {
+                          PracticeService.update(practiceInfo.id, { currency: value })
+                            .then(() => {
+                              toast({
+                                title: "Currency updated",
+                                description: `Currency has been set to ${value}`,
+                              });
+                            })
+                            .catch((error) => {
+                              console.error("Error updating currency:", error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to update currency",
+                                variant: "destructive",
+                              });
+                            });
+                        }
+                      }} 
+                    />
+                  </div>
+                </div>
+                
+                <div>
                   <Button 
                     onClick={handleSavePracticeInfo} 
                     disabled={saving || !practiceInfo}
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? "Saving..." : "Save Practice Information"}
                   </Button>
                 </div>
               </div>
@@ -362,36 +499,6 @@ export default function Settings() {
                   </div>
                 ))}
               </fieldset>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-medium">Currency</h3>
-              <p className="text-sm text-muted-foreground">
-                Choose your preferred currency
-              </p>
-              <CurrencySelect 
-                value={currency} 
-                onValueChange={(value) => {
-                  setCurrency(value);
-                  if (practiceInfo) {
-                    PracticeService.update(practiceInfo.id, { currency: value })
-                      .then(() => {
-                        toast({
-                          title: "Currency updated",
-                          description: `Currency has been set to ${value}`,
-                        });
-                      })
-                      .catch((error) => {
-                        console.error("Error updating currency:", error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to update currency",
-                          variant: "destructive",
-                        });
-                      });
-                  }
-                }} 
-              />
             </div>
             
             <div>
