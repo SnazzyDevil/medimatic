@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Copy, PlusCircle, Settings as SettingsIcon, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +59,8 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { CurrencySelect } from "@/components/settings/CurrencySelect";
+import { PracticeService } from "@/services/practiceService";
+import { PracticeInformation } from "@/types/practice";
 
 const frameworks = [
   {
@@ -159,7 +160,42 @@ export default function Settings() {
   const [apiKey, setApiKey] = useState<ApiKey | null>(null)
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [currency, setCurrency] = useState<string>("ZAR")
-  const { toast } = useToast()
+  const { toast } = useToast();
+
+  const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchPracticeInfo = async () => {
+      try {
+        setLoading(true);
+        const info = await PracticeService.getCurrentPractice();
+        setPracticeInfo(info);
+        
+        if (info) {
+          setName(info.name);
+          setEmail(info.email);
+          setPhone(info.phone);
+          setCurrency(info.currency);
+        }
+      } catch (error) {
+        console.error("Error fetching practice information:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load practice information",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPracticeInfo();
+  }, [toast]);
 
   useEffect(() => {
     if (!apiKey) {
@@ -176,7 +212,36 @@ export default function Settings() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [apiKey])
+  }, [apiKey]);
+
+  const handleSavePracticeInfo = async () => {
+    if (!practiceInfo) return;
+    
+    try {
+      setSaving(true);
+      
+      await PracticeService.update(practiceInfo.id, {
+        name,
+        email,
+        phone,
+        currency,
+      });
+      
+      toast({
+        title: "Success",
+        description: "Practice information updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating practice information:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update practice information",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex w-full bg-[#f8fafc]">
@@ -193,71 +258,56 @@ export default function Settings() {
             <div>
               <h3 className="text-lg font-medium">Personal Information</h3>
               <p className="text-sm text-muted-foreground">
-                Update your personal information
+                Update your practice information
               </p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue="John Doe" />
+            {loading ? (
+              <div className="p-4 text-center">Loading...</div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Practice Name</Label>
+                  <Input 
+                    id="name" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input 
+                    id="phone" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Button 
+                    onClick={handleSavePracticeInfo} 
+                    disabled={saving || !practiceInfo}
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john.doe@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="framework-select">Framework (cmd+k)</Label>
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={open}
-                      className="w-full justify-between"
-                    >
-                      {framework
-                        ? frameworks.find((f) => f.value === framework)?.label
-                        : "Select framework..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[200px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Search framework..." />
-                      <CommandList>
-                        <CommandEmpty>No framework found.</CommandEmpty>
-                        <CommandGroup>
-                          {frameworks.map((framework) => (
-                            <CommandItem
-                              key={framework.value}
-                              value={framework.value}
-                              onSelect={(value) => {
-                                setFramework(value === framework.value ? "" : value)
-                                setOpen(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  framework.value === framework.value ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {framework.label}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+            )}
+            
             <div>
               <h3 className="text-lg font-medium">Notifications</h3>
               <p className="text-sm text-muted-foreground">
                 Configure push notifications for your account.
               </p>
             </div>
+            
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-md border p-4">
                 <div className="space-y-1">
@@ -312,13 +362,37 @@ export default function Settings() {
                 ))}
               </fieldset>
             </div>
+            
             <div>
               <h3 className="text-lg font-medium">Currency</h3>
               <p className="text-sm text-muted-foreground">
                 Choose your preferred currency
               </p>
-              <CurrencySelect value={currency} onValueChange={setCurrency} />
+              <CurrencySelect 
+                value={currency} 
+                onValueChange={(value) => {
+                  setCurrency(value);
+                  if (practiceInfo) {
+                    PracticeService.update(practiceInfo.id, { currency: value })
+                      .then(() => {
+                        toast({
+                          title: "Currency updated",
+                          description: `Currency has been set to ${value}`,
+                        });
+                      })
+                      .catch((error) => {
+                        console.error("Error updating currency:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update currency",
+                          variant: "destructive",
+                        });
+                      });
+                  }
+                }} 
+              />
             </div>
+            
             <div>
               <h3 className="text-lg font-medium">Timezone</h3>
               <p className="text-sm text-muted-foreground">
@@ -337,12 +411,14 @@ export default function Settings() {
                 </SelectContent>
               </Select>
             </div>
+            
             <div>
               <h3 className="text-lg font-medium">API Keys</h3>
               <p className="text-sm text-muted-foreground">
                 Manage your API keys
               </p>
             </div>
+            
             <Table>
               <TableCaption>A list of your API keys.</TableCaption>
               <TableHeader>
@@ -422,12 +498,14 @@ export default function Settings() {
                 </TableRow>
               </TableFooter>
             </Table>
+            
             <div>
               <h3 className="text-lg font-medium">Webhooks</h3>
               <p className="text-sm text-muted-foreground">
                 Configure webhooks to listen to events on your account.
               </p>
             </div>
+            
             <WebhookSettings />
           </div>
         </main>
