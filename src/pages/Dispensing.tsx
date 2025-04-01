@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { 
   CheckCircle, 
@@ -41,6 +42,7 @@ const Dispensing = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [patientsData, setPatientsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [patientData, setPatientData] = useState(null);
   
   const [newPrescription, setNewPrescription] = useState({
     patientName: "",
@@ -59,9 +61,22 @@ const Dispensing = () => {
   });
 
   useEffect(() => {
-    fetchMedications();
-    fetchInventory();
-    fetchPatients();
+    // Verify user is authenticated
+    const checkAuth = async () => {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        // Redirect to login if not authenticated
+        window.location.href = '/';
+        return;
+      }
+      
+      // Fetch data once authenticated
+      fetchMedications();
+      fetchInventory();
+      fetchPatients();
+    };
+    
+    checkAuth();
   }, []);
   
   const fetchMedications = async () => {
@@ -86,11 +101,11 @@ const Dispensing = () => {
         interactions: []
       }));
       
-      setMedicationsData(transformedData.length > 0 ? transformedData : patientSample.medications);
+      setMedicationsData(transformedData);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching medications:", error);
-      setMedicationsData(patientSample.medications);
+      setMedicationsData([]);
       setLoading(false);
     }
   };
@@ -119,6 +134,15 @@ const Dispensing = () => {
       if (error) throw error;
       
       setPatientsData(data);
+      if (data.length > 0) {
+        // Set the first patient as the default
+        setPatientData({
+          id: data[0].id,
+          name: `${data[0].first_name} ${data[0].last_name}`,
+          dob: new Date().toLocaleDateString(),
+          allergies: data[0].allergies ? data[0].allergies.split(',') : []
+        });
+      }
     } catch (error) {
       console.error("Error fetching patients:", error);
       setPatientsData([]);
@@ -300,60 +324,6 @@ const Dispensing = () => {
     }
   };
 
-  const patientSample = {
-    id: 1,
-    name: "Sarah Johnson",
-    dob: "08/15/1981",
-    allergies: ["Penicillin", "Peanuts"],
-    medications: [
-      {
-        id: 101,
-        name: "Lisinopril",
-        dosage: "10mg",
-        frequency: "Once daily",
-        quantity: 30,
-        refills: 2,
-        prescriber: "Dr. Michael Chen",
-        prescribedDate: "2023-05-10",
-        status: "pending",
-        warnings: [],
-        interactions: []
-      },
-      {
-        id: 102,
-        name: "Metformin",
-        dosage: "500mg",
-        frequency: "Twice daily",
-        quantity: 60,
-        refills: 3,
-        prescriber: "Dr. Michael Chen",
-        prescribedDate: "2023-05-10",
-        status: "pending",
-        warnings: ["Take with food to minimize GI side effects"],
-        interactions: []
-      },
-      {
-        id: 103,
-        name: "Amoxicillin",
-        dosage: "500mg",
-        frequency: "Three times daily",
-        quantity: 21,
-        refills: 0,
-        prescriber: "Dr. Emma Wilson",
-        prescribedDate: "2023-06-02",
-        status: "pending",
-        warnings: [],
-        interactions: [
-          {
-            medication: "Metformin",
-            severity: "moderate",
-            description: "May affect blood glucose levels"
-          }
-        ]
-      }
-    ]
-  };
-
   return (
     <div className="min-h-screen flex w-full">
       <Sidebar />
@@ -371,31 +341,39 @@ const Dispensing = () => {
             </Button>
           </div>
 
-          <Card className="mb-6 border-healthcare-primary/30">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row justify-between">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-healthcare-primary text-white flex items-center justify-center mr-4">
-                    {patientSample.name.split(' ').map(n => n[0]).join('')}
+          {patientData && (
+            <Card className="mb-6 border-healthcare-primary/30">
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row justify-between">
+                  <div className="flex items-center">
+                    <div className="h-12 w-12 rounded-full bg-healthcare-primary text-white flex items-center justify-center mr-4">
+                      {patientData.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h2 className="font-medium">{patientData.name}</h2>
+                      <p className="text-sm text-healthcare-gray">DOB: {patientData.dob}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-medium">{patientSample.name}</h2>
-                    <p className="text-sm text-healthcare-gray">DOB: {patientSample.dob}</p>
+                  <div className="mt-4 md:mt-0">
+                    <h3 className="text-sm font-medium mb-1">Allergies:</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {patientData.allergies && patientData.allergies.length > 0 ? (
+                        patientData.allergies.map((allergy, index) => (
+                          <Badge key={index} variant="outline" className="bg-red-50 border-red-200 text-red-700">
+                            {allergy}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700">
+                          No known allergies
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="mt-4 md:mt-0">
-                  <h3 className="text-sm font-medium mb-1">Allergies:</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {patientSample.allergies.map((allergy, index) => (
-                      <Badge key={index} variant="outline" className="bg-red-50 border-red-200 text-red-700">
-                        {allergy}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="mb-6">
             <div className="flex items-center">
@@ -460,47 +438,53 @@ const Dispensing = () => {
               </div>
               
               <div className="space-y-4">
-                {filteredMedications.map((medication) => (
-                  <Card 
-                    key={medication.id} 
-                    className={`border cursor-pointer hover:border-healthcare-primary transition-colors ${
-                      verificationComplete[medication.id] ? 'bg-green-50 border-green-200' : ''
-                    }`}
-                    onClick={() => handleSelectMedication(medication)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between">
-                        <div>
-                          <div className="font-medium flex items-center">
-                            <Pill className="h-4 w-4 mr-2 text-healthcare-primary" />
-                            {medication.name} {medication.dosage}
-                          </div>
-                          <div className="mt-1 text-sm">
-                            <span className="text-healthcare-gray">Qty: {medication.quantity} | </span>
-                            <span className="text-healthcare-gray">Frequency: {medication.frequency} | </span>
-                            <span className="text-healthcare-gray">Refills: {medication.refills}</span>
-                          </div>
-                          <div className="mt-1 text-sm text-healthcare-gray">
-                            Prescribed by {medication.prescriber} on {medication.prescribedDate}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          {verificationComplete[medication.id] ? (
-                            <Badge className="bg-green-500">Verified</Badge>
-                          ) : (
-                            <Badge>Pending</Badge>
-                          )}
-                          {hasInteractions(medication) && (
-                            <div className="flex items-center mt-2 text-amber-600 text-sm">
-                              <AlertCircle className="h-4 w-4 mr-1" />
-                              Interactions
+                {filteredMedications.length > 0 ? (
+                  filteredMedications.map((medication) => (
+                    <Card 
+                      key={medication.id} 
+                      className={`border cursor-pointer hover:border-healthcare-primary transition-colors ${
+                        verificationComplete[medication.id] ? 'bg-green-50 border-green-200' : ''
+                      }`}
+                      onClick={() => handleSelectMedication(medication)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between">
+                          <div>
+                            <div className="font-medium flex items-center">
+                              <Pill className="h-4 w-4 mr-2 text-healthcare-primary" />
+                              {medication.name} {medication.dosage}
                             </div>
-                          )}
+                            <div className="mt-1 text-sm">
+                              <span className="text-healthcare-gray">Qty: {medication.quantity} | </span>
+                              <span className="text-healthcare-gray">Frequency: {medication.frequency} | </span>
+                              <span className="text-healthcare-gray">Refills: {medication.refills}</span>
+                            </div>
+                            <div className="mt-1 text-sm text-healthcare-gray">
+                              Prescribed by {medication.prescriber} on {medication.prescribedDate}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            {verificationComplete[medication.id] ? (
+                              <Badge className="bg-green-500">Verified</Badge>
+                            ) : (
+                              <Badge>Pending</Badge>
+                            )}
+                            {hasInteractions(medication) && (
+                              <div className="flex items-center mt-2 text-amber-600 text-sm">
+                                <AlertCircle className="h-4 w-4 mr-1" />
+                                Interactions
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No medications found. Please add new prescriptions.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -723,7 +707,7 @@ const Dispensing = () => {
                 </div>
                 <h2 className="text-xl font-medium mb-2">Dispensing Complete</h2>
                 <p className="text-healthcare-gray mb-4">
-                  {selectedMedication.name} has been successfully dispensed to {patientSample.name}.
+                  {selectedMedication.name} has been successfully dispensed to {patientData?.name || 'the patient'}.
                 </p>
                 
                 <div className="max-w-md mx-auto border border-healthcare-gray-light rounded-md p-4 mb-6 text-left">
@@ -734,11 +718,11 @@ const Dispensing = () => {
                     <div className="text-healthcare-gray">Quantity:</div>
                     <div>{selectedMedication.quantity}</div>
                     <div className="text-healthcare-gray">Dispensed to:</div>
-                    <div>{patientSample.name}</div>
+                    <div>{patientData?.name || 'Patient'}</div>
                     <div className="text-healthcare-gray">Date:</div>
                     <div>{new Date().toLocaleDateString()}</div>
                     <div className="text-healthcare-gray">Dispensed by:</div>
-                    <div>Current User</div>
+                    <div>Staff</div>
                   </div>
                 </div>
                 
