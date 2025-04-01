@@ -130,6 +130,11 @@ const timezones = [
     label: "Australia/Sydney",
     offset: "+10:00",
   },
+  {
+    value: "Africa/Harare",
+    label: "Harare/Johannesburg",
+    offset: "+02:00",
+  },
 ];
 
 type ApiKey = {
