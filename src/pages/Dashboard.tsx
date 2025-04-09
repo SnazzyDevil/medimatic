@@ -12,20 +12,41 @@ import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const { doctorSettings } = useDoctorSettings();
+  const { user } = useAuth(); // Get the currently authenticated user
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userName, setUserName] = useState<string>("");
   
-  // Log doctor settings to verify they're being loaded correctly
+  // Get user info when component mounts
   useEffect(() => {
-    console.log("Doctor settings loaded:", doctorSettings);
-  }, [doctorSettings]);
+    const getUserInfo = async () => {
+      if (user) {
+        // If we have user metadata with a name, use it
+        if (user.user_metadata && user.user_metadata.name) {
+          setUserName(user.user_metadata.name);
+        } else if (doctorSettings && doctorSettings.name) {
+          // Fall back to doctor settings if available
+          setUserName(doctorSettings.name);
+        } else {
+          // Last resort, use email or a default
+          setUserName(user.email?.split('@')[0] || "Doctor");
+        }
+        
+        console.log("Current user:", user);
+        console.log("Using name:", userName);
+      }
+    };
+    
+    getUserInfo();
+  }, [user, doctorSettings]);
   
   const handleLogout = async () => {
     try {
@@ -54,7 +75,9 @@ const Dashboard = () => {
           <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl p-6 mb-8 shadow-md">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="font-bold text-3xl mb-2">Good morning, {doctorSettings.name}</h1>
+                <h1 className="font-bold text-3xl mb-2">
+                  Good morning, {userName || "Doctor"}
+                </h1>
                 <p className="text-violet-100">Here are your important tasks, updates and alerts for today</p>
               </div>
               <div className="flex items-center gap-4">
