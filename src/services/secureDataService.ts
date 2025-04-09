@@ -1,12 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { TableNames } from "@/integrations/supabase/secureDataHelpers";
 
-// Define the valid table names from our Database type
-type TableNames = keyof Database['public']['Tables'];
-type TablesInsert<T extends TableNames> = Database['public']['Tables'][T]['Insert'];
-type TablesRow<T extends TableNames> = Database['public']['Tables'][T]['Row'];
-type TablesUpdate<T extends TableNames> = Database['public']['Tables'][T]['Update'];
+// Define a more specific type for custom errors
+interface DataServiceError {
+  error: true;
+  message: string;
+}
 
 // Custom error class for access violations
 export class AccessDeniedError extends Error {
@@ -18,7 +19,7 @@ export class AccessDeniedError extends Error {
 
 // Generic service for secure data operations
 export class SecureDataService {
-  static async handleError(error: any, operation: string) {
+  static async handleError(error: any, operation: string): Promise<never> {
     console.error(`Error in ${operation}:`, error);
     
     // Check if it's a permissions error
@@ -40,7 +41,7 @@ export class SecureDataService {
       order?: { column: string, ascending: boolean } 
     } = {}, 
     options: { single?: boolean } = {}
-  ): Promise<TablesRow<T> | TablesRow<T>[] | null> {
+  ): Promise<Database['public']['Tables'][T]['Row'] | Database['public']['Tables'][T]['Row'][] | null> {
     try {
       // Start with the base query
       let queryBuilder = supabase.from(table).select(query.select || "*");
@@ -59,26 +60,25 @@ export class SecureDataService {
       }
       
       // Get the data
-      const { data, error } = options.single 
-        ? await queryBuilder.maybeSingle() 
-        : await queryBuilder;
-      
-      if (error) {
-        throw error;
+      if (options.single) {
+        const { data, error } = await queryBuilder.maybeSingle();
+        if (error) throw error;
+        return data as Database['public']['Tables'][T]['Row'] | null;
+      } else {
+        const { data, error } = await queryBuilder;
+        if (error) throw error;
+        return data as Database['public']['Tables'][T]['Row'][];
       }
-      
-      return data as TablesRow<T> | TablesRow<T>[] | null;
     } catch (error: any) {
-      this.handleError(error, `fetchSecure from ${table}`);
-      return null;
+      return this.handleError(error, `fetchSecure from ${table}`);
     }
   }
   
-  // Insert data securely
+  // Insert data securely with proper typing
   static async insertSecure<T extends TableNames>(
     table: T,
-    data: TablesInsert<T>,
-  ): Promise<TablesRow<T> | null> {
+    data: Database['public']['Tables'][T]['Insert'],
+  ): Promise<Database['public']['Tables'][T]['Row']> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -86,23 +86,21 @@ export class SecureDataService {
         .select()
         .single();
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+      if (!result) throw new Error(`Failed to insert data into ${table}`);
       
-      return result as TablesRow<T>;
+      return result as Database['public']['Tables'][T]['Row'];
     } catch (error: any) {
-      this.handleError(error, `insertSecure into ${table}`);
-      return null;
+      return this.handleError(error, `insertSecure into ${table}`);
     }
   }
   
-  // Update data securely
+  // Update data securely with proper typing
   static async updateSecure<T extends TableNames>(
     table: T,
     id: string,
-    data: TablesUpdate<T>,
-  ): Promise<TablesRow<T> | null> {
+    data: Partial<Database['public']['Tables'][T]['Update']>,
+  ): Promise<Database['public']['Tables'][T]['Row']> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -111,14 +109,12 @@ export class SecureDataService {
         .select()
         .single();
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+      if (!result) throw new Error(`No record found or failed to update in ${table}`);
       
-      return result as TablesRow<T>;
+      return result as Database['public']['Tables'][T]['Row'];
     } catch (error: any) {
-      this.handleError(error, `updateSecure in ${table}`);
-      return null;
+      return this.handleError(error, `updateSecure in ${table}`);
     }
   }
   
@@ -133,14 +129,10 @@ export class SecureDataService {
         .delete()
         .eq('id' as any, id);
       
-      if (error) {
-        throw error;
-      }
-      
+      if (error) throw error;
       return true;
     } catch (error: any) {
-      this.handleError(error, `deleteSecure from ${table}`);
-      return false;
+      return this.handleError(error, `deleteSecure from ${table}`);
     }
   }
 }

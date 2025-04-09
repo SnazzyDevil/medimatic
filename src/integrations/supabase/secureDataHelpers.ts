@@ -3,9 +3,9 @@ import { supabase } from './client';
 import type { Database } from './types';
 
 // Define the valid table names from our Database type
-type TableNames = keyof Database['public']['Tables'];
-type TablesInsert<T extends TableNames> = Database['public']['Tables'][T]['Insert'];
-type TablesRow<T extends TableNames> = Database['public']['Tables'][T]['Row'];
+export type TableNames = keyof Database['public']['Tables'];
+export type TablesInsert<T extends TableNames> = Database['public']['Tables'][T]['Insert'];
+export type TablesRow<T extends TableNames> = Database['public']['Tables'][T]['Row'];
 
 // Class for handling access denied errors
 export class AccessDeniedError extends Error {
@@ -29,12 +29,12 @@ const checkAuthentication = async () => {
   return user;
 };
 
-// Generic secure data operations with proper typing
+// Simplified secure select operation with proper typing
 export const secureSelect = async <T extends TableNames>(
   table: T,
   columns: string = '*',
   filters: Record<string, any> = {}
-): Promise<TablesRow<T>[]> => {
+): Promise<Database['public']['Tables'][T]['Row'][]> => {
   try {
     // First check authentication
     await checkAuthentication();
@@ -58,24 +58,23 @@ export const secureSelect = async <T extends TableNames>(
       throw error;
     }
     
-    return (data || []) as TablesRow<T>[];
+    // Use type assertion here as we know the structure matches
+    return (data || []) as Database['public']['Tables'][T]['Row'][];
   } catch (error) {
     console.error(`Error in secureSelect from ${table}:`, error);
     throw error;
   }
 };
 
-// Secure insert operation with proper typing
+// Simplified secure insert operation with proper typing
 export const secureInsert = async <T extends TableNames>(
   table: T,
-  data: TablesInsert<T> | TablesInsert<T>[]
-): Promise<TablesRow<T>> => {
+  data: Database['public']['Tables'][T]['Insert'] | Database['public']['Tables'][T]['Insert'][]
+): Promise<Database['public']['Tables'][T]['Row']> => {
   try {
     // First check authentication
     await checkAuthentication();
     
-    // Use type assertion for inserting data
-    // This is needed because Supabase's type system is quite complex
     const { data: result, error } = await supabase
       .from(table)
       .insert(data as any)
@@ -93,19 +92,20 @@ export const secureInsert = async <T extends TableNames>(
       throw new Error(`Failed to insert data into ${table}`);
     }
     
-    return result as TablesRow<T>;
+    // Use type assertion as we know the structure
+    return result as Database['public']['Tables'][T]['Row'];
   } catch (error) {
     console.error(`Error in secureInsert into ${table}:`, error);
     throw error;
   }
 };
 
-// Secure update operation with proper typing
+// Simplified secure update operation with proper typing
 export const secureUpdate = async <T extends TableNames>(
   table: T,
   id: string,
-  data: Partial<TablesInsert<T>>
-): Promise<TablesRow<T>> => {
+  data: Partial<Database['public']['Tables'][T]['Insert']>
+): Promise<Database['public']['Tables'][T]['Row']> => {
   try {
     // First check authentication
     await checkAuthentication();
@@ -128,14 +128,15 @@ export const secureUpdate = async <T extends TableNames>(
       throw new AccessDeniedError(`Record not found or you don't have permission to update it`);
     }
     
-    return result as TablesRow<T>;
+    // Use type assertion as we know the structure
+    return result as Database['public']['Tables'][T]['Row'];
   } catch (error) {
     console.error(`Error in secureUpdate for ${table}:`, error);
     throw error;
   }
 };
 
-// Secure delete operation
+// Simplified secure delete operation
 export const secureDelete = async <T extends TableNames>(
   table: T,
   id: string

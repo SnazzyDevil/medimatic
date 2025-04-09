@@ -48,7 +48,7 @@ export function isValidData<T>(data: T | null | undefined | SelectQueryError): d
 /**
  * Safely maps Supabase query results to a desired type with data transformations
  */
-export function mapQueryResultSafely<T extends Record<string, any>, R>(
+export function mapQueryResultSafely<T, R>(
   data: T[] | null | undefined | SelectQueryError,
   mapper: (item: T, index: number) => R,
   includeNullValues: boolean = false
