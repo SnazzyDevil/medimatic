@@ -67,6 +67,10 @@ export type UpdatePracticeInformation = Partial<CreatePracticeInformation>;
 
 // Convert database snake_case to camelCase
 export function convertToPracticeInformation(data: any): PracticeInformation {
+    if (!data) {
+        throw new Error("Cannot convert null or undefined data to PracticeInformation");
+    }
+    
     return {
         id: data.id,
         name: data.name,
@@ -103,32 +107,39 @@ export function convertToPracticeInformation(data: any): PracticeInformation {
 
 // Convert camelCase to database snake_case
 export function convertFromPracticeInformation(data: CreatePracticeInformation | UpdatePracticeInformation): any {
-    return {
-        name: data.name,
-        practice_type: data.practiceType,
-        registration_number: data.registrationNumber,
-        vat_number: data.vatNumber,
-        doctor_name: data.doctorName,
-        email: data.email,
-        phone: data.phone,
-        website: data.website,
-        address_line1: data.addressLine1,
-        address_line2: data.addressLine2,
-        city: data.city,
-        state_province: data.stateProvince,
-        postal_code: data.postalCode,
-        country: data.country,
-        logo_url: data.logoUrl,
-        practice_image_url: data.practiceImageUrl,
-        business_hours: data.businessHours,
-        currency: data.currency,
-        tax_percentage: data.taxPercentage,
-        appointment_reminder_enabled: data.appointmentReminderEnabled,
-        sms_notifications_enabled: data.smsNotificationsEnabled,
-        email_notifications_enabled: data.emailNotificationsEnabled,
-        two_factor_auth_required: data.twoFactorAuthRequired,
-        is_active: data.isActive,
-        settings: data.settings,
-        metadata: data.metadata
-    };
+    if (!data) {
+        throw new Error("Cannot convert null or undefined data from PracticeInformation");
+    }
+    
+    const result: Record<string, any> = {};
+    
+    // Only include properties that are defined
+    if (data.name !== undefined) result.name = data.name;
+    if (data.practiceType !== undefined) result.practice_type = data.practiceType;
+    if (data.registrationNumber !== undefined) result.registration_number = data.registrationNumber;
+    if (data.vatNumber !== undefined) result.vat_number = data.vatNumber;
+    if (data.doctorName !== undefined) result.doctor_name = data.doctorName;
+    if (data.email !== undefined) result.email = data.email;
+    if (data.phone !== undefined) result.phone = data.phone;
+    if (data.website !== undefined) result.website = data.website;
+    if (data.addressLine1 !== undefined) result.address_line1 = data.addressLine1;
+    if (data.addressLine2 !== undefined) result.address_line2 = data.addressLine2;
+    if (data.city !== undefined) result.city = data.city;
+    if (data.stateProvince !== undefined) result.state_province = data.stateProvince;
+    if (data.postalCode !== undefined) result.postal_code = data.postalCode;
+    if (data.country !== undefined) result.country = data.country;
+    if (data.logoUrl !== undefined) result.logo_url = data.logoUrl;
+    if (data.practiceImageUrl !== undefined) result.practice_image_url = data.practiceImageUrl;
+    if (data.businessHours !== undefined) result.business_hours = data.businessHours;
+    if (data.currency !== undefined) result.currency = data.currency;
+    if (data.taxPercentage !== undefined) result.tax_percentage = data.taxPercentage;
+    if (data.appointmentReminderEnabled !== undefined) result.appointment_reminder_enabled = data.appointmentReminderEnabled;
+    if (data.smsNotificationsEnabled !== undefined) result.sms_notifications_enabled = data.smsNotificationsEnabled;
+    if (data.emailNotificationsEnabled !== undefined) result.email_notifications_enabled = data.emailNotificationsEnabled;
+    if (data.twoFactorAuthRequired !== undefined) result.two_factor_auth_required = data.twoFactorAuthRequired;
+    if (data.isActive !== undefined) result.is_active = data.isActive;
+    if (data.settings !== undefined) result.settings = data.settings;
+    if (data.metadata !== undefined) result.metadata = data.metadata;
+    
+    return result;
 }

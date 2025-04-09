@@ -9,14 +9,15 @@ import {
 } from '@/types/practice';
 
 export class PracticeService {
-    // Using 'practice_information' directly as a literal type instead of a string variable
-    // This should resolve the TypeScript error as it matches the expected table name type
-
     /**
      * Get practice information by ID
      */
     static async getById(id: string): Promise<PracticeInformation | null> {
         try {
+            if (!id) {
+                throw new Error('Practice ID is required');
+            }
+            
             const { data, error } = await supabase
                 .from('practice_information')
                 .select('*')
@@ -56,7 +57,9 @@ export class PracticeService {
                     return null;
                 }
                 
-                logSupabaseOperation('getCurrentPractice (no auth)', !error, data, error);
+                if (process.env.NODE_ENV !== 'production') {
+                    logSupabaseOperation('getCurrentPractice (no auth)', !error, data, error);
+                }
                 return data ? convertToPracticeInformation(data) : null;
             }
 
@@ -71,7 +74,9 @@ export class PracticeService {
                 throw error;
             }
             
-            logSupabaseOperation('getCurrentPractice (with auth)', !error, data, error);
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('getCurrentPractice (with auth)', !error, data, error);
+            }
             return data ? convertToPracticeInformation(data) : null;
         } catch (error) {
             console.error('Error in getCurrentPractice:', error);
@@ -84,6 +89,19 @@ export class PracticeService {
      */
     static async create(practice: CreatePracticeInformation): Promise<PracticeInformation> {
         try {
+            if (!practice) {
+                throw new Error('Practice information is required');
+            }
+            
+            // Validate required fields
+            if (!practice.name) throw new Error('Practice name is required');
+            if (!practice.registrationNumber) throw new Error('Registration number is required');
+            if (!practice.email) throw new Error('Email is required');
+            if (!practice.phone) throw new Error('Phone is required');
+            if (!practice.addressLine1) throw new Error('Address is required');
+            if (!practice.city) throw new Error('City is required');
+            if (!practice.postalCode) throw new Error('Postal code is required');
+            
             const { data: { user } } = await supabase.auth.getUser();
             
             let userId = null;
@@ -94,7 +112,6 @@ export class PracticeService {
             }
 
             const dbData = convertFromPracticeInformation(practice);
-            console.log("Converted practice data for DB:", dbData);
             
             const { data, error } = await supabase
                 .from('practice_information')
@@ -107,7 +124,9 @@ export class PracticeService {
                 throw error;
             }
             
-            logSupabaseOperation('create practice', !error, data, error);
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('create practice', !error, data, error);
+            }
             return convertToPracticeInformation(data);
         } catch (error) {
             console.error('Error in create:', error);
@@ -120,17 +139,16 @@ export class PracticeService {
      */
     static async update(id: string, practice: UpdatePracticeInformation): Promise<PracticeInformation> {
         try {
-            // Filter out undefined values to prevent overwriting with null
-            const updateData = Object.entries(practice).reduce((acc, [key, value]) => {
-                if (value !== undefined) {
-                    acc[key] = value;
-                }
-                return acc;
-            }, {} as Record<string, any>);
+            if (!id) {
+                throw new Error('Practice ID is required');
+            }
             
-            const dbData = convertFromPracticeInformation(updateData as UpdatePracticeInformation);
-            console.log("Updating practice with ID:", id);
-            console.log("Update data for DB:", dbData);
+            if (!practice || Object.keys(practice).length === 0) {
+                throw new Error('Update data is required');
+            }
+            
+            // Filter out undefined values to prevent overwriting with null
+            const dbData = convertFromPracticeInformation(practice);
             
             const { data, error } = await supabase
                 .from('practice_information')
@@ -149,7 +167,9 @@ export class PracticeService {
                 throw new Error(`No data returned when updating practice with ID ${id}`);
             }
             
-            logSupabaseOperation('update practice', !error, data, error);
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('update practice', !error, data, error);
+            }
             return convertToPracticeInformation(data);
         } catch (error) {
             console.error('Error in update:', error);
@@ -162,6 +182,14 @@ export class PracticeService {
      */
     static async updateLogo(id: string, file: File): Promise<string> {
         try {
+            if (!id) {
+                throw new Error('Practice ID is required');
+            }
+            
+            if (!file) {
+                throw new Error('File is required');
+            }
+            
             const fileExt = file.name.split('.').pop();
             const fileName = `logo-${Date.now()}.${fileExt}`;
             const filePath = `practice-assets/${fileName}`;
@@ -181,7 +209,9 @@ export class PracticeService {
 
             await this.update(id, { logoUrl: publicUrl });
             
-            logSupabaseOperation('updateLogo', true, { publicUrl });
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('updateLogo', true, { publicUrl });
+            }
             return publicUrl;
         } catch (error) {
             console.error('Error in updateLogo:', error);
@@ -194,6 +224,14 @@ export class PracticeService {
      */
     static async updatePracticeImage(id: string, file: File): Promise<string> {
         try {
+            if (!id) {
+                throw new Error('Practice ID is required');
+            }
+            
+            if (!file) {
+                throw new Error('File is required');
+            }
+            
             const fileExt = file.name.split('.').pop();
             const fileName = `practice-${Date.now()}.${fileExt}`;
             const filePath = `practice-assets/${fileName}`;
@@ -213,7 +251,9 @@ export class PracticeService {
 
             await this.update(id, { practiceImageUrl: publicUrl });
             
-            logSupabaseOperation('updatePracticeImage', true, { publicUrl });
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('updatePracticeImage', true, { publicUrl });
+            }
             return publicUrl;
         } catch (error) {
             console.error('Error in updatePracticeImage:', error);
@@ -226,6 +266,10 @@ export class PracticeService {
      */
     static async delete(id: string): Promise<void> {
         try {
+            if (!id) {
+                throw new Error('Practice ID is required');
+            }
+            
             const { error } = await supabase
                 .from('practice_information')
                 .delete()
@@ -236,7 +280,9 @@ export class PracticeService {
                 throw error;
             }
             
-            logSupabaseOperation('delete practice', !error, { id }, error);
+            if (process.env.NODE_ENV !== 'production') {
+                logSupabaseOperation('delete practice', !error, { id }, error);
+            }
         } catch (error) {
             console.error('Error in delete:', error);
             throw error;

@@ -26,21 +26,21 @@ export const ilike = (column: string, value: string) => {
 export const findInventoryItem = async (name: string, code: string = '') => {
   try {
     // Prepare search conditions
-    let searchCondition = '';
+    const conditions = [];
     
-    if (name && code) {
-      // Search by both name and code
-      searchCondition = `name.ilike.%${name}%,item_code.ilike.%${code}%`;
-    } else if (name) {
-      // Search by name only
-      searchCondition = `name.ilike.%${name}%`;
-    } else if (code) {
-      // Search by code only
-      searchCondition = `item_code.ilike.%${code}%`;
-    } else {
-      // No search criteria provided
+    if (name) {
+      conditions.push(`name.ilike.%${name}%`);
+    }
+    
+    if (code) {
+      conditions.push(`item_code.ilike.%${code}%`);
+    }
+    
+    if (conditions.length === 0) {
       return [];
     }
+    
+    const searchCondition = conditions.join(',');
     
     const { data, error } = await supabase
       .from('inventory')
@@ -62,6 +62,10 @@ export const findInventoryItem = async (name: string, code: string = '') => {
 // Helper function for exact match checking (case insensitive)
 export const findExactInventoryItemByName = async (name: string) => {
   try {
+    if (!name) {
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('inventory')
       .select('*')
@@ -82,6 +86,10 @@ export const findExactInventoryItemByName = async (name: string) => {
 // Helper function to update existing inventory item stock
 export const updateInventoryItemStock = async (id: string, newStock: number) => {
   try {
+    if (!id) {
+      throw new Error("Item ID is required to update stock");
+    }
+    
     const { data, error } = await supabase
       .from('inventory')
       .update({ 
@@ -106,6 +114,10 @@ export const updateInventoryItemStock = async (id: string, newStock: number) => 
 // Helper function to check if an item exists in dispensing records
 export const checkItemReferences = async (itemId: string) => {
   try {
+    if (!itemId) {
+      throw new Error("Item ID is required to check references");
+    }
+    
     const { data, error } = await supabase
       .from('dispensing')
       .select('id')
@@ -122,10 +134,12 @@ export const checkItemReferences = async (itemId: string) => {
 
 // Helper function to log requests and responses for debugging
 export const logSupabaseOperation = (operation: string, success: boolean, data: any, error?: any) => {
-  if (success) {
-    console.log(`Supabase ${operation} succeeded:`, data);
-  } else {
-    console.error(`Supabase ${operation} failed:`, error);
+  if (process.env.NODE_ENV !== 'production') {
+    if (success) {
+      console.log(`Supabase ${operation} succeeded:`, data);
+    } else {
+      console.error(`Supabase ${operation} failed:`, error);
+    }
   }
 };
 
