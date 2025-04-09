@@ -13,21 +13,21 @@ export const findInventoryItem = async (name: string, code: string = '') => {
     }
     
     // Prepare search conditions
-    const conditions = [];
+    const searchQueries = [];
     
     if (name) {
-      conditions.push(`name.ilike.%${name}%`);
+      searchQueries.push(`name.ilike.%${name}%`);
     }
     
     if (code) {
-      conditions.push(`item_code.ilike.%${code}%`);
+      searchQueries.push(`item_code.ilike.%${code}%`);
     }
     
-    if (conditions.length === 0) {
+    if (searchQueries.length === 0) {
       return [];
     }
     
-    const searchCondition = conditions.join(',');
+    const searchCondition = searchQueries.join(',');
     
     const { data, error } = await supabase
       .from('inventory')
@@ -98,8 +98,8 @@ export const updateInventoryItemStock = async (id: string, newStock: number) => 
       .update({ 
         stock: newStock,
         updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
+      } as any)
+      .eq('id', id as any)
       .select();
       
     if (error) {
@@ -132,7 +132,7 @@ export const checkItemReferences = async (itemId: string) => {
     const { data, error } = await supabase
       .from('dispensing')
       .select('id')
-      .eq('medication_id', itemId);
+      .eq('medication_id', itemId as any);
     
     if (error) throw error;
     

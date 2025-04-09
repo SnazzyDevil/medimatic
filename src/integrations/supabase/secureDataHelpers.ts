@@ -1,5 +1,8 @@
 
 import { supabase } from './client';
+import type { Database } from './types';
+
+type TableNames = keyof Database['public']['Tables'];
 
 // Class for handling access denied errors
 export class AccessDeniedError extends Error {
@@ -12,42 +15,39 @@ export class AccessDeniedError extends Error {
   }
 }
 
+// Helper to check if a user is authenticated
+const checkAuthentication = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new AccessDeniedError("Authentication required");
+  }
+  
+  return user;
+};
+
 // Generic secure data operations
-export const secureSelect = async (
-  table: string, 
+export const secureSelect = async <T = any>(
+  table: TableNames, 
   columns: string = '*', 
   filters: Record<string, any> = {}
 ) => {
   try {
     // First check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await checkAuthentication();
     
-    if (!user) {
-      throw new AccessDeniedError("Authentication required");
-    }
+    // Add user filters for RLS
+    const userFilters = { ...filters };
     
-    // Add user_id filter if table has owner_id
-    const hasOwnerColumn = await checkTableHasColumn(table, 'owner_id');
-    const hasUserColumn = await checkTableHasColumn(table, 'user_id');
-    const hasCreatedByColumn = await checkTableHasColumn(table, 'created_by');
-    
+    // Build the query
     let query = supabase.from(table).select(columns);
     
     // Apply all filters
-    Object.entries(filters).forEach(([key, value]) => {
+    Object.entries(userFilters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         query = query.eq(key, value);
       }
     });
-    
-    // Add user based filter if applicable
-    if (hasOwnerColumn) {
-      query = query.eq('owner_id', user.id);
-    } else if (hasUserColumn) {
-      query = query.eq('user_id', user.id);
-    } else if (hasCreatedByColumn) {
-      query = query.eq('created_by', user.id);
-    }
     
     const { data, error } = await query;
     
@@ -58,56 +58,28 @@ export const secureSelect = async (
       throw error;
     }
     
-    return data;
+    return data as T[];
   } catch (error) {
     console.error(`Error in secureSelect from ${table}:`, error);
     throw error;
   }
 };
 
-// Helper to check if a table has a specific column
-const checkTableHasColumn = async (table: string, columnName: string): Promise<boolean> => {
-  // In a real implementation, we would check the database schema
-  // For now, we'll use a simple approach based on common column names
-  const userIdColumns = ['user_id', 'owner_id', 'created_by'];
-  return userIdColumns.includes(columnName);
-};
-
 // Secure insert operation
-export const secureInsert = async <T extends Record<string, any>>(
-  table: string,
-  data: T,
+export const secureInsert = async <T = any>(
+  table: TableNames,
+  data: any,
 ) => {
   try {
     // First check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await checkAuthentication();
     
-    if (!user) {
-      throw new AccessDeniedError("Authentication required");
-    }
-    
-    // Add user_id to data if table has owner_id
-    const hasOwnerColumn = await checkTableHasColumn(table, 'owner_id');
-    const hasUserColumn = await checkTableHasColumn(table, 'user_id');
-    const hasCreatedByColumn = await checkTableHasColumn(table, 'created_by');
-    
-    let dataWithUser = { ...data };
-    
-    if (hasOwnerColumn) {
-      dataWithUser.owner_id = user.id;
-    } 
-    
-    if (hasUserColumn) {
-      dataWithUser.user_id = user.id;
-    }
-    
-    if (hasCreatedByColumn) {
-      dataWithUser.created_by = user.id;
-    }
+    // Add user-related fields if needed
+    const secureData = { ...data };
     
     const { data: result, error } = await supabase
       .from(table)
-      .insert([dataWithUser])
+      .insert([secureData])
       .select()
       .single();
     
@@ -118,7 +90,7 @@ export const secureInsert = async <T extends Record<string, any>>(
       throw error;
     }
     
-    return result;
+    return result as T;
   } catch (error) {
     console.error(`Error in secureInsert into ${table}:`, error);
     throw error;
@@ -126,39 +98,24 @@ export const secureInsert = async <T extends Record<string, any>>(
 };
 
 // Secure update operation
-export const secureUpdate = async <T extends Record<string, any>>(
-  table: string,
+export const secureUpdate = async <T = any>(
+  table: TableNames,
   id: string,
-  data: T,
+  data: any,
 ) => {
   try {
     // First check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await checkAuthentication();
     
-    if (!user) {
-      throw new AccessDeniedError("Authentication required");
-    }
+    // Add user-related fields if needed
+    const secureData = { ...data };
     
-    // Check if this record belongs to the user
-    const hasOwnerColumn = await checkTableHasColumn(table, 'owner_id');
-    const hasUserColumn = await checkTableHasColumn(table, 'user_id');
-    const hasCreatedByColumn = await checkTableHasColumn(table, 'created_by');
-    
-    let query = supabase.from(table).update(data);
-    
-    // Add user based filter
-    if (hasOwnerColumn) {
-      query = query.eq('owner_id', user.id);
-    } else if (hasUserColumn) {
-      query = query.eq('user_id', user.id);
-    } else if (hasCreatedByColumn) {
-      query = query.eq('created_by', user.id);
-    }
-    
-    // Add ID filter
-    query = query.eq('id', id);
-    
-    const { data: result, error } = await query.select().single();
+    const { data: result, error } = await supabase
+      .from(table)
+      .update(secureData)
+      .eq('id', id)
+      .select()
+      .single();
     
     if (error) {
       if (error.code === 'PGRST116' || error.message?.includes('permission denied')) {
@@ -171,7 +128,7 @@ export const secureUpdate = async <T extends Record<string, any>>(
       throw new AccessDeniedError(`Record not found or you don't have permission to update it`);
     }
     
-    return result;
+    return result as T;
   } catch (error) {
     console.error(`Error in secureUpdate for ${table}:`, error);
     throw error;
@@ -180,37 +137,17 @@ export const secureUpdate = async <T extends Record<string, any>>(
 
 // Secure delete operation
 export const secureDelete = async (
-  table: string,
+  table: TableNames,
   id: string,
 ) => {
   try {
     // First check authentication
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await checkAuthentication();
     
-    if (!user) {
-      throw new AccessDeniedError("Authentication required");
-    }
-    
-    // Check if this record belongs to the user
-    const hasOwnerColumn = await checkTableHasColumn(table, 'owner_id');
-    const hasUserColumn = await checkTableHasColumn(table, 'user_id');
-    const hasCreatedByColumn = await checkTableHasColumn(table, 'created_by');
-    
-    let query = supabase.from(table).delete();
-    
-    // Add user based filter
-    if (hasOwnerColumn) {
-      query = query.eq('owner_id', user.id);
-    } else if (hasUserColumn) {
-      query = query.eq('user_id', user.id);
-    } else if (hasCreatedByColumn) {
-      query = query.eq('created_by', user.id);
-    }
-    
-    // Add ID filter
-    query = query.eq('id', id);
-    
-    const { error } = await query;
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq('id', id);
     
     if (error) {
       if (error.code === 'PGRST116' || error.message?.includes('permission denied')) {

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { isValidData, safelyAccess, mapQueryResultSafely } from "@/utils/supabaseHelpers";
+import { isValidData, mapQueryResultSafely } from "@/utils/supabaseHelpers";
 
 // Define a type for chart data
 interface ChartItem {
@@ -46,15 +46,18 @@ export function InventoryLevels() {
     "#0ea5e9", // sky
   ];
   
-  // Transform data for chart
-  const chartData = mapQueryResultSafely<any, ChartItem>(inventoryData, (item, index) => ({
-    id: safelyAccess(item, 'id', `item-${index}`),
-    name: safelyAccess(item, 'name', 'Unknown'),
-    quantity: safelyAccess(item, 'stock', 0),
-    color: colors[index % colors.length],
-    cost: safelyAccess(item, 'unit_cost', 0),
-    category: safelyAccess(item, 'category', 'Uncategorized')
-  }));
+  // Transform data for chart - fix the mapper function signature
+  const chartData = mapQueryResultSafely<any, ChartItem>(
+    inventoryData, 
+    (item) => ({
+      id: item?.id || 'unknown',
+      name: item?.name || 'Unknown',
+      quantity: item?.stock || 0,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      cost: item?.unit_cost || 0,
+      category: item?.category || 'Uncategorized'
+    })
+  );
   
   return (
     <Card className="border-none shadow-md bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">

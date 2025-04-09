@@ -27,11 +27,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'X-Client-Info': 'medryx-app',
     },
   },
-  realtime: {
-    headers: {
-      'X-Client-Info': 'medryx-app',
-    }
-  }
+  // Remove the problematic realtime config that's causing type errors
 });
 
 // Monitor auth state and log activity
