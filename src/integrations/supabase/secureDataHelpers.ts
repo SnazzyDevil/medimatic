@@ -2,7 +2,10 @@
 import { supabase } from './client';
 import type { Database } from './types';
 
+// Define the valid table names from our Database type
 type TableNames = keyof Database['public']['Tables'];
+type TablesInsert<T extends TableNames> = Database['public']['Tables'][T]['Insert'];
+type TablesRow<T extends TableNames> = Database['public']['Tables'][T]['Row'];
 
 // Class for handling access denied errors
 export class AccessDeniedError extends Error {
@@ -27,14 +30,14 @@ const checkAuthentication = async () => {
 };
 
 // Generic secure data operations with proper typing
-export const secureSelect = async <T = any>(
-  table: TableNames,
+export const secureSelect = async <T extends TableNames>(
+  table: T,
   columns: string = '*',
   filters: Record<string, any> = {}
-): Promise<T[]> => {
+): Promise<TablesRow<T>[]> => {
   try {
     // First check authentication
-    const user = await checkAuthentication();
+    await checkAuthentication();
     
     // Build the query
     let query = supabase.from(table).select(columns);
@@ -42,7 +45,7 @@ export const secureSelect = async <T = any>(
     // Apply all filters
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        query = query.eq(key, value);
+        query = query.eq(key as any, value);
       }
     });
     
@@ -55,7 +58,7 @@ export const secureSelect = async <T = any>(
       throw error;
     }
     
-    return (data || []) as T[];
+    return (data || []) as TablesRow<T>[];
   } catch (error) {
     console.error(`Error in secureSelect from ${table}:`, error);
     throw error;
@@ -63,17 +66,19 @@ export const secureSelect = async <T = any>(
 };
 
 // Secure insert operation with proper typing
-export const secureInsert = async <T = any>(
-  table: TableNames,
-  data: Record<string, any>,
-): Promise<T> => {
+export const secureInsert = async <T extends TableNames>(
+  table: T,
+  data: TablesInsert<T> | TablesInsert<T>[]
+): Promise<TablesRow<T>> => {
   try {
     // First check authentication
     await checkAuthentication();
     
+    // Use type assertion for inserting data
+    // This is needed because Supabase's type system is quite complex
     const { data: result, error } = await supabase
       .from(table)
-      .insert([data])
+      .insert(data as any)
       .select()
       .single();
     
@@ -84,7 +89,11 @@ export const secureInsert = async <T = any>(
       throw error;
     }
     
-    return result as T;
+    if (!result) {
+      throw new Error(`Failed to insert data into ${table}`);
+    }
+    
+    return result as TablesRow<T>;
   } catch (error) {
     console.error(`Error in secureInsert into ${table}:`, error);
     throw error;
@@ -92,19 +101,19 @@ export const secureInsert = async <T = any>(
 };
 
 // Secure update operation with proper typing
-export const secureUpdate = async <T = any>(
-  table: TableNames,
+export const secureUpdate = async <T extends TableNames>(
+  table: T,
   id: string,
-  data: Record<string, any>,
-): Promise<T> => {
+  data: Partial<TablesInsert<T>>
+): Promise<TablesRow<T>> => {
   try {
     // First check authentication
     await checkAuthentication();
     
     const { data: result, error } = await supabase
       .from(table)
-      .update(data)
-      .eq('id', id)
+      .update(data as any)
+      .eq('id' as any, id)
       .select()
       .single();
     
@@ -119,7 +128,7 @@ export const secureUpdate = async <T = any>(
       throw new AccessDeniedError(`Record not found or you don't have permission to update it`);
     }
     
-    return result as T;
+    return result as TablesRow<T>;
   } catch (error) {
     console.error(`Error in secureUpdate for ${table}:`, error);
     throw error;
@@ -127,9 +136,9 @@ export const secureUpdate = async <T = any>(
 };
 
 // Secure delete operation
-export const secureDelete = async (
-  table: TableNames,
-  id: string,
+export const secureDelete = async <T extends TableNames>(
+  table: T,
+  id: string
 ): Promise<boolean> => {
   try {
     // First check authentication
@@ -138,7 +147,7 @@ export const secureDelete = async (
     const { error } = await supabase
       .from(table)
       .delete()
-      .eq('id', id);
+      .eq('id' as any, id);
     
     if (error) {
       if (error.code === 'PGRST116' || error.message?.includes('permission denied')) {

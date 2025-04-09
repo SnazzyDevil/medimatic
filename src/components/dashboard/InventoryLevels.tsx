@@ -16,7 +16,7 @@ interface ChartItem {
 }
 
 // Function to fetch inventory data for the chart
-const fetchInventoryData = async () => {
+const fetchInventoryData = async (): Promise<ChartItem[]> => {
   const { data, error } = await supabase
     .from('inventory')
     .select('id, name, stock, category, unit_cost')

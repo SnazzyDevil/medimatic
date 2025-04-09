@@ -9,9 +9,17 @@ export function isPostgrestError(obj: any): obj is PostgrestError {
 }
 
 /**
+ * Interface for errors in select queries
+ */
+export interface SelectQueryError {
+  error: true;
+  message?: string;
+}
+
+/**
  * Type guard to check if a query result is a SelectQueryError
  */
-export function isSelectQueryError(obj: any): boolean {
+export function isSelectQueryError(obj: any): obj is SelectQueryError {
   return obj && typeof obj === 'object' && 'error' in obj && obj.error === true;
 }
 
@@ -19,8 +27,8 @@ export function isSelectQueryError(obj: any): boolean {
  * Safe access helper for Supabase query results
  * Safely access properties on potentially null or error objects
  */
-export function safelyAccess<T, K extends keyof T>(
-  obj: T | null | undefined | { error: true },
+export function safelyAccess<T extends Record<string, any>, K extends keyof T>(
+  obj: T | null | undefined | SelectQueryError,
   key: K,
   defaultValue: T[K]
 ): T[K] {
@@ -33,15 +41,15 @@ export function safelyAccess<T, K extends keyof T>(
 /**
  * Type guard to check if data returned from Supabase is valid and not an error
  */
-export function isValidData<T>(data: T | null | undefined | { error: true }): data is T {
+export function isValidData<T>(data: T | null | undefined | SelectQueryError): data is T {
   return data !== null && data !== undefined && !isSelectQueryError(data);
 }
 
 /**
  * Safely maps Supabase query results to a desired type with data transformations
  */
-export function mapQueryResultSafely<T, R>(
-  data: T[] | null | undefined | { error: true },
+export function mapQueryResultSafely<T extends Record<string, any>, R>(
+  data: T[] | null | undefined | SelectQueryError,
   mapper: (item: T, index: number) => R,
   includeNullValues: boolean = false
 ): R[] {
@@ -51,8 +59,8 @@ export function mapQueryResultSafely<T, R>(
 
   return Array.isArray(data) 
     ? data
-        .filter(item => includeNullValues || item !== null)
-        .map((item, index) => mapper(item as T, index)) 
+        .filter((item): item is T => includeNullValues || item !== null)
+        .map(mapper) 
     : [];
 }
 

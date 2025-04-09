@@ -2,7 +2,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
+// Define the valid table names from our Database type
 type TableNames = keyof Database['public']['Tables'];
+type TablesInsert<T extends TableNames> = Database['public']['Tables'][T]['Insert'];
+type TablesRow<T extends TableNames> = Database['public']['Tables'][T]['Row'];
+type TablesUpdate<T extends TableNames> = Database['public']['Tables'][T]['Update'];
 
 // Custom error class for access violations
 export class AccessDeniedError extends Error {
@@ -28,11 +32,15 @@ export class SecureDataService {
   }
   
   // Fetch data securely (with automatic user_id filtering via RLS)
-  static async fetchSecure<T = any>(
-    table: TableNames, 
-    query: any = {}, 
+  static async fetchSecure<T extends TableNames>(
+    table: T, 
+    query: { 
+      select?: string, 
+      filter?: Record<string, any>, 
+      order?: { column: string, ascending: boolean } 
+    } = {}, 
     options: { single?: boolean } = {}
-  ): Promise<T | T[] | null> {
+  ): Promise<TablesRow<T> | TablesRow<T>[] | null> {
     try {
       // Start with the base query
       let queryBuilder = supabase.from(table).select(query.select || "*");
@@ -40,7 +48,7 @@ export class SecureDataService {
       // Apply filters if provided
       if (query.filter) {
         Object.entries(query.filter).forEach(([key, value]) => {
-          queryBuilder = queryBuilder.eq(key, value as any);
+          queryBuilder = queryBuilder.eq(key as any, value);
         });
       }
       
@@ -59,23 +67,22 @@ export class SecureDataService {
         throw error;
       }
       
-      return data as T | T[] || null;
+      return data as TablesRow<T> | TablesRow<T>[] | null;
     } catch (error: any) {
       this.handleError(error, `fetchSecure from ${table}`);
-      // Make TypeScript happy by adding an explicit return after error handling
       return null;
     }
   }
   
   // Insert data securely
-  static async insertSecure<T = any>(
-    table: TableNames,
-    data: any,
-  ): Promise<T | null> {
+  static async insertSecure<T extends TableNames>(
+    table: T,
+    data: TablesInsert<T>,
+  ): Promise<TablesRow<T> | null> {
     try {
       const { data: result, error } = await supabase
         .from(table)
-        .insert([data])
+        .insert([data as any])
         .select()
         .single();
       
@@ -83,25 +90,24 @@ export class SecureDataService {
         throw error;
       }
       
-      return result as T;
+      return result as TablesRow<T>;
     } catch (error: any) {
       this.handleError(error, `insertSecure into ${table}`);
-      // Make TypeScript happy by adding an explicit return after error handling
       return null;
     }
   }
   
   // Update data securely
-  static async updateSecure<T = any>(
-    table: TableNames,
+  static async updateSecure<T extends TableNames>(
+    table: T,
     id: string,
-    data: any,
-  ): Promise<T | null> {
+    data: TablesUpdate<T>,
+  ): Promise<TablesRow<T> | null> {
     try {
       const { data: result, error } = await supabase
         .from(table)
-        .update(data)
-        .eq('id', id)
+        .update(data as any)
+        .eq('id' as any, id)
         .select()
         .single();
       
@@ -109,24 +115,23 @@ export class SecureDataService {
         throw error;
       }
       
-      return result as T;
+      return result as TablesRow<T>;
     } catch (error: any) {
       this.handleError(error, `updateSecure in ${table}`);
-      // Make TypeScript happy by adding an explicit return after error handling
       return null;
     }
   }
   
   // Delete data securely
-  static async deleteSecure(
-    table: TableNames,
+  static async deleteSecure<T extends TableNames>(
+    table: T,
     id: string,
   ): Promise<boolean> {
     try {
       const { error } = await supabase
         .from(table)
         .delete()
-        .eq('id', id);
+        .eq('id' as any, id);
       
       if (error) {
         throw error;
