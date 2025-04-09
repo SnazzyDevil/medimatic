@@ -1,5 +1,5 @@
 
-import { supabase, logSupabaseOperation } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 // Custom error class for access violations
 export class AccessDeniedError extends Error {
@@ -56,7 +56,6 @@ export class SecureDataService {
         throw error;
       }
       
-      logSupabaseOperation(`fetch from ${table}`, true, data);
       return data;
     } catch (error: any) {
       return this.handleError(error, `fetchSecure from ${table}`);
@@ -79,7 +78,6 @@ export class SecureDataService {
         throw error;
       }
       
-      logSupabaseOperation(`insert into ${table}`, true, result);
       return result;
     } catch (error: any) {
       return this.handleError(error, `insertSecure into ${table}`);
@@ -104,7 +102,6 @@ export class SecureDataService {
         throw error;
       }
       
-      logSupabaseOperation(`update ${table}`, true, result);
       return result;
     } catch (error: any) {
       return this.handleError(error, `updateSecure in ${table}`);
@@ -125,8 +122,6 @@ export class SecureDataService {
       if (error) {
         throw error;
       }
-      
-      logSupabaseOperation(`delete from ${table}`, true, { id });
     } catch (error: any) {
       return this.handleError(error, `deleteSecure from ${table}`);
     }

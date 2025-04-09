@@ -4,6 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { Pill, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isValidData, safelyAccess, mapQueryResultSafely } from "@/utils/supabaseHelpers";
+
+// Define the types for the data we expect
+interface DispensingItem {
+  id: string;
+  patientName: string;
+  medication: string;
+  time: string;
+  status: string;
+  staff: string;
+}
 
 // Function to fetch upcoming dispensing from Supabase
 const fetchUpcomingDispensing = async () => {
@@ -11,18 +22,20 @@ const fetchUpcomingDispensing = async () => {
   const { data, error } = await supabase
     .from('dispensing')
     .select('id, patient_name, medication_name, dispensing_date, created_at, dispensing_staff')
-    .eq('dispensing_date', today)
+    .eq('dispensing_date', today as any)
     .order('created_at', { ascending: false });
   
   if (error) throw error;
   
-  return data.map(item => ({
-    id: item.id,
-    patientName: item.patient_name,
-    medication: item.medication_name,
-    time: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  return mapQueryResultSafely(data, item => ({
+    id: safelyAccess(item, 'id', ''),
+    patientName: safelyAccess(item, 'patient_name', ''),
+    medication: safelyAccess(item, 'medication_name', ''),
+    time: safelyAccess(item, 'created_at', '') 
+      ? new Date(safelyAccess(item, 'created_at', '')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      : '',
     status: "Scheduled",
-    staff: item.dispensing_staff
+    staff: safelyAccess(item, 'dispensing_staff', '')
   }));
 };
 

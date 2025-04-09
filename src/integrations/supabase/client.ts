@@ -20,17 +20,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true,
     // Session expiration settings
     flowType: 'pkce',
-    // Security headers
-    headers: {
-      'X-Client-Info': 'medryx-app',
-    }
   },
   global: {
     headers: {
       'X-App-Version': '1.0.0',
+      'X-Client-Info': 'medryx-app',
     },
   },
-  // Add security related response callback
   realtime: {
     headers: {
       'X-Client-Info': 'medryx-app',
