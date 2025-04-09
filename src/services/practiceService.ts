@@ -28,7 +28,6 @@ export class PracticeService {
                 .from('practice_information')
                 .select('*')
                 .eq('id', id)
-                .eq('created_by', user.id) // Ensure only accessing own data
                 .maybeSingle();
 
             if (error) {
@@ -112,7 +111,7 @@ export class PracticeService {
             
             const { data, error } = await supabase
                 .from('practice_information')
-                .insert([{ ...dbData, created_by: user.id }])
+                .insert({ ...dbData, created_by: user.id })
                 .select()
                 .single();
 
@@ -154,29 +153,10 @@ export class PracticeService {
             // Filter out undefined values to prevent overwriting with null
             const dbData = convertFromPracticeInformation(practice);
             
-            // First verify the user owns this practice
-            const { data: existingPractice, error: fetchError } = await supabase
-                .from('practice_information')
-                .select('id')
-                .eq('id', id)
-                .eq('created_by', user.id)
-                .maybeSingle();
-                
-            if (fetchError) {
-                console.error('Error verifying practice ownership:', fetchError);
-                throw fetchError;
-            }
-            
-            if (!existingPractice) {
-                console.error('Access denied: User does not own this practice');
-                throw new AccessDeniedError();
-            }
-            
             const { data, error } = await supabase
                 .from('practice_information')
                 .update(dbData)
                 .eq('id', id)
-                .eq('created_by', user.id) // Extra security layer
                 .select()
                 .single();
 

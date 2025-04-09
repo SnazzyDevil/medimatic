@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
@@ -10,6 +11,7 @@ import { PracticeService } from "@/services/practiceService";
 import { PracticeInformation } from "@/types/practice";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -17,6 +19,19 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [updatedPracticeInfo, setUpdatedPracticeInfo] = useState<Partial<PracticeInformation>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get current user ID
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     const fetchPracticeInfo = async () => {
@@ -42,15 +57,18 @@ export default function Settings() {
       }
     };
 
-    fetchPracticeInfo();
-  }, [toast]);
+    // Only fetch if we have a user ID
+    if (userId) {
+      fetchPracticeInfo();
+    }
+  }, [toast, userId]);
   
   const createDefaultPractice = async () => {
     try {
       const defaultPractice = {
         name: "New Practice",
         practiceType: "medical" as const,
-        registrationNumber: "",
+        registrationNumber: "REG-" + Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
         email: "",
         phone: "",
         doctorName: "",
@@ -116,7 +134,8 @@ export default function Settings() {
       
       await PracticeService.update(practiceInfo.id, updatedPracticeInfo);
       
-      const updatedInfo = await PracticeService.getById(practiceInfo.id);
+      // Refresh the practice information after update
+      const updatedInfo = await PracticeService.getCurrentPractice();
       setPracticeInfo(updatedInfo);
       setUpdatedPracticeInfo({});
       
@@ -128,13 +147,27 @@ export default function Settings() {
       console.error("Error updating settings:", error);
       toast({
         title: "Error",
-        description: "Failed to update settings",
+        description: "Failed to update settings. Please make sure you're logged in.",
         variant: "destructive",
       });
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Don't render until we have user ID
+  if (!userId && !loading) {
+    return (
+      <SettingsLayout 
+        title="Settings" 
+        description="Manage your account settings and preferences"
+      >
+        <div className="text-center p-8">
+          Please log in to access your settings.
+        </div>
+      </SettingsLayout>
+    );
+  }
 
   return (
     <SettingsLayout 
