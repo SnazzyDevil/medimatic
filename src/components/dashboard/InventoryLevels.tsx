@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { isValidData, mapQueryResultSafely } from "@/utils/supabaseHelpers";
 
 // Type for chart data items
 interface ChartItem {
@@ -24,26 +25,29 @@ const fetchInventoryData = async (): Promise<ChartItem[]> => {
   
   if (error) throw error;
   
-  if (!Array.isArray(data)) {
+  if (!isValidData(data) || !Array.isArray(data)) {
     console.error("Expected array but got:", data);
     return [];
   }
   
   // Map and transform the data for the chart
-  return data.map((item, index) => {
-    // Alternate colors for better visualization
-    const colors = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
-    const colorIndex = index % colors.length;
-    
-    return {
-      id: item.id,
-      name: item.name,
-      quantity: item.stock,
-      color: colors[colorIndex],
-      cost: item.unit_cost,
-      category: item.category,
-    };
-  });
+  return mapQueryResultSafely(
+    data,
+    (item, index) => {
+      // Alternate colors for better visualization
+      const colors = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+      const colorIndex = index % colors.length;
+      
+      return {
+        id: item.id,
+        name: item.name,
+        quantity: item.stock,
+        color: colors[colorIndex],
+        cost: item.unit_cost,
+        category: item.category,
+      };
+    }
+  );
 };
 
 export function InventoryLevels() {

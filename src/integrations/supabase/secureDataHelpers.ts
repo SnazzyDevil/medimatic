@@ -34,7 +34,7 @@ export const secureSelect = async <T extends TableNames>(
   table: T,
   columns: string = '*',
   filters: Record<string, any> = {}
-): Promise<Database['public']['Tables'][T]['Row'][]> => {
+): Promise<TablesRow<T>[]> => {
   try {
     // First check authentication
     await checkAuthentication();
@@ -59,7 +59,7 @@ export const secureSelect = async <T extends TableNames>(
     }
     
     // Use type assertion here as we know the structure matches
-    return (data || []) as Database['public']['Tables'][T]['Row'][];
+    return (data || []) as unknown as TablesRow<T>[];
   } catch (error) {
     console.error(`Error in secureSelect from ${table}:`, error);
     throw error;
@@ -69,8 +69,8 @@ export const secureSelect = async <T extends TableNames>(
 // Simplified secure insert operation with proper typing
 export const secureInsert = async <T extends TableNames>(
   table: T,
-  data: Database['public']['Tables'][T]['Insert'] | Database['public']['Tables'][T]['Insert'][]
-): Promise<Database['public']['Tables'][T]['Row']> => {
+  data: TablesInsert<T> | TablesInsert<T>[]
+): Promise<TablesRow<T>> => {
   try {
     // First check authentication
     await checkAuthentication();
@@ -93,7 +93,7 @@ export const secureInsert = async <T extends TableNames>(
     }
     
     // Use type assertion as we know the structure
-    return result as Database['public']['Tables'][T]['Row'];
+    return result as unknown as TablesRow<T>;
   } catch (error) {
     console.error(`Error in secureInsert into ${table}:`, error);
     throw error;
@@ -104,8 +104,8 @@ export const secureInsert = async <T extends TableNames>(
 export const secureUpdate = async <T extends TableNames>(
   table: T,
   id: string,
-  data: Partial<Database['public']['Tables'][T]['Insert']>
-): Promise<Database['public']['Tables'][T]['Row']> => {
+  data: Partial<TablesInsert<T>>
+): Promise<TablesRow<T>> => {
   try {
     // First check authentication
     await checkAuthentication();
@@ -129,7 +129,7 @@ export const secureUpdate = async <T extends TableNames>(
     }
     
     // Use type assertion as we know the structure
-    return result as Database['public']['Tables'][T]['Row'];
+    return result as unknown as TablesRow<T>;
   } catch (error) {
     console.error(`Error in secureUpdate for ${table}:`, error);
     throw error;

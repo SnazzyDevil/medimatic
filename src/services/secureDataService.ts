@@ -41,7 +41,7 @@ export class SecureDataService {
       order?: { column: string, ascending: boolean } 
     } = {}, 
     options: { single?: boolean } = {}
-  ): Promise<Database['public']['Tables'][T]['Row'] | Database['public']['Tables'][T]['Row'][] | null> {
+  ): Promise<any> {
     try {
       // Start with the base query
       let queryBuilder = supabase.from(table).select(query.select || "*");
@@ -63,11 +63,11 @@ export class SecureDataService {
       if (options.single) {
         const { data, error } = await queryBuilder.maybeSingle();
         if (error) throw error;
-        return data as Database['public']['Tables'][T]['Row'] | null;
+        return data;
       } else {
         const { data, error } = await queryBuilder;
         if (error) throw error;
-        return data as Database['public']['Tables'][T]['Row'][];
+        return data;
       }
     } catch (error: any) {
       return this.handleError(error, `fetchSecure from ${table}`);
@@ -78,7 +78,7 @@ export class SecureDataService {
   static async insertSecure<T extends TableNames>(
     table: T,
     data: Database['public']['Tables'][T]['Insert'],
-  ): Promise<Database['public']['Tables'][T]['Row']> {
+  ): Promise<any> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -89,7 +89,7 @@ export class SecureDataService {
       if (error) throw error;
       if (!result) throw new Error(`Failed to insert data into ${table}`);
       
-      return result as Database['public']['Tables'][T]['Row'];
+      return result;
     } catch (error: any) {
       return this.handleError(error, `insertSecure into ${table}`);
     }
@@ -100,7 +100,7 @@ export class SecureDataService {
     table: T,
     id: string,
     data: Partial<Database['public']['Tables'][T]['Update']>,
-  ): Promise<Database['public']['Tables'][T]['Row']> {
+  ): Promise<any> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -112,7 +112,7 @@ export class SecureDataService {
       if (error) throw error;
       if (!result) throw new Error(`No record found or failed to update in ${table}`);
       
-      return result as Database['public']['Tables'][T]['Row'];
+      return result;
     } catch (error: any) {
       return this.handleError(error, `updateSecure in ${table}`);
     }

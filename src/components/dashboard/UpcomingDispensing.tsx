@@ -17,7 +17,7 @@ interface DispensingItem {
 }
 
 // Function to fetch upcoming dispensing from Supabase
-const fetchUpcomingDispensing = async () => {
+const fetchUpcomingDispensing = async (): Promise<DispensingItem[]> => {
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase
     .from('dispensing')
@@ -26,6 +26,10 @@ const fetchUpcomingDispensing = async () => {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
+  
+  if (!isValidData(data) || !Array.isArray(data)) {
+    return [];
+  }
   
   return mapQueryResultSafely(data, item => ({
     id: safelyAccess(item, 'id', ''),
