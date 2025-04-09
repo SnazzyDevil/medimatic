@@ -1,4 +1,3 @@
-
 import { supabase, logSupabaseOperation } from '@/integrations/supabase/client';
 import {
     PracticeInformation,
@@ -7,7 +6,7 @@ import {
     convertToPracticeInformation,
     convertFromPracticeInformation
 } from '@/types/practice';
-import { SecureDataService, AccessDeniedError } from '@/utils/secureDataService';
+import { AccessDeniedError } from '@/services/secureDataService';
 
 export class PracticeService {
     /**
