@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Copy, PlusCircle, Settings as SettingsIcon, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -183,12 +182,14 @@ export default function Settings() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isFormDirty, setIsFormDirty] = useState(false);
 
   useEffect(() => {
     const fetchPracticeInfo = async () => {
       try {
         setLoading(true);
         const info = await PracticeService.getCurrentPractice();
+        console.log("Fetched practice info:", info);
         setPracticeInfo(info);
         
         if (info) {
@@ -205,6 +206,9 @@ export default function Settings() {
           setStateProvince(info.stateProvince || "");
           setRegistrationNumber(info.registrationNumber || "");
           setVatNumber(info.vatNumber || "");
+        } else {
+          console.log("No practice info found, creating default");
+          createDefaultPractice();
         }
       } catch (error) {
         console.error("Error fetching practice information:", error);
@@ -220,6 +224,25 @@ export default function Settings() {
 
     fetchPracticeInfo();
   }, [toast]);
+  
+  useEffect(() => {
+    if (practiceInfo) {
+      const isDirty = 
+        name !== practiceInfo.name ||
+        email !== practiceInfo.email ||
+        phone !== practiceInfo.phone ||
+        currency !== practiceInfo.currency ||
+        addressLine1 !== practiceInfo.addressLine1 ||
+        addressLine2 !== (practiceInfo.addressLine2 || "") ||
+        city !== practiceInfo.city ||
+        postalCode !== practiceInfo.postalCode ||
+        stateProvince !== (practiceInfo.stateProvince || "") ||
+        registrationNumber !== practiceInfo.registrationNumber ||
+        vatNumber !== (practiceInfo.vatNumber || "");
+        
+      setIsFormDirty(isDirty);
+    }
+  }, [name, email, phone, currency, addressLine1, addressLine2, city, postalCode, stateProvince, registrationNumber, vatNumber, practiceInfo]);
 
   useEffect(() => {
     if (!apiKey) {
@@ -237,6 +260,52 @@ export default function Settings() {
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [apiKey]);
+  
+  const createDefaultPractice = async () => {
+    try {
+      const defaultPractice = {
+        name: "New Practice",
+        practiceType: "medical" as const,
+        registrationNumber: "",
+        email: "",
+        phone: "",
+        addressLine1: "",
+        city: "",
+        postalCode: "",
+        country: "South Africa",
+        currency: "ZAR",
+        taxPercentage: 15,
+        appointmentReminderEnabled: true,
+        smsNotificationsEnabled: true,
+        emailNotificationsEnabled: true,
+        twoFactorAuthRequired: false,
+        isActive: true
+      };
+      
+      const createdPractice = await PracticeService.create(defaultPractice);
+      console.log("Created default practice:", createdPractice);
+      setPracticeInfo(createdPractice);
+      
+      setName(createdPractice.name);
+      setEmail(createdPractice.email);
+      setPhone(createdPractice.phone);
+      setCurrency(createdPractice.currency);
+      setDoctorName(createdPractice.name);
+      setAddressLine1(createdPractice.addressLine1);
+      
+      toast({
+        title: "New Practice Created",
+        description: "A default practice has been created for you to customize.",
+      });
+    } catch (error) {
+      console.error("Error creating default practice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create default practice",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSavePracticeInfo = async () => {
     if (!practiceInfo) {
@@ -269,9 +338,9 @@ export default function Settings() {
       
       await PracticeService.update(practiceInfo.id, updatedData);
       
-      // Refresh practice info after update
       const updatedInfo = await PracticeService.getById(practiceInfo.id);
       setPracticeInfo(updatedInfo);
+      setIsFormDirty(false);
       
       toast({
         title: "Success",
@@ -425,26 +494,7 @@ export default function Settings() {
                     <Label htmlFor="currency">Currency</Label>
                     <CurrencySelect 
                       value={currency} 
-                      onValueChange={(value) => {
-                        setCurrency(value);
-                        if (practiceInfo) {
-                          PracticeService.update(practiceInfo.id, { currency: value })
-                            .then(() => {
-                              toast({
-                                title: "Currency updated",
-                                description: `Currency has been set to ${value}`,
-                              });
-                            })
-                            .catch((error) => {
-                              console.error("Error updating currency:", error);
-                              toast({
-                                title: "Error",
-                                description: "Failed to update currency",
-                                variant: "destructive",
-                              });
-                            });
-                        }
-                      }} 
+                      onValueChange={(value) => setCurrency(value)} 
                     />
                   </div>
                 </div>
@@ -452,8 +502,11 @@ export default function Settings() {
                 <div>
                   <Button 
                     onClick={handleSavePracticeInfo} 
-                    disabled={saving || !practiceInfo}
-                    className="bg-blue-500 hover:bg-blue-600"
+                    disabled={saving || !isFormDirty}
+                    className={cn(
+                      "bg-blue-500 hover:bg-blue-600",
+                      !isFormDirty && "opacity-50 cursor-not-allowed"
+                    )}
                   >
                     {saving ? "Saving..." : "Save Practice Information"}
                   </Button>

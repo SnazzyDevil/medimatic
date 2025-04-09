@@ -128,3 +128,20 @@ export const logSupabaseOperation = (operation: string, success: boolean, data: 
     console.error(`Supabase ${operation} failed:`, error);
   }
 };
+
+// Helper function to get authenticated user
+export const getCurrentUser = async () => {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error("Error getting current user:", error);
+      return null;
+    }
+    
+    return user;
+  } catch (error) {
+    console.error("Error in getCurrentUser:", error);
+    return null;
+  }
+};
