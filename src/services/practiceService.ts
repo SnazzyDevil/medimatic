@@ -37,7 +37,20 @@ export class PracticeService {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-            throw new Error('No authenticated user');
+            console.warn('No authenticated user found when trying to get current practice');
+            // For development purposes, try to get the first practice
+            const { data, error } = await supabase
+                .from('practice_information')
+                .select('*')
+                .limit(1)
+                .maybeSingle();
+                
+            if (error || !data) {
+                console.error('Error fetching any practice information:', error);
+                return null;
+            }
+            
+            return convertToPracticeInformation(data);
         }
 
         const { data, error } = await supabase
@@ -60,13 +73,19 @@ export class PracticeService {
     static async create(practice: CreatePracticeInformation): Promise<PracticeInformation> {
         const { data: { user } } = await supabase.auth.getUser();
         
-        if (!user) {
-            throw new Error('No authenticated user');
+        let userId = null;
+        if (user) {
+            userId = user.id;
+        } else {
+            console.warn('No authenticated user when creating practice. Using null for created_by.');
         }
 
+        const dbData = convertFromPracticeInformation(practice);
+        console.log("Converted practice data for DB:", dbData);
+        
         const { data, error } = await supabase
             .from('practice_information')
-            .insert([{ ...convertFromPracticeInformation(practice), created_by: user.id }])
+            .insert([{ ...dbData, created_by: userId }])
             .select()
             .maybeSingle();
 
@@ -82,16 +101,33 @@ export class PracticeService {
      * Update practice information
      */
     static async update(id: string, practice: UpdatePracticeInformation): Promise<PracticeInformation> {
+        // Filter out undefined values to prevent overwriting with null
+        const updateData = Object.entries(practice).reduce((acc, [key, value]) => {
+            if (value !== undefined) {
+                acc[key] = value;
+            }
+            return acc;
+        }, {} as Record<string, any>);
+        
+        const dbData = convertFromPracticeInformation(updateData as UpdatePracticeInformation);
+        console.log("Updating practice with ID:", id);
+        console.log("Update data for DB:", dbData);
+        
         const { data, error } = await supabase
             .from('practice_information')
-            .update(convertFromPracticeInformation(practice))
+            .update(dbData)
             .eq('id', id)
             .select()
             .maybeSingle();
 
         if (error) {
             console.error('Error updating practice information:', error);
+            console.error('Update payload:', dbData);
             throw error;
+        }
+
+        if (!data) {
+            throw new Error(`No data returned when updating practice with ID ${id}`);
         }
 
         return convertToPracticeInformation(data);

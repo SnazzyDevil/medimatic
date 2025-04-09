@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Copy, PlusCircle, Settings as SettingsIcon, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -238,12 +239,19 @@ export default function Settings() {
   }, [apiKey]);
 
   const handleSavePracticeInfo = async () => {
-    if (!practiceInfo) return;
+    if (!practiceInfo) {
+      toast({
+        title: "Error",
+        description: "No practice information found to update",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       setSaving(true);
       
-      await PracticeService.update(practiceInfo.id, {
+      const updatedData = {
         name,
         email,
         phone,
@@ -255,7 +263,15 @@ export default function Settings() {
         stateProvince,
         registrationNumber,
         vatNumber
-      });
+      };
+      
+      console.log("Updating practice info with data:", updatedData);
+      
+      await PracticeService.update(practiceInfo.id, updatedData);
+      
+      // Refresh practice info after update
+      const updatedInfo = await PracticeService.getById(practiceInfo.id);
+      setPracticeInfo(updatedInfo);
       
       toast({
         title: "Success",
@@ -265,7 +281,7 @@ export default function Settings() {
       console.error("Error updating practice information:", error);
       toast({
         title: "Error",
-        description: "Failed to update practice information",
+        description: "Failed to update practice information. Please check the console for details.",
         variant: "destructive",
       });
     } finally {
@@ -437,6 +453,7 @@ export default function Settings() {
                   <Button 
                     onClick={handleSavePracticeInfo} 
                     disabled={saving || !practiceInfo}
+                    className="bg-blue-500 hover:bg-blue-600"
                   >
                     {saving ? "Saving..." : "Save Practice Information"}
                   </Button>

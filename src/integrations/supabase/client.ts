@@ -119,3 +119,12 @@ export const checkItemReferences = async (itemId: string) => {
     return false;
   }
 };
+
+// Helper function to log requests and responses for debugging
+export const logSupabaseOperation = (operation: string, success: boolean, data: any, error?: any) => {
+  if (success) {
+    console.log(`Supabase ${operation} succeeded:`, data);
+  } else {
+    console.error(`Supabase ${operation} failed:`, error);
+  }
+};
