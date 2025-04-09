@@ -7,6 +7,7 @@ import {
     convertToPracticeInformation,
     convertFromPracticeInformation
 } from '@/types/practice';
+import { SecureDataService, AccessDeniedError } from '@/utils/secureDataService';
 
 export class PracticeService {
     /**
@@ -18,19 +19,33 @@ export class PracticeService {
                 throw new Error('Practice ID is required');
             }
             
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                throw new AccessDeniedError("Authentication required");
+            }
+            
             const { data, error } = await supabase
                 .from('practice_information')
                 .select('*')
                 .eq('id', id)
+                .eq('created_by', user.id) // Ensure only accessing own data
                 .maybeSingle();
 
             if (error) {
+                if (error.code === 'PGRST116') {
+                    console.error('Access denied for practice information:', id);
+                    throw new AccessDeniedError();
+                }
                 console.error('Error fetching practice information:', error);
                 throw error;
             }
 
             return data ? convertToPracticeInformation(data) : null;
         } catch (error) {
+            if (error instanceof AccessDeniedError) {
+                throw error;
+            }
             console.error('Error in getById:', error);
             throw error;
         }
@@ -45,22 +60,7 @@ export class PracticeService {
             
             if (!user) {
                 console.warn('No authenticated user found when trying to get current practice');
-                // For development purposes, try to get the first practice
-                const { data, error } = await supabase
-                    .from('practice_information')
-                    .select('*')
-                    .limit(1)
-                    .maybeSingle();
-                    
-                if (error) {
-                    console.error('Error fetching any practice information:', error);
-                    return null;
-                }
-                
-                if (process.env.NODE_ENV !== 'production') {
-                    logSupabaseOperation('getCurrentPractice (no auth)', !error, data, error);
-                }
-                return data ? convertToPracticeInformation(data) : null;
+                return null;
             }
 
             const { data, error } = await supabase
@@ -75,8 +75,9 @@ export class PracticeService {
             }
             
             if (process.env.NODE_ENV !== 'production') {
-                logSupabaseOperation('getCurrentPractice (with auth)', !error, data, error);
+                logSupabaseOperation('getCurrentPractice', !error, data, error);
             }
+            
             return data ? convertToPracticeInformation(data) : null;
         } catch (error) {
             console.error('Error in getCurrentPractice:', error);
@@ -104,18 +105,15 @@ export class PracticeService {
             
             const { data: { user } } = await supabase.auth.getUser();
             
-            let userId = null;
-            if (user) {
-                userId = user.id;
-            } else {
-                console.warn('No authenticated user when creating practice. Using null for created_by.');
+            if (!user) {
+                throw new AccessDeniedError("Authentication required to create practice");
             }
 
             const dbData = convertFromPracticeInformation(practice);
             
             const { data, error } = await supabase
                 .from('practice_information')
-                .insert([{ ...dbData, created_by: userId }])
+                .insert([{ ...dbData, created_by: user.id }])
                 .select()
                 .single();
 
@@ -127,6 +125,7 @@ export class PracticeService {
             if (process.env.NODE_ENV !== 'production') {
                 logSupabaseOperation('create practice', !error, data, error);
             }
+            
             return convertToPracticeInformation(data);
         } catch (error) {
             console.error('Error in create:', error);
@@ -147,13 +146,38 @@ export class PracticeService {
                 throw new Error('Update data is required');
             }
             
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                throw new AccessDeniedError("Authentication required to update practice");
+            }
+            
             // Filter out undefined values to prevent overwriting with null
             const dbData = convertFromPracticeInformation(practice);
+            
+            // First verify the user owns this practice
+            const { data: existingPractice, error: fetchError } = await supabase
+                .from('practice_information')
+                .select('id')
+                .eq('id', id)
+                .eq('created_by', user.id)
+                .maybeSingle();
+                
+            if (fetchError) {
+                console.error('Error verifying practice ownership:', fetchError);
+                throw fetchError;
+            }
+            
+            if (!existingPractice) {
+                console.error('Access denied: User does not own this practice');
+                throw new AccessDeniedError();
+            }
             
             const { data, error } = await supabase
                 .from('practice_information')
                 .update(dbData)
                 .eq('id', id)
+                .eq('created_by', user.id) // Extra security layer
                 .select()
                 .single();
 
@@ -170,6 +194,7 @@ export class PracticeService {
             if (process.env.NODE_ENV !== 'production') {
                 logSupabaseOperation('update practice', !error, data, error);
             }
+            
             return convertToPracticeInformation(data);
         } catch (error) {
             console.error('Error in update:', error);
@@ -190,9 +215,33 @@ export class PracticeService {
                 throw new Error('File is required');
             }
             
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                throw new AccessDeniedError("Authentication required to update logo");
+            }
+            
+            // First verify the user owns this practice
+            const { data: existingPractice, error: fetchError } = await supabase
+                .from('practice_information')
+                .select('id')
+                .eq('id', id)
+                .eq('created_by', user.id)
+                .maybeSingle();
+                
+            if (fetchError) {
+                console.error('Error verifying practice ownership:', fetchError);
+                throw fetchError;
+            }
+            
+            if (!existingPractice) {
+                console.error('Access denied: User does not own this practice');
+                throw new AccessDeniedError();
+            }
+            
             const fileExt = file.name.split('.').pop();
-            const fileName = `logo-${Date.now()}.${fileExt}`;
-            const filePath = `practice-assets/${fileName}`;
+            const fileName = `logo-${id}-${Date.now()}.${fileExt}`;
+            const filePath = `practice-assets/${user.id}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('practice-assets')
@@ -212,6 +261,7 @@ export class PracticeService {
             if (process.env.NODE_ENV !== 'production') {
                 logSupabaseOperation('updateLogo', true, { publicUrl });
             }
+            
             return publicUrl;
         } catch (error) {
             console.error('Error in updateLogo:', error);
@@ -232,9 +282,33 @@ export class PracticeService {
                 throw new Error('File is required');
             }
             
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                throw new AccessDeniedError("Authentication required to update practice image");
+            }
+            
+            // First verify the user owns this practice
+            const { data: existingPractice, error: fetchError } = await supabase
+                .from('practice_information')
+                .select('id')
+                .eq('id', id)
+                .eq('created_by', user.id)
+                .maybeSingle();
+                
+            if (fetchError) {
+                console.error('Error verifying practice ownership:', fetchError);
+                throw fetchError;
+            }
+            
+            if (!existingPractice) {
+                console.error('Access denied: User does not own this practice');
+                throw new AccessDeniedError();
+            }
+            
             const fileExt = file.name.split('.').pop();
-            const fileName = `practice-${Date.now()}.${fileExt}`;
-            const filePath = `practice-assets/${fileName}`;
+            const fileName = `practice-${id}-${Date.now()}.${fileExt}`;
+            const filePath = `practice-assets/${user.id}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('practice-assets')
@@ -254,6 +328,7 @@ export class PracticeService {
             if (process.env.NODE_ENV !== 'production') {
                 logSupabaseOperation('updatePracticeImage', true, { publicUrl });
             }
+            
             return publicUrl;
         } catch (error) {
             console.error('Error in updatePracticeImage:', error);
@@ -270,10 +345,35 @@ export class PracticeService {
                 throw new Error('Practice ID is required');
             }
             
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                throw new AccessDeniedError("Authentication required to delete practice");
+            }
+            
+            // First verify the user owns this practice
+            const { data: existingPractice, error: fetchError } = await supabase
+                .from('practice_information')
+                .select('id')
+                .eq('id', id)
+                .eq('created_by', user.id)
+                .maybeSingle();
+                
+            if (fetchError) {
+                console.error('Error verifying practice ownership:', fetchError);
+                throw fetchError;
+            }
+            
+            if (!existingPractice) {
+                console.error('Access denied: User does not own this practice');
+                throw new AccessDeniedError("You do not have permission to delete this practice");
+            }
+            
             const { error } = await supabase
                 .from('practice_information')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .eq('created_by', user.id); // Double check user owns this practice
 
             if (error) {
                 console.error('Error deleting practice information:', error);

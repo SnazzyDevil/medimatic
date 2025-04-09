@@ -4,9 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useEffect } from "react";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { initSessionTimeout } from "@/utils/sessionTimeout";
 import Dashboard from "./pages/Dashboard";
 import Patients from "./pages/Patients";
 import AddPatient from "./pages/AddPatient";
@@ -20,87 +21,20 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check current auth status
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    };
-
-    checkAuth();
-
-    // Setup listener for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Check if user is authenticated
-const AuthRedirect = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    };
-
-    checkAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <Index />;
-};
-
 // Move QueryClient instantiation inside the App component to ensure
 // it's properly scoped and doesn't cause hook errors
 const App = () => {
   // Create a new client for each component instance
   const queryClient = new QueryClient();
+  
+  useEffect(() => {
+    // Initialize session timeout (30 minutes)
+    const cleanupTimeout = initSessionTimeout(30 * 60 * 1000);
+    
+    return () => {
+      cleanupTimeout();
+    };
+  }, []);
   
   return (
     <QueryClientProvider client={queryClient}>
@@ -108,90 +42,27 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<AuthRedirect />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/patients" 
-              element={
-                <ProtectedRoute>
-                  <Patients />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/patients/new" 
-              element={
-                <ProtectedRoute>
-                  <AddPatient />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/patients/:id" 
-              element={
-                <ProtectedRoute>
-                  <PatientDetail />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/scheduler" 
-              element={
-                <ProtectedRoute>
-                  <Scheduler />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/billing" 
-              element={
-                <ProtectedRoute>
-                  <Billing />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/inventory" 
-              element={
-                <ProtectedRoute>
-                  <Inventory />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/dispensing" 
-              element={
-                <ProtectedRoute>
-                  <Dispensing />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/reports" 
-              element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/patients" element={<Patients />} />
+                <Route path="/patients/new" element={<AddPatient />} />
+                <Route path="/patients/:id" element={<PatientDetail />} />
+                <Route path="/scheduler" element={<Scheduler />} />
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/dispensing" element={<Dispensing />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

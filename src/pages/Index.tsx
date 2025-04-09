@@ -1,90 +1,83 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { useAuth } from "@/contexts/AuthContext";
+import { Spinner } from "@/components/ui/spinner";
 
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, signup, isAuthenticated, isLoading } = useAuth();
+  const [isLoginView, setIsLoginView] = useState(true);
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
       return;
     }
-    setIsLoading(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      if (error) {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else if (data?.user) {
-        toast({
-          title: "Login successful",
-          description: "Welcome back!"
-        });
-        navigate("/dashboard");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Login error",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+    
+    if (isLoginView) {
+      await login(email, password);
+    } else {
+      await signup(email, password);
     }
   };
 
-  const handleSignUp = () => {
-    navigate("/register");
+  const toggleView = () => {
+    setIsLoginView(!isLoginView);
   };
 
-  return <div className="min-h-screen flex flex-col md:flex-row">
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row">
       <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-cyan-50 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-left">Sign In</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-left">
+              {isLoginView ? "Sign In" : "Sign Up"}
+            </h2>
             
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700 text-left block">
                   Email
                 </Label>
                 <div className="relative">
-                  <Input id="email" type="email" placeholder="your.email@example.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full rounded-md bg-white" required />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="your.email@example.com" 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    className="w-full rounded-md bg-white" 
+                    required 
+                  />
                 </div>
               </div>
               
@@ -93,35 +86,64 @@ const Index = () => {
                   Password
                 </Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-md bg-white pr-10" required />
-                  <button type="button" onClick={togglePasswordVisibility} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
+                  <Input 
+                    id="password" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    className="w-full rounded-md bg-white pr-10" 
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={togglePasswordVisibility} 
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
               
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="remember" checked={rememberMe} onCheckedChange={checked => setRememberMe(checked as boolean)} />
-                  <Label htmlFor="remember" className="text-sm text-gray-600">
-                    Remember me
-                  </Label>
+              {isLoginView && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="remember" 
+                      checked={rememberMe} 
+                      onCheckedChange={checked => setRememberMe(checked as boolean)} 
+                    />
+                    <Label htmlFor="remember" className="text-sm text-gray-600">
+                      Remember me
+                    </Label>
+                  </div>
+                  
+                  <a href="#" className="text-sm text-blue-600 hover:text-blue-800">
+                    Forgot Password?
+                  </a>
                 </div>
-                
-                <a href="#" className="text-sm text-blue-600 hover:text-blue-800">
-                  Forgot Password?
-                </a>
-              </div>
+              )}
               
-              <Button type="submit" className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Log In"}
+              <Button 
+                type="submit" 
+                className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Spinner size="sm" className="mr-2" />
+                ) : null}
+                {isLoginView ? "Log In" : "Sign Up"}
               </Button>
               
               <div className="text-center mt-4">
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{" "}
-                  <button type="button" onClick={handleSignUp} className="text-blue-600 hover:text-blue-800 font-medium">
-                    Sign Up
+                  {isLoginView ? "Don't have an account?" : "Already have an account?"}
+                  <button 
+                    type="button" 
+                    onClick={toggleView}
+                    className="text-blue-600 hover:text-blue-800 font-medium ml-1"
+                  >
+                    {isLoginView ? "Sign Up" : "Log In"}
                   </button>
                 </p>
               </div>
@@ -178,7 +200,8 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default Index;

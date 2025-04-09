@@ -9,11 +9,52 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// SESSION EXPIRATION: 30 minutes
+const SESSION_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    // Session expiration settings
+    flowType: 'pkce',
+    // Security headers
+    headers: {
+      'X-Client-Info': 'medryx-app',
+    }
+  },
+  global: {
+    headers: {
+      'X-App-Version': '1.0.0',
+    },
+  },
+  // Add security related response callback
+  realtime: {
+    headers: {
+      'X-Client-Info': 'medryx-app',
+    }
+  }
+});
+
+// Monitor auth state and log activity
+supabase.auth.onAuthStateChange((event, session) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Auth state changed: ${event}`);
+  }
+  
+  // Log security-relevant events
+  if (event === 'SIGNED_IN') {
+    console.log(`User signed in: ${session?.user?.id}`);
+  } else if (event === 'SIGNED_OUT') {
+    console.log('User signed out');
+  } else if (event === 'TOKEN_REFRESHED') {
+    console.log('Auth token refreshed');
+  } else if (event === 'USER_UPDATED') {
+    console.log(`User updated: ${session?.user?.id}`);
+  } else if (event === 'PASSWORD_RECOVERY') {
+    console.log('Password recovery initiated');
   }
 });
 
@@ -22,124 +63,19 @@ export const ilike = (column: string, value: string) => {
   return `${column}.ilike.%${value}%`;
 };
 
-// Helper function to check if an item exists in inventory (case insensitive)
-export const findInventoryItem = async (name: string, code: string = '') => {
-  try {
-    // Prepare search conditions
-    const conditions = [];
-    
-    if (name) {
-      conditions.push(`name.ilike.%${name}%`);
-    }
-    
-    if (code) {
-      conditions.push(`item_code.ilike.%${code}%`);
-    }
-    
-    if (conditions.length === 0) {
-      return [];
-    }
-    
-    const searchCondition = conditions.join(',');
-    
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .or(searchCondition);
-      
-    if (error) {
-      console.error("Error finding inventory item:", error);
-      throw error;
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error("Error in findInventoryItem:", error);
-    throw error;
-  }
-};
-
-// Helper function for exact match checking (case insensitive)
-export const findExactInventoryItemByName = async (name: string) => {
-  try {
-    if (!name) {
-      return [];
-    }
-    
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .ilike('name', name);
-      
-    if (error) {
-      console.error("Error finding inventory item by exact name:", error);
-      throw error;
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error("Error in findExactInventoryItemByName:", error);
-    throw error;
-  }
-};
-
-// Helper function to update existing inventory item stock
-export const updateInventoryItemStock = async (id: string, newStock: number) => {
-  try {
-    if (!id) {
-      throw new Error("Item ID is required to update stock");
-    }
-    
-    const { data, error } = await supabase
-      .from('inventory')
-      .update({ 
-        stock: newStock,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select();
-      
-    if (error) {
-      console.error("Error updating inventory item stock:", error);
-      throw error;
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error("Error in updateInventoryItemStock:", error);
-    throw error;
-  }
-};
-
-// Helper function to check if an item exists in dispensing records
-export const checkItemReferences = async (itemId: string) => {
-  try {
-    if (!itemId) {
-      throw new Error("Item ID is required to check references");
-    }
-    
-    const { data, error } = await supabase
-      .from('dispensing')
-      .select('id')
-      .eq('medication_id', itemId);
-    
-    if (error) throw error;
-    
-    return data.length > 0;
-  } catch (error) {
-    console.error("Error checking item references:", error);
-    return false;
-  }
-};
-
-// Helper function to log requests and responses for debugging
+// Log all data access operations for security monitoring
 export const logSupabaseOperation = (operation: string, success: boolean, data: any, error?: any) => {
-  if (process.env.NODE_ENV !== 'production') {
-    if (success) {
-      console.log(`Supabase ${operation} succeeded:`, data);
-    } else {
-      console.error(`Supabase ${operation} failed:`, error);
+  const timestamp = new Date().toISOString();
+  const userId = supabase.auth.getUser().then(({ data }) => data?.user?.id);
+  
+  if (success) {
+    console.log(`[${timestamp}] Supabase ${operation} succeeded for user: ${userId}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Operation data:`, data);
     }
+  } else {
+    console.error(`[${timestamp}] Supabase ${operation} failed for user: ${userId}`);
+    console.error(`Error:`, error);
   }
 };
 
@@ -159,3 +95,9 @@ export const getCurrentUser = async () => {
     return null;
   }
 };
+
+// Secure data access helpers imported from other files
+export * from './secureDataHelpers';
+
+// Re-export other helper functions
+export { findInventoryItem, findExactInventoryItemByName, updateInventoryItemStock, checkItemReferences } from './inventoryHelpers';
