@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
@@ -20,32 +21,9 @@ const APPOINTMENT_TYPES = [
 ];
 
 const TIME_SLOTS = [
-  "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", 
-  "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", 
-  "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM"
+  "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", 
+  "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"
 ];
-
-const END_TIME_MAP: Record<string, string> = {
-  "8:00 AM": "8:30 AM",
-  "8:30 AM": "9:00 AM", 
-  "9:00 AM": "9:30 AM", 
-  "9:30 AM": "10:00 AM", 
-  "10:00 AM": "10:30 AM", 
-  "10:30 AM": "11:00 AM", 
-  "11:00 AM": "11:30 AM", 
-  "11:30 AM": "12:00 PM", 
-  "12:00 PM": "12:30 PM", 
-  "12:30 PM": "1:00 PM", 
-  "1:00 PM": "1:30 PM", 
-  "1:30 PM": "2:00 PM", 
-  "2:00 PM": "2:30 PM", 
-  "2:30 PM": "3:00 PM", 
-  "3:00 PM": "3:30 PM", 
-  "3:30 PM": "4:00 PM", 
-  "4:00 PM": "4:30 PM", 
-  "4:30 PM": "5:00 PM", 
-  "5:00 PM": "5:30 PM"
-};
 
 interface Patient {
   id: string;
@@ -61,7 +39,6 @@ interface AppointmentFormProps {
 export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [time, setTime] = useState<string>("");
-  const [endTime, setEndTime] = useState<string>("");
   const [patientId, setPatientId] = useState<string>("");
   const [appointmentType, setAppointmentType] = useState<string>("");
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -69,7 +46,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
-  const [availableEndTimeSlots, setAvailableEndTimeSlots] = useState<string[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
 
   useEffect(() => {
@@ -105,24 +81,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     }
   }, [date]);
 
-  useEffect(() => {
-    if (time) {
-      setEndTime("");
-      
-      const selectedIndex = TIME_SLOTS.findIndex(slot => slot === time);
-      
-      if (selectedIndex !== -1 && selectedIndex < TIME_SLOTS.length - 1) {
-        const validEndTimeSlots = TIME_SLOTS.filter((_, index) => index > selectedIndex);
-        setAvailableEndTimeSlots(validEndTimeSlots);
-      } else {
-        setAvailableEndTimeSlots([]);
-      }
-    } else {
-      setEndTime("");
-      setAvailableEndTimeSlots([]);
-    }
-  }, [time]);
-
   const checkBookedTimeSlots = async (selectedDate: Date) => {
     setIsCheckingAvailability(true);
     setValidationError(null);
@@ -146,7 +104,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       
       if (time && bookedTimes.includes(time)) {
         setTime("");
-        setEndTime("");
         setValidationError("Your previously selected time is no longer available");
       }
     } catch (err) {
@@ -161,16 +118,8 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
     e.preventDefault();
     setValidationError(null);
     
-    if (!date || !time || !endTime || !patientId || !appointmentType) {
+    if (!date || !time || !patientId || !appointmentType) {
       setValidationError("Please fill in all required fields");
-      return;
-    }
-    
-    const startTimeIndex = TIME_SLOTS.indexOf(time);
-    const endTimeIndex = TIME_SLOTS.indexOf(endTime);
-    
-    if (startTimeIndex >= endTimeIndex) {
-      setValidationError("End time must be after start time");
       return;
     }
     
@@ -199,7 +148,6 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       const appointmentData = {
         date,
         time,
-        endTime,
         patientId,
         patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
         appointmentType,
@@ -262,7 +210,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="time">From</Label>
+        <Label htmlFor="time">Appointment Time</Label>
         {isCheckingAvailability && (
           <div className="text-sm text-muted-foreground">
             Checking available time slots...
@@ -270,14 +218,14 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         )}
         <Select onValueChange={setTime} value={time} disabled={isCheckingAvailability}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select start time">
+            <SelectValue placeholder="Select appointment time">
               {time ? (
                 <div className="flex items-center">
                   <Clock className="mr-2 h-4 w-4" />
                   {time}
                 </div>
               ) : (
-                "Select start time"
+                "Select appointment time"
               )}
             </SelectValue>
           </SelectTrigger>
@@ -295,39 +243,8 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
             )}
           </SelectContent>
         </Select>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="endTime">To</Label>
-        <Select onValueChange={setEndTime} value={endTime} disabled={!time}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select end time">
-              {endTime ? (
-                <div className="flex items-center">
-                  <Clock className="mr-2 h-4 w-4" />
-                  {endTime}
-                </div>
-              ) : (
-                "Select end time"
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {availableEndTimeSlots.length > 0 ? (
-              availableEndTimeSlots.map((slot) => (
-                <SelectItem key={slot} value={slot}>
-                  {slot}
-                </SelectItem>
-              ))
-            ) : (
-              <div className="px-2 py-4 text-center text-sm">
-                Select a start time first
-              </div>
-            )}
-          </SelectContent>
-        </Select>
         <div className="text-xs text-muted-foreground">
-          Select any end time after your start time
+          Appointments are scheduled in 1-hour blocks
         </div>
       </div>
       
@@ -387,7 +304,7 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         <Button 
           type="submit"
           className="btn-hover"
-          disabled={isLoading || isCheckingAvailability || !patientId || !time || !endTime || !appointmentType}
+          disabled={isLoading || isCheckingAvailability || !patientId || !time || !appointmentType}
         >
           Create Appointment
         </Button>
