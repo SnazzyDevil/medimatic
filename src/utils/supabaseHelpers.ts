@@ -42,7 +42,7 @@ export function isValidData<T>(data: T | null | undefined | { error: true }): da
  */
 export function mapQueryResultSafely<T, R>(
   data: T[] | null | undefined | { error: true },
-  mapper: (item: T) => R,
+  mapper: (item: T, index: number) => R,
   includeNullValues: boolean = false
 ): R[] {
   if (!data || isSelectQueryError(data)) {
@@ -52,7 +52,7 @@ export function mapQueryResultSafely<T, R>(
   return Array.isArray(data) 
     ? data
         .filter(item => includeNullValues || item !== null)
-        .map(item => mapper(item as T)) 
+        .map((item, index) => mapper(item as T, index)) 
     : [];
 }
 

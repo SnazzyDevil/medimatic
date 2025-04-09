@@ -59,9 +59,11 @@ export class SecureDataService {
         throw error;
       }
       
-      return data as T | T[];
+      return data as T | T[] || null;
     } catch (error: any) {
-      return this.handleError(error, `fetchSecure from ${table}`);
+      this.handleError(error, `fetchSecure from ${table}`);
+      // Make TypeScript happy by adding an explicit return after error handling
+      return null;
     }
   }
   
@@ -69,7 +71,7 @@ export class SecureDataService {
   static async insertSecure<T = any>(
     table: TableNames,
     data: any,
-  ): Promise<T> {
+  ): Promise<T | null> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -83,7 +85,9 @@ export class SecureDataService {
       
       return result as T;
     } catch (error: any) {
-      return this.handleError(error, `insertSecure into ${table}`);
+      this.handleError(error, `insertSecure into ${table}`);
+      // Make TypeScript happy by adding an explicit return after error handling
+      return null;
     }
   }
   
@@ -92,7 +96,7 @@ export class SecureDataService {
     table: TableNames,
     id: string,
     data: any,
-  ): Promise<T> {
+  ): Promise<T | null> {
     try {
       const { data: result, error } = await supabase
         .from(table)
@@ -107,7 +111,9 @@ export class SecureDataService {
       
       return result as T;
     } catch (error: any) {
-      return this.handleError(error, `updateSecure in ${table}`);
+      this.handleError(error, `updateSecure in ${table}`);
+      // Make TypeScript happy by adding an explicit return after error handling
+      return null;
     }
   }
   
@@ -115,7 +121,7 @@ export class SecureDataService {
   static async deleteSecure(
     table: TableNames,
     id: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       const { error } = await supabase
         .from(table)
@@ -125,8 +131,11 @@ export class SecureDataService {
       if (error) {
         throw error;
       }
+      
+      return true;
     } catch (error: any) {
-      return this.handleError(error, `deleteSecure from ${table}`);
+      this.handleError(error, `deleteSecure from ${table}`);
+      return false;
     }
   }
 }

@@ -20,14 +20,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true,
     // Session expiration settings
     flowType: 'pkce',
-  },
-  global: {
-    headers: {
-      'X-App-Version': '1.0.0',
-      'X-Client-Info': 'medryx-app',
-    },
-  },
-  // Remove the problematic realtime config that's causing type errors
+  }
 });
 
 // Monitor auth state and log activity

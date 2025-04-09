@@ -26,24 +26,21 @@ const checkAuthentication = async () => {
   return user;
 };
 
-// Generic secure data operations
+// Generic secure data operations with proper typing
 export const secureSelect = async <T = any>(
-  table: TableNames, 
-  columns: string = '*', 
+  table: TableNames,
+  columns: string = '*',
   filters: Record<string, any> = {}
-) => {
+): Promise<T[]> => {
   try {
     // First check authentication
     const user = await checkAuthentication();
-    
-    // Add user filters for RLS
-    const userFilters = { ...filters };
     
     // Build the query
     let query = supabase.from(table).select(columns);
     
     // Apply all filters
-    Object.entries(userFilters).forEach(([key, value]) => {
+    Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         query = query.eq(key, value);
       }
@@ -58,28 +55,25 @@ export const secureSelect = async <T = any>(
       throw error;
     }
     
-    return data as T[];
+    return (data || []) as T[];
   } catch (error) {
     console.error(`Error in secureSelect from ${table}:`, error);
     throw error;
   }
 };
 
-// Secure insert operation
+// Secure insert operation with proper typing
 export const secureInsert = async <T = any>(
   table: TableNames,
-  data: any,
-) => {
+  data: Record<string, any>,
+): Promise<T> => {
   try {
     // First check authentication
-    const user = await checkAuthentication();
-    
-    // Add user-related fields if needed
-    const secureData = { ...data };
+    await checkAuthentication();
     
     const { data: result, error } = await supabase
       .from(table)
-      .insert([secureData])
+      .insert([data])
       .select()
       .single();
     
@@ -97,22 +91,19 @@ export const secureInsert = async <T = any>(
   }
 };
 
-// Secure update operation
+// Secure update operation with proper typing
 export const secureUpdate = async <T = any>(
   table: TableNames,
   id: string,
-  data: any,
-) => {
+  data: Record<string, any>,
+): Promise<T> => {
   try {
     // First check authentication
-    const user = await checkAuthentication();
-    
-    // Add user-related fields if needed
-    const secureData = { ...data };
+    await checkAuthentication();
     
     const { data: result, error } = await supabase
       .from(table)
-      .update(secureData)
+      .update(data)
       .eq('id', id)
       .select()
       .single();
@@ -139,10 +130,10 @@ export const secureUpdate = async <T = any>(
 export const secureDelete = async (
   table: TableNames,
   id: string,
-) => {
+): Promise<boolean> => {
   try {
     // First check authentication
-    const user = await checkAuthentication();
+    await checkAuthentication();
     
     const { error } = await supabase
       .from(table)
