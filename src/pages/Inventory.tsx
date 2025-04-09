@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -61,11 +60,24 @@ const Inventory = () => {
     item_code: "",
     category: "",
     supplier_name: "",
-    unit_cost: 0,
+    unit_cost: "000.00",
     stock: 0,
     threshold: 0,
     expiry_date: null,
   });
+
+  const formatUnitCost = (value: string) => {
+    const numericValue = value.replace(/[^\d.]/g, '');
+    const [integerPart, decimalPart] = numericValue.split('.');
+    const paddedInteger = integerPart.padStart(3, '0').slice(-3);
+    const formattedDecimal = (decimalPart || '00').slice(0, 2).padEnd(2, '0');
+    return `${paddedInteger}.${formattedDecimal}`;
+  };
+
+  const handleUnitCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatUnitCost(e.target.value);
+    setNewItem({ ...newItem, unit_cost: formattedValue });
+  };
 
   useEffect(() => {
     fetchInventory();
@@ -110,13 +122,12 @@ const Inventory = () => {
 
   const handleAddItem = () => {
     setOpenAddDialog(true);
-    // Reset the form fields
     setNewItem({
       name: "",
       item_code: "",
       category: "",
       supplier_name: "",
-      unit_cost: 0,
+      unit_cost: "000.00",
       stock: 0,
       threshold: 0,
       expiry_date: null,
@@ -127,7 +138,6 @@ const Inventory = () => {
   const handleSaveStockUpdate = async () => {
     if (!selectedItem) return;
 
-    // Ensure stock update amount is a valid number
     const updateAmount = parseInt(stockUpdateAmount.toString());
     if (isNaN(updateAmount)) {
       toast({
@@ -139,10 +149,7 @@ const Inventory = () => {
     }
 
     try {
-      // Calculate new stock by adding the update amount to the current stock
       const newStock = selectedItem.stock + updateAmount;
-      
-      // Don't allow negative stock
       if (newStock < 0) {
         toast({
           title: "Invalid stock amount",
@@ -152,7 +159,6 @@ const Inventory = () => {
         return;
       }
 
-      // Update the stock
       await updateInventoryItemStock(selectedItem.id, newStock);
       
       toast({
@@ -210,10 +216,9 @@ const Inventory = () => {
     }
 
     try {
-      // Check for duplicates before creating
       const isDuplicate = await checkForDuplicateItem();
       if (isDuplicate) {
-        return; // Stop here as the duplicate dialog will be shown
+        return;
       }
 
       const { data, error } = await supabase
@@ -246,7 +251,7 @@ const Inventory = () => {
         item_code: "",
         category: "",
         supplier_name: "",
-        unit_cost: 0,
+        unit_cost: "000.00",
         stock: 0,
         threshold: 0,
         expiry_date: null,
@@ -265,10 +270,8 @@ const Inventory = () => {
     if (!duplicateItem) return;
     
     try {
-      // Calculate the new stock by adding the new quantity to the existing stock
       const newStock = duplicateItem.stock + parseInt(newItem.stock.toString());
       
-      // Update the existing item's stock
       await updateInventoryItemStock(duplicateItem.id, newStock);
       
       toast({
@@ -291,11 +294,9 @@ const Inventory = () => {
   };
 
   const handleCreateNewAnyway = () => {
-    // Close the duplicate dialog and proceed with creating a new item
     setShowDuplicateDialog(false);
     setDuplicateItem(null);
     
-    // Now create the item
     const createNewItem = async () => {
       try {
         const { data, error } = await supabase
@@ -440,7 +441,6 @@ const Inventory = () => {
             </Card>
           )}
 
-          {/* Update Stock Dialog */}
           <Dialog open={openUpdateStockDialog} onOpenChange={setOpenUpdateStockDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -492,7 +492,6 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Add New Item Dialog */}
           <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -560,15 +559,11 @@ const Inventory = () => {
                   </Label>
                   <Input
                     id="unit_cost"
-                    type="number"
+                    type="text"
                     value={newItem.unit_cost}
-                    onChange={(e) =>
-                      setNewItem({
-                        ...newItem,
-                        unit_cost: parseFloat(e.target.value),
-                      })
-                    }
+                    onChange={handleUnitCostChange}
                     className="col-span-3"
+                    placeholder="000.00"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -632,7 +627,6 @@ const Inventory = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Duplicate Item Dialog */}
           <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
