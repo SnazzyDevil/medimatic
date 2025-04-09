@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -11,13 +10,15 @@ import { cn } from "@/lib/utils";
 interface PracticeInformationFormProps {
   practiceInfo: PracticeInformation | null;
   loading: boolean;
-  onSave: (data: Partial<PracticeInformation>) => Promise<void>;
+  onSave: (data: Partial<PracticeInformation>) => void | Promise<void>;
+  hideButton?: boolean;
 }
 
 export function PracticeInformationForm({
   practiceInfo,
   loading,
   onSave,
+  hideButton = false,
 }: PracticeInformationFormProps) {
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -94,10 +95,12 @@ export function PracticeInformationForm({
       await onSave(updatedData);
       setIsFormDirty(false);
       
-      toast({
-        title: "Success",
-        description: "Practice information updated successfully",
-      });
+      if (!hideButton) {
+        toast({
+          title: "Success",
+          description: "Practice information updated successfully",
+        });
+      }
     } catch (error) {
       console.error("Error updating practice information:", error);
       toast({
@@ -109,6 +112,25 @@ export function PracticeInformationForm({
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (hideButton && isFormDirty) {
+      onSave({
+        name,
+        email,
+        phone,
+        currency,
+        doctorName,
+        addressLine1,
+        addressLine2,
+        city,
+        postalCode,
+        stateProvince,
+        registrationNumber,
+        vatNumber
+      });
+    }
+  }, [hideButton, isFormDirty, name, email, phone, currency, doctorName, addressLine1, addressLine2, city, postalCode, stateProvince, registrationNumber, vatNumber, onSave]);
 
   if (loading) {
     return <div className="p-4 text-center">Loading...</div>;
@@ -235,18 +257,20 @@ export function PracticeInformationForm({
         </div>
       </div>
       
-      <div>
-        <Button 
-          onClick={handleSavePracticeInfo} 
-          disabled={saving || !isFormDirty}
-          className={cn(
-            "bg-blue-500 hover:bg-blue-600",
-            !isFormDirty && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          {saving ? "Saving..." : "Save Practice Information"}
-        </Button>
-      </div>
+      {!hideButton && (
+        <div>
+          <Button 
+            onClick={handleSavePracticeInfo} 
+            disabled={saving || !isFormDirty}
+            className={cn(
+              "bg-blue-500 hover:bg-blue-600",
+              !isFormDirty && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {saving ? "Saving..." : "Save Practice Information"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

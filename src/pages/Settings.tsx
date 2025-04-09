@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
@@ -9,11 +8,15 @@ import { ApiKeysManager } from "@/components/settings/ApiKeysManager";
 import { WebhookSettings } from "@/components/settings/WebhookSettings";
 import { PracticeService } from "@/services/practiceService";
 import { PracticeInformation } from "@/types/practice";
+import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 
 export default function Settings() {
   const { toast } = useToast();
   const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatedPracticeInfo, setUpdatedPracticeInfo] = useState<Partial<PracticeInformation>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchPracticeInfo = async () => {
@@ -82,7 +85,14 @@ export default function Settings() {
     }
   };
 
-  const handleSavePracticeInfo = async (updatedData: Partial<PracticeInformation>) => {
+  const handleUpdatePracticeInfo = (updatedData: Partial<PracticeInformation>) => {
+    setUpdatedPracticeInfo((prev) => ({
+      ...prev,
+      ...updatedData
+    }));
+  };
+
+  const handleSaveAllSettings = async () => {
     if (!practiceInfo) {
       toast({
         title: "Error",
@@ -92,21 +102,37 @@ export default function Settings() {
       return;
     }
     
+    if (Object.keys(updatedPracticeInfo).length === 0) {
+      toast({
+        title: "No changes",
+        description: "No changes to save",
+      });
+      return;
+    }
+    
     try {
-      console.log("Updating practice info with data:", updatedData);
+      setIsSaving(true);
+      console.log("Saving all settings with data:", updatedPracticeInfo);
       
-      await PracticeService.update(practiceInfo.id, updatedData);
+      await PracticeService.update(practiceInfo.id, updatedPracticeInfo);
       
       const updatedInfo = await PracticeService.getById(practiceInfo.id);
       setPracticeInfo(updatedInfo);
+      setUpdatedPracticeInfo({});
       
       toast({
         title: "Success",
-        description: "Practice information updated successfully",
+        description: "Settings updated successfully",
       });
     } catch (error) {
-      console.error("Error updating practice information:", error);
-      throw error;
+      console.error("Error updating settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update settings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -126,7 +152,8 @@ export default function Settings() {
         <PracticeInformationForm 
           practiceInfo={practiceInfo}
           loading={loading}
-          onSave={handleSavePracticeInfo}
+          onSave={handleUpdatePracticeInfo}
+          hideButton={true}
         />
         
         <NotificationSettings />
@@ -143,6 +170,18 @@ export default function Settings() {
         </div>
         
         <WebhookSettings />
+        
+        <div className="pt-6 border-t">
+          <Button 
+            onClick={handleSaveAllSettings} 
+            disabled={isSaving || Object.keys(updatedPracticeInfo).length === 0}
+            className="bg-blue-500 hover:bg-blue-600"
+            size="lg"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? "Saving..." : "Save All Settings"}
+          </Button>
+        </div>
       </div>
     </SettingsLayout>
   );
