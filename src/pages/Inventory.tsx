@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -221,20 +222,21 @@ const Inventory = () => {
         return;
       }
 
+      // Convert unit_cost from string to number
+      const numericUnitCost = parseFloat(newItem.unit_cost);
+      
       const { data, error } = await supabase
         .from("inventory")
-        .insert([
-          {
-            name: newItem.name,
-            item_code: newItem.item_code,
-            category: newItem.category,
-            supplier_name: newItem.supplier_name,
-            unit_cost: newItem.unit_cost,
-            stock: newItem.stock,
-            threshold: newItem.threshold,
-            expiry_date: newItem.expiry_date,
-          },
-        ])
+        .insert({
+          name: newItem.name,
+          item_code: newItem.item_code,
+          category: newItem.category,
+          supplier_name: newItem.supplier_name,
+          unit_cost: numericUnitCost,
+          stock: newItem.stock,
+          threshold: newItem.threshold,
+          expiry_date: newItem.expiry_date,
+        })
         .select();
 
       if (error) throw error;
@@ -299,20 +301,21 @@ const Inventory = () => {
     
     const createNewItem = async () => {
       try {
+        // Convert unit_cost from string to number
+        const numericUnitCost = parseFloat(newItem.unit_cost);
+        
         const { data, error } = await supabase
           .from("inventory")
-          .insert([
-            {
-              name: newItem.name,
-              item_code: newItem.item_code,
-              category: newItem.category,
-              supplier_name: newItem.supplier_name,
-              unit_cost: newItem.unit_cost,
-              stock: newItem.stock,
-              threshold: newItem.threshold,
-              expiry_date: newItem.expiry_date,
-            },
-          ])
+          .insert({
+            name: newItem.name,
+            item_code: newItem.item_code,
+            category: newItem.category,
+            supplier_name: newItem.supplier_name,
+            unit_cost: numericUnitCost,
+            stock: newItem.stock,
+            threshold: newItem.threshold,
+            expiry_date: newItem.expiry_date,
+          })
           .select();
 
         if (error) throw error;
