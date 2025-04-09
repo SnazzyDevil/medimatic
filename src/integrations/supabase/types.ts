@@ -336,6 +336,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string
+          doctor_name: string | null
           email: string
           email_notifications_enabled: boolean | null
           id: string
@@ -367,6 +368,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          doctor_name?: string | null
           email: string
           email_notifications_enabled?: boolean | null
           id?: string
@@ -398,6 +400,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          doctor_name?: string | null
           email?: string
           email_notifications_enabled?: boolean | null
           id?: string

@@ -198,7 +198,7 @@ export default function Settings() {
           setPhone(info.phone);
           setCurrency(info.currency);
           
-          setDoctorName(info.practiceType === "medical" ? info.name : "");
+          setDoctorName(info.doctorName || "");
           setAddressLine1(info.addressLine1 || "");
           setAddressLine2(info.addressLine2 || "");
           setCity(info.city || "");
@@ -232,6 +232,7 @@ export default function Settings() {
         email !== practiceInfo.email ||
         phone !== practiceInfo.phone ||
         currency !== practiceInfo.currency ||
+        doctorName !== (practiceInfo.doctorName || "") ||
         addressLine1 !== practiceInfo.addressLine1 ||
         addressLine2 !== (practiceInfo.addressLine2 || "") ||
         city !== practiceInfo.city ||
@@ -242,7 +243,7 @@ export default function Settings() {
         
       setIsFormDirty(isDirty);
     }
-  }, [name, email, phone, currency, addressLine1, addressLine2, city, postalCode, stateProvince, registrationNumber, vatNumber, practiceInfo]);
+  }, [name, email, phone, currency, doctorName, addressLine1, addressLine2, city, postalCode, stateProvince, registrationNumber, vatNumber, practiceInfo]);
 
   useEffect(() => {
     if (!apiKey) {
@@ -269,6 +270,7 @@ export default function Settings() {
         registrationNumber: "",
         email: "",
         phone: "",
+        doctorName: "",
         addressLine1: "",
         city: "",
         postalCode: "",
@@ -290,7 +292,7 @@ export default function Settings() {
       setEmail(createdPractice.email);
       setPhone(createdPractice.phone);
       setCurrency(createdPractice.currency);
-      setDoctorName(createdPractice.name);
+      setDoctorName(createdPractice.doctorName || "");
       setAddressLine1(createdPractice.addressLine1);
       
       toast({
@@ -325,6 +327,7 @@ export default function Settings() {
         email,
         phone,
         currency,
+        doctorName,
         addressLine1,
         addressLine2,
         city,

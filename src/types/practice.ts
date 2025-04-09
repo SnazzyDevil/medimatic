@@ -18,6 +18,7 @@ export interface PracticeInformation {
     practiceType: PracticeType;
     registrationNumber: string;
     vatNumber?: string;
+    doctorName?: string;
     
     // Contact Information
     email: string;
@@ -72,6 +73,7 @@ export function convertToPracticeInformation(data: any): PracticeInformation {
         practiceType: data.practice_type,
         registrationNumber: data.registration_number,
         vatNumber: data.vat_number,
+        doctorName: data.doctor_name,
         email: data.email,
         phone: data.phone,
         website: data.website,
@@ -106,6 +108,7 @@ export function convertFromPracticeInformation(data: CreatePracticeInformation |
         practice_type: data.practiceType,
         registration_number: data.registrationNumber,
         vat_number: data.vatNumber,
+        doctor_name: data.doctorName,
         email: data.email,
         phone: data.phone,
         website: data.website,
