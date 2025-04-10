@@ -4,13 +4,12 @@ import { Calendar, Clock, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { format, isToday, addDays, isTomorrow } from "date-fns";
+import { format, isToday, isTomorrow, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SecureDataService } from "@/services/secureDataService";
 
-// Define simple interfaces with exact shapes
-interface Appointment {
+// Define interfaces with explicit types
+interface AppointmentData {
   id: string;
   patient_id: string;
   patientName: string;
@@ -22,23 +21,24 @@ interface Appointment {
   displayDate?: string;
 }
 
-// Raw data from database
-interface RawAppointment {
+// Raw data types that directly match the database structure
+interface DatabaseAppointment {
   id: string;
   patient_id: string;
   appointment_date: string;
   appointment_time: string;
   appointment_type: string;
+  doctor?: string | null;
 }
 
-interface RawPatient {
+interface DatabasePatient {
   id: string;
   first_name: string;
   last_name: string;
 }
 
 export function UpcomingAppointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -64,36 +64,37 @@ export function UpcomingAppointments() {
         const nextWeekStr = format(addDays(today, 7), "yyyy-MM-dd");
         
         // Fetch upcoming appointments for the next 7 days - FILTERED BY USER_ID
-        const appointmentsResponse = await supabase
+        const { data: appointmentsData, error: appointmentsError } = await supabase
           .from('appointments')
-          .select('id, patient_id, appointment_date, appointment_time, appointment_type')
+          .select('id, patient_id, appointment_date, appointment_time, appointment_type, doctor')
           .eq('user_id', currentUser.id) // Filter by current user
           .gte('appointment_date', todayStr)
           .lte('appointment_date', nextWeekStr)
           .order('appointment_date', { ascending: true })
           .order('appointment_time', { ascending: true })
-          .limit(3); // Only show the next 3 appointments
+          .limit(3);
           
-        if (appointmentsResponse.error) {
-          console.error("Error fetching appointments:", appointmentsResponse.error);
+        if (appointmentsError) {
+          console.error("Error fetching appointments:", appointmentsError);
           setAppointments([]);
           setLoading(false);
           return;
         }
 
-        // Safely cast the data
-        const appointmentsData: RawAppointment[] = appointmentsResponse.data || [];
-        
-        if (appointmentsData.length === 0) {
+        // Check if we have appointments data and it's an array
+        if (!appointmentsData || !Array.isArray(appointmentsData) || appointmentsData.length === 0) {
           setAppointments([]);
           setLoading(false);
           return;
         }
         
-        // Extract patient IDs
-        const patientIds: string[] = appointmentsData
-          .map(app => app.patient_id)
-          .filter(Boolean);
+        // Extract patient IDs safely
+        const patientIds: string[] = [];
+        for (const app of appointmentsData) {
+          if (app.patient_id) {
+            patientIds.push(app.patient_id);
+          }
+        }
         
         if (patientIds.length === 0) {
           setAppointments([]);
@@ -102,30 +103,30 @@ export function UpcomingAppointments() {
         }
         
         // Fetch patient details
-        const patientsResponse = await supabase
+        const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
           .select('id, first_name, last_name')
           .in('id', patientIds)
           .eq('user_id', currentUser.id);
           
-        if (patientsResponse.error) {
-          console.error("Error fetching patient details:", patientsResponse.error);
+        if (patientsError) {
+          console.error("Error fetching patient details:", patientsError);
           setAppointments([]);
           setLoading(false);
           return;
         }
         
-        // Safely cast the patients data
-        const patientsData: RawPatient[] = patientsResponse.data || [];
-        
-        // Create lookup map for patient names
+        // Create a lookup map for patient names
         const patientNameMap: Record<string, string> = {};
-        patientsData.forEach(patient => {
-          patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
-        });
+        if (patientsData && Array.isArray(patientsData)) {
+          for (const patient of patientsData) {
+            patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+          }
+        }
         
-        // Transform appointment data
-        const formattedAppointments: Appointment[] = appointmentsData.map(app => {
+        // Transform appointment data using standard for loop to avoid type recursion issues
+        const formattedAppointments: AppointmentData[] = [];
+        for (const app of appointmentsData) {
           const appointmentDate = new Date(app.appointment_date);
           let dateDisplay = '';
           
@@ -139,7 +140,7 @@ export function UpcomingAppointments() {
           
           const avatarIndex = Math.floor(Math.random() * 10) + 1;
           
-          return {
+          formattedAppointments.push({
             id: app.id,
             patient_id: app.patient_id,
             patientName: patientNameMap[app.patient_id] || "Unknown Patient",
@@ -149,8 +150,8 @@ export function UpcomingAppointments() {
             displayDate: dateDisplay,
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
             avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-          };
-        });
+          });
+        }
         
         setAppointments(formattedAppointments);
       } catch (error) {
