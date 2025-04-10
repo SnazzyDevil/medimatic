@@ -14,6 +14,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   autoLogout: () => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +58,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: window.location.origin,
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Verification email resent",
+        description: "Please check your inbox for the verification email.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to resend verification email: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
@@ -70,20 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        // Check if email is verified
-        if (!data.user.email_confirmed_at) {
-          toast({
-            title: "Email not verified",
-            description: "Please check your email and verify your account before logging in.",
-            variant: "destructive",
-          });
-          
-          // Sign out the user since email is not verified
-          await supabase.auth.signOut();
-          return;
-        }
-        
-        // Log successful login attempt
+        // Allow login even with unverified emails (temporary for testing)
         console.log("Successful login:", data.user.id);
         
         toast({
@@ -190,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signup,
         logout,
         autoLogout,
+        resendVerificationEmail,
         isAuthenticated: !!user,
       }}
     >

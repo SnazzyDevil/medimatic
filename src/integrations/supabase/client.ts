@@ -18,8 +18,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Session expiration settings
     flowType: 'pkce',
+    // Allowing unverified email logins temporarily for testing
+    // Remove this or set to false in production to enforce email verification
+    allowUnverifiedEmails: true
   }
 });
 

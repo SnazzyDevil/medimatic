@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,11 +16,13 @@ const Index = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
   const {
     login,
     signup,
     isAuthenticated,
-    isLoading
+    isLoading,
+    resendVerificationEmail
   } = useAuth();
   const { toast } = useToast();
   const [isLoginView, setIsLoginView] = useState(true);
@@ -43,6 +46,11 @@ const Index = () => {
         description: errorDescription || "There was an error with authentication",
         variant: "destructive"
       });
+      
+      // If the error is about email verification, show resend option
+      if (errorDescription?.includes("Email not confirmed")) {
+        setShowResendOption(true);
+      }
     }
     
     if (url.search) {
@@ -67,11 +75,26 @@ const Index = () => {
       await login(email, password);
     } else {
       await signup(email, password);
+      // Show resend option after signup
+      setShowResendOption(true);
     }
+  };
+  
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address to resend the verification link",
+        variant: "destructive"
+      });
+      return;
+    }
+    await resendVerificationEmail(email);
   };
   
   const toggleView = () => {
     setIsLoginView(!isLoginView);
+    setShowResendOption(false); // Reset resend option when toggling views
   };
   
   if (isLoading) {
@@ -127,6 +150,19 @@ const Index = () => {
                 {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
                 {isLoginView ? "Log In" : "Sign Up"}
               </Button>
+              
+              {showResendOption && (
+                <div className="text-center mt-2">
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={handleResendVerification}
+                    className="text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Resend verification email
+                  </Button>
+                </div>
+              )}
               
               <div className="text-center mt-4">
                 <p className="text-sm text-gray-600">
