@@ -8,54 +8,47 @@ import { Eye, EyeOff } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spinner } from "@/components/ui/spinner";
-
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, signup, isAuthenticated, isLoading } = useAuth();
+  const {
+    login,
+    signup,
+    isAuthenticated,
+    isLoading
+  } = useAuth();
   const [isLoginView, setIsLoginView] = useState(true);
   const navigate = useNavigate();
-
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
-
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       return;
     }
-    
     if (isLoginView) {
       await login(email, password);
     } else {
       await signup(email, password);
     }
   };
-
   const toggleView = () => {
     setIsLoginView(!isLoginView);
   };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <Spinner size="lg" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+  return <div className="min-h-screen flex flex-col md:flex-row">
       <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-cyan-50 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
@@ -69,15 +62,7 @@ const Index = () => {
                   Email
                 </Label>
                 <div className="relative">
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="your.email@example.com" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
-                    className="w-full rounded-md bg-white" 
-                    required 
-                  />
+                  <Input id="email" type="email" placeholder="your.email@example.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full rounded-md bg-white" required />
                 </div>
               </div>
               
@@ -86,33 +71,16 @@ const Index = () => {
                   Password
                 </Label>
                 <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
-                    className="w-full rounded-md bg-white pr-10" 
-                    required 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={togglePasswordVisibility} 
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                  >
+                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full rounded-md bg-white pr-10" required />
+                  <button type="button" onClick={togglePasswordVisibility} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
               
-              {isLoginView && (
-                <div className="flex items-center justify-between">
+              {isLoginView && <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="remember" 
-                      checked={rememberMe} 
-                      onCheckedChange={checked => setRememberMe(checked as boolean)} 
-                    />
+                    <Checkbox id="remember" checked={rememberMe} onCheckedChange={checked => setRememberMe(checked as boolean)} />
                     <Label htmlFor="remember" className="text-sm text-gray-600">
                       Remember me
                     </Label>
@@ -121,28 +89,17 @@ const Index = () => {
                   <a href="#" className="text-sm text-blue-600 hover:text-blue-800">
                     Forgot Password?
                   </a>
-                </div>
-              )}
+                </div>}
               
-              <Button 
-                type="submit" 
-                className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Spinner size="sm" className="mr-2" />
-                ) : null}
+              <Button type="submit" className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-md transition-all duration-200 font-medium" disabled={isLoading}>
+                {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
                 {isLoginView ? "Log In" : "Sign Up"}
               </Button>
               
               <div className="text-center mt-4">
                 <p className="text-sm text-gray-600">
                   {isLoginView ? "Don't have an account?" : "Already have an account?"}
-                  <button 
-                    type="button" 
-                    onClick={toggleView}
-                    className="text-blue-600 hover:text-blue-800 font-medium ml-1"
-                  >
+                  <button type="button" onClick={toggleView} className="text-blue-600 hover:text-blue-800 font-medium ml-1">
                     {isLoginView ? "Sign Up" : "Log In"}
                   </button>
                 </p>
@@ -159,15 +116,11 @@ const Index = () => {
             <div className="relative z-10 bg-white rounded-xl shadow-lg p-8 overflow-hidden">
               <div className="flex flex-col items-center space-y-6">
                 <div className="w-full h-40 mb-4 flex items-center justify-center">
-                  <AspectRatio ratio={16/10} className="w-[250px] bg-white/50 rounded">
-                    <img 
-                      src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" 
-                      alt="Medryx" 
-                      className="h-full w-full object-contain"
-                    />
+                  <AspectRatio ratio={16 / 10} className="w-[250px] bg-white/50 rounded">
+                    <img src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" alt="Medryx" className="h-full w-full object-contain" />
                   </AspectRatio>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 text-center">Welcome to Medryx</h2>
+                <h2 className="text-2xl font-bold text-gray-800 text-center">Welcome to MediMatic</h2>
                 <p className="text-gray-600 text-center mb-6">
                   Your comprehensive healthcare management system, designed to streamline your practice and improve patient care.
                 </p>
@@ -200,8 +153,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
