@@ -8,6 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spinner } from "@/components/ui/spinner";
+
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,14 +22,24 @@ const Index = () => {
   } = useAuth();
   const [isLoginView, setIsLoginView] = useState(true);
   const navigate = useNavigate();
+  
   useEffect(() => {
+    const shouldAutoLogout = localStorage.getItem('medimatic_auto_logout');
+    
+    if (shouldAutoLogout === 'true') {
+      localStorage.removeItem('medimatic_auto_logout');
+      console.log("Session expired for security reasons - user needs to login again");
+    }
+    
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
+  
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -40,14 +51,17 @@ const Index = () => {
       await signup(email, password);
     }
   };
+  
   const toggleView = () => {
     setIsLoginView(!isLoginView);
   };
+  
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
         <Spinner size="lg" />
       </div>;
   }
+  
   return <div className="min-h-screen flex flex-col md:flex-row">
       <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-blue-50 to-cyan-50 p-6 md:p-10">
         <div className="w-full max-w-md space-y-8">
@@ -155,4 +169,5 @@ const Index = () => {
       </div>
     </div>;
 };
+
 export default Index;

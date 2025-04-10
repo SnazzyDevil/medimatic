@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
@@ -13,6 +12,7 @@ interface AuthContextType {
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  autoLogout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,6 +150,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const autoLogout = async () => {
+    try {
+      setIsLoading(true);
+      await supabase.auth.signOut();
+      console.log("Auto logout: User has been automatically logged out for security reasons");
+    } catch (error: any) {
+      console.error("Auto logout failed:", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -159,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         signup,
         logout,
+        autoLogout,
         isAuthenticated: !!user,
       }}
     >

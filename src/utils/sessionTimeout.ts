@@ -42,6 +42,9 @@ function startTimer(timeoutDuration: number) {
     if (inactivityDuration >= timeoutDuration) {
       console.log("Session timeout due to inactivity");
       
+      // Set the auto logout flag before signing out
+      localStorage.setItem('medimatic_auto_logout', 'true');
+      
       // Log out the user
       await supabase.auth.signOut();
       

@@ -18,13 +18,48 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { PracticeService } from "@/services/practiceService";
 import { PracticeInformation } from "@/types/practice";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const { doctorSettings } = useDoctorSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { autoLogout } = useAuth();
   const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Add event listener for when user navigates away or closes the browser
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Log a message to console for debugging
+      console.log("User is leaving dashboard - initiating auto logout");
+      
+      // We need to handle this synchronously because the page is about to unload
+      // Store a flag in localStorage indicating that a logout should happen on next page load
+      localStorage.setItem('medimatic_auto_logout', 'true');
+    };
+
+    // Add event listener for page close/navigation
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Check if we need to auto-logout from a previous session
+    const shouldAutoLogout = localStorage.getItem('medimatic_auto_logout');
+    if (shouldAutoLogout === 'true') {
+      console.log("Auto-logout flag detected from previous session");
+      // Clear the flag
+      localStorage.removeItem('medimatic_auto_logout');
+      // Perform auto logout
+      autoLogout().then(() => {
+        console.log("Auto logout completed from previous session");
+        navigate('/');
+      });
+    }
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [autoLogout, navigate]);
   
   // Fetch practice information to display the correct doctor name
   useEffect(() => {
