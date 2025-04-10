@@ -53,21 +53,54 @@ export function mapQueryResultSafely<T, R>(
   mapper: (item: T, index: number) => R,
   includeNullValues: boolean = false
 ): R[] {
-  if (!data || isSelectQueryError(data)) {
+  if (!data || isSelectQueryError(data) || !Array.isArray(data)) {
     return [];
   }
 
-  return Array.isArray(data) 
-    ? data
-        .filter((item): item is T => includeNullValues || item !== null)
-        .map(mapper) 
-    : [];
+  return data
+    .filter((item): item is NonNullable<T> => includeNullValues || item !== null)
+    .map(mapper);
 }
 
 /**
  * Helper to safely cast types when working with Supabase
  * Only use this when you are confident about the structure
  */
-export function safeCast<T>(data: any): T {
+export function safeCast<T>(data: any): T | null {
+  if (!data || isSelectQueryError(data)) return null;
   return data as T;
+}
+
+/**
+ * Type-safe function to check if a Supabase query returned data
+ */
+export function hasData<T>(result: { data: T | null, error: any }): result is { data: T, error: null } {
+  return result.data !== null && !result.error;
+}
+
+/**
+ * Helper to safely extract a single item from a Supabase query
+ */
+export function getSingleResult<T>(result: { data: T[] | null, error: any }): T | null {
+  if (result.error || !result.data || !Array.isArray(result.data) || result.data.length === 0) {
+    return null;
+  }
+  return result.data[0];
+}
+
+/**
+ * Helper function to safely transform query data with proper type checking
+ */
+export function transformQueryData<T, R>(
+  data: T[] | null | undefined,
+  transformer: (item: T) => R
+): R[] {
+  if (!data || !Array.isArray(data)) return [];
+  
+  return data.map(item => transformer(item));
+}
+
+export function ensureArray<T>(data: T | T[] | null | undefined): T[] {
+  if (data === null || data === undefined) return [];
+  return Array.isArray(data) ? data : [data];
 }
