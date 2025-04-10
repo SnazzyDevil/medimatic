@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session, User } from "@supabase/supabase-js";
@@ -69,6 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        // Check if email is verified
+        if (!data.user.email_confirmed_at) {
+          toast({
+            title: "Email not verified",
+            description: "Please check your email and verify your account before logging in.",
+            variant: "destructive",
+          });
+          
+          // Sign out the user since email is not verified
+          await supabase.auth.signOut();
+          return;
+        }
+        
         // Log successful login attempt
         console.log("Successful login:", data.user.id);
         
@@ -98,6 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: window.location.origin,
+        }
       });
 
       if (error) {
@@ -107,9 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         toast({
           title: "Registration successful",
-          description: "Your account has been created.",
+          description: "Please check your email to verify your account before logging in.",
         });
-        navigate("/dashboard");
+        // Don't automatically navigate to dashboard - user needs to verify email first
+        navigate("/");
       }
     } catch (error: any) {
       // Log failed signup attempt

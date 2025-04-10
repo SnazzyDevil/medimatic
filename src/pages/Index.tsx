@@ -8,6 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spinner } from "@/components/ui/spinner";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [email, setEmail] = useState("");
@@ -20,6 +21,7 @@ const Index = () => {
     isAuthenticated,
     isLoading
   } = useAuth();
+  const { toast } = useToast();
   const [isLoginView, setIsLoginView] = useState(true);
   const navigate = useNavigate();
   
@@ -31,10 +33,26 @@ const Index = () => {
       console.log("Session expired for security reasons - user needs to login again");
     }
     
+    const url = new URL(window.location.href);
+    const errorParam = url.searchParams.get("error");
+    const errorDescription = url.searchParams.get("error_description");
+    
+    if (errorParam) {
+      toast({
+        title: "Authentication Error",
+        description: errorDescription || "There was an error with authentication",
+        variant: "destructive"
+      });
+    }
+    
+    if (url.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     if (isAuthenticated) {
       navigate("/dashboard");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, toast]);
   
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
