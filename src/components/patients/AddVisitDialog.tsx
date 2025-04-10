@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -14,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AddVisitDialogProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export function AddVisitDialog({
   patientId,
 }: AddVisitDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [visitData, setVisitData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -96,7 +97,7 @@ export function AddVisitDialog({
     setIsSubmitting(true);
     
     try {
-      // Save visit to Supabase
+      // Save visit to Supabase with user_id
       const { data: visitData_db, error: visitError } = await supabase
         .from('visits')
         .insert({
@@ -105,6 +106,7 @@ export function AddVisitDialog({
           type: visitData.type,
           doctor: visitData.doctor,
           notes: visitData.notes || null,
+          user_id: user?.id // Add user_id
         })
         .select();
       
@@ -121,32 +123,16 @@ export function AddVisitDialog({
             temp: visitData.vitals.temp || null,
             weight: visitData.vitals.weight || null,
           });
-        
+          
         if (vitalsError) throw vitalsError;
       }
       
-      // Call onAddVisit to update UI
       onAddVisit(visitData);
-      
-      // Reset form
-      setVisitData({
-        date: new Date().toISOString().split("T")[0],
-        type: "",
-        doctor: "",
-        notes: "",
-        vitals: {
-          bp: "",
-          hr: "",
-          temp: "",
-          weight: "",
-        }
-      });
-      
       onClose();
       
       toast({
         title: "Visit added",
-        description: `Visit on ${visitData.date} has been added successfully`,
+        description: "Visit record has been added successfully",
       });
     } catch (error) {
       console.error("Error adding visit:", error);

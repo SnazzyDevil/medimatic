@@ -38,17 +38,20 @@ const fetchRecentActivity = async () => {
   // Get patient data for appointment records
   let patientMap = {};
   if (appointmentsData && appointmentsData.length > 0) {
-    const patientIds = appointmentsData.map(a => a.patient_id);
-    const { data: patientData, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .in('id', patientIds);
+    const patientIds = appointmentsData.map(a => a.patient_id).filter(Boolean);
     
-    if (!patientError && patientData) {
-      patientMap = patientData.reduce((acc, patient) => {
-        acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
-        return acc;
-      }, {});
+    if (patientIds.length > 0) {
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('id, first_name, last_name')
+        .in('id', patientIds);
+      
+      if (!patientError && patientData) {
+        patientMap = patientData.reduce((acc, patient) => {
+          acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
+          return acc;
+        }, {});
+      }
     }
   }
   

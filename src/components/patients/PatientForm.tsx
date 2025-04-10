@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PatientFormProps {
   onSubmit?: (data: PatientFormData) => void;
@@ -27,6 +28,8 @@ export interface PatientFormData {
 export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
   const [formData, setFormData] = React.useState<PatientFormData>({
     firstName: "",
     lastName: "",
@@ -105,6 +108,7 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
           email: formData.email || null,
           allergies: formData.allergies || null,
           alternate_contact: formData.alternateContact || null,
+          user_id: user?.id // Automatically insert the authenticated user's ID
         })
         .select();
 

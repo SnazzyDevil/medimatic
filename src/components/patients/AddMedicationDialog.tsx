@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AddMedicationDialogProps {
   isOpen: boolean;
@@ -33,16 +34,18 @@ interface AddMedicationDialogProps {
     status: "active" | "discontinued";
     prescribedBy: string;
   }) => void;
-  patientId?: string; // Added patientId as an optional prop
+  patientId?: string;
 }
 
 export function AddMedicationDialog({
   isOpen,
   onClose,
   onAddMedication,
-  patientId, // Added patientId to the component props
+  patientId,
 }: AddMedicationDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  
   const [medicationData, setMedicationData] = useState({
     name: "",
     dosage: "",
