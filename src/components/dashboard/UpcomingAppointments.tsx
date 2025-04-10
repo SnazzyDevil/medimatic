@@ -8,6 +8,7 @@ import { format, isToday, addDays, isTomorrow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isSelectQueryError } from "@/utils/supabaseHelpers";
+import { SecureDataService } from "@/services/secureDataService";
 
 interface Appointment {
   id: string;
@@ -17,7 +18,6 @@ interface Appointment {
   appointment_time: string;
   appointment_type: string;
   status: string;
-  user_id?: string;
   avatar?: string;
   displayDate?: string;
 }
@@ -74,6 +74,8 @@ export function UpcomingAppointments() {
         
         // Fetch patient details for each appointment - ALSO FILTERED BY USER_ID
         const patientIds = appointmentsData.map(app => app.patient_id);
+        
+        // Using direct query instead of isSelectQueryError to avoid type issues
         const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
           .select('id, first_name, last_name')
@@ -98,8 +100,10 @@ export function UpcomingAppointments() {
           });
         }
         
-        // Transform the data for display
-        const formattedAppointments = appointmentsData.map(app => {
+        // Transform the data for display - avoiding complex type inferences that cause TS2589
+        const formattedAppointments: Appointment[] = [];
+        
+        for (const app of appointmentsData) {
           const appointmentDate = new Date(app.appointment_date);
           let dateDisplay = '';
           
@@ -112,9 +116,9 @@ export function UpcomingAppointments() {
           }
           
           // Get avatar placeholder for this patient
-          const avatarIndex = Math.floor(Math.random() * 10) + 1; // Random avatar for demo purposes
+          const avatarIndex = Math.floor(Math.random() * 10) + 1;
           
-          return {
+          formattedAppointments.push({
             id: app.id,
             patient_id: app.patient_id,
             patientName: patientMap[app.patient_id] || "Unknown Patient",
@@ -124,8 +128,8 @@ export function UpcomingAppointments() {
             displayDate: dateDisplay,
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
             avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-          };
-        });
+          });
+        }
         
         setAppointments(formattedAppointments);
       } catch (error) {
