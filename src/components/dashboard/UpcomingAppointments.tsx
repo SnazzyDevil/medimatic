@@ -21,6 +21,21 @@ interface Appointment {
   displayDate?: string;
 }
 
+// Define simple interfaces for data from database
+interface AppointmentData {
+  id: string;
+  patient_id: string;
+  appointment_date: string;
+  appointment_time: string;
+  appointment_type: string;
+}
+
+interface PatientData {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
 export function UpcomingAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,14 +80,19 @@ export function UpcomingAppointments() {
           return;
         }
         
-        if (!appointmentsData || appointmentsData.length === 0) {
+        if (!appointmentsData || !Array.isArray(appointmentsData) || appointmentsData.length === 0) {
           setAppointments([]);
           setLoading(false);
           return;
         }
         
         // Fetch patient details for each appointment - ALSO FILTERED BY USER_ID
-        const patientIds = appointmentsData.map((app: any) => app.patient_id);
+        const patientIds: string[] = [];
+        for (const app of appointmentsData) {
+          if (app && app.patient_id) {
+            patientIds.push(app.patient_id);
+          }
+        }
         
         // Using direct query instead of isSelectQueryError to avoid type issues
         const { data: patientsData, error: patientsError } = await supabase
@@ -91,48 +111,46 @@ export function UpcomingAppointments() {
         // Create a map of patient IDs to names
         const patientMap: Record<string, string> = {};
         
-        if (patientsData) {
-          patientsData.forEach((patient: any) => {
+        if (patientsData && Array.isArray(patientsData)) {
+          for (const patient of patientsData) {
             if (patient && patient.id && patient.first_name && patient.last_name) {
               patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
             }
-          });
+          }
         }
         
         // Transform the data for display - avoiding complex type inferences that cause TS2589
         const formattedAppointments: Appointment[] = [];
         
-        if (Array.isArray(appointmentsData)) {
-          for (let i = 0; i < appointmentsData.length; i++) {
-            const app = appointmentsData[i];
-            if (!app) continue;
-            
-            const appointmentDate = new Date(app.appointment_date);
-            let dateDisplay = '';
-            
-            if (isToday(appointmentDate)) {
-              dateDisplay = 'Today';
-            } else if (isTomorrow(appointmentDate)) {
-              dateDisplay = 'Tomorrow';
-            } else {
-              dateDisplay = format(appointmentDate, 'EEE, MMM d');
-            }
-            
-            // Get avatar placeholder for this patient
-            const avatarIndex = Math.floor(Math.random() * 10) + 1;
-            
-            formattedAppointments.push({
-              id: app.id,
-              patient_id: app.patient_id,
-              patientName: patientMap[app.patient_id] || "Unknown Patient",
-              appointment_date: app.appointment_date,
-              appointment_time: app.appointment_time,
-              appointment_type: app.appointment_type,
-              displayDate: dateDisplay,
-              status: isToday(appointmentDate) ? "Confirmed" : "Pending",
-              avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-            });
+        for (let i = 0; i < appointmentsData.length; i++) {
+          const app = appointmentsData[i] as AppointmentData;
+          if (!app) continue;
+          
+          const appointmentDate = new Date(app.appointment_date);
+          let dateDisplay = '';
+          
+          if (isToday(appointmentDate)) {
+            dateDisplay = 'Today';
+          } else if (isTomorrow(appointmentDate)) {
+            dateDisplay = 'Tomorrow';
+          } else {
+            dateDisplay = format(appointmentDate, 'EEE, MMM d');
           }
+          
+          // Get avatar placeholder for this patient
+          const avatarIndex = Math.floor(Math.random() * 10) + 1;
+          
+          formattedAppointments.push({
+            id: app.id,
+            patient_id: app.patient_id,
+            patientName: patientMap[app.patient_id] || "Unknown Patient",
+            appointment_date: app.appointment_date,
+            appointment_time: app.appointment_time,
+            appointment_type: app.appointment_type,
+            displayDate: dateDisplay,
+            status: isToday(appointmentDate) ? "Confirmed" : "Pending",
+            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
+          });
         }
         
         setAppointments(formattedAppointments);
