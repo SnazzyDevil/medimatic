@@ -17,6 +17,7 @@ interface Appointment {
   appointment_type: string;
   status: string;
   avatar?: string;
+  displayDate?: string; // Add this property to fix the type error
 }
 
 export function UpcomingAppointments() {
@@ -95,7 +96,7 @@ export function UpcomingAppointments() {
             appointment_date: app.appointment_date,
             appointment_time: app.appointment_time,
             appointment_type: app.appointment_type,
-            displayDate: dateDisplay,
+            displayDate: dateDisplay, // Ensure this property is added to the return object
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
             avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
           };
