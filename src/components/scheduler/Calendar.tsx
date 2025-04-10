@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { 
   Calendar as CalendarIcon, 
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
+import { isSelectQueryError } from "@/utils/supabaseHelpers";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = [
@@ -36,6 +38,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   appointment_type: string;
+  user_id?: string;
   patientName?: string;
   color?: string;
   day?: number;
@@ -86,11 +89,13 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       
       console.log("Fetching appointments between", startDateStr, "and", endDateStr);
       
+      // Add user_id filter to only fetch appointments for the current user
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
-        .select('id, patient_id, appointment_date, appointment_time, appointment_type')
+        .select('id, patient_id, appointment_date, appointment_time, appointment_type, user_id')
         .gte('appointment_date', startDateStr)
-        .lte('appointment_date', endDateStr);
+        .lte('appointment_date', endDateStr)
+        .eq('user_id', currentUser.id); // Filter by current user ID
       
       if (appointmentsError) {
         throw appointmentsError;
@@ -109,16 +114,21 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       const { data: patientsData, error: patientsError } = await supabase
         .from('patients')
         .select('id, first_name, last_name')
-        .in('id', patientIds);
+        .in('id', patientIds)
+        .eq('user_id', currentUser.id); // Also filter patients by current user ID
       
       if (patientsError) {
         throw patientsError;
       }
       
-      const patientMap = patientsData ? patientsData.reduce((acc, patient) => {
-        acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
-        return acc;
-      }, {}) : {};
+      const patientMap: Record<string, string> = {};
+      if (patientsData && !isSelectQueryError(patientsData)) {
+        patientsData.forEach(patient => {
+          if (patient && patient.id && patient.first_name && patient.last_name) {
+            patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+          }
+        });
+      }
       
       const processedAppointments = appointmentsData.map(app => {
         const appointmentDate = parseISO(app.appointment_date);
@@ -127,7 +137,7 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
         return {
           ...app,
           patientName: patientMap[app.patient_id] || "Unknown Patient",
-          color: APPOINTMENT_TYPE_COLORS[app.appointment_type] || APPOINTMENT_TYPE_COLORS.Other,
+          color: APPOINTMENT_TYPE_COLORS[app.appointment_type as keyof typeof APPOINTMENT_TYPE_COLORS] || APPOINTMENT_TYPE_COLORS.Other,
           day: dayIndex,
         };
       });

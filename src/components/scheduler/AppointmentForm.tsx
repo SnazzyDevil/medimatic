@@ -1,28 +1,17 @@
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { format, startOfToday } from "date-fns";
+import { CalendarIcon, Clock, Check } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-
-const APPOINTMENT_TYPES = [
-  "Check-up",
-  "Follow-up",
-  "Consultation",
-  "Physical",
-  "Vaccination",
-  "Other"
-];
-
-const TIME_SLOTS = [
-  "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", 
-  "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"
-];
+import { toast } from "@/components/ui/use-toast";
+import { isSelectQueryError } from "@/utils/supabaseHelpers";
 
 interface Patient {
   id: string;
@@ -33,245 +22,193 @@ interface Patient {
 interface AppointmentFormProps {
   onSubmit: (data: any) => void;
   onCancel: () => void;
+  currentUser?: any;  // Add current user prop
+  editData?: any;
 }
 
-export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
-  const [date, setDate] = useState<Date | undefined>(new Date());
+const APPOINTMENT_TYPES = [
+  "Check-up",
+  "Follow-up",
+  "Consultation",
+  "Physical", 
+  "Vaccination",
+  "Other"
+];
+
+const APPOINTMENT_TIMES = [
+  "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", 
+  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", 
+  "4:00 PM", "5:00 PM"
+];
+
+export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: AppointmentFormProps) {
+  const [date, setDate] = useState<Date | undefined>(startOfToday());
   const [time, setTime] = useState<string>("");
+  const [type, setType] = useState<string>("");
   const [patientId, setPatientId] = useState<string>("");
-  const [appointmentType, setAppointmentType] = useState<string>("");
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
+  const [loading, setLoading] = useState(false);
+  const [takenSlots, setTakenSlots] = useState<string[]>([]);
+  
+  // Fetch patients for this user only
   useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setCurrentUser(data.user);
-    };
-
-    getCurrentUser();
-
-    async function fetchPatients() {
-      setIsLoading(true);
-      setError(null);
+    const fetchPatients = async () => {
+      if (!currentUser) return;
       
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('patients')
           .select('id, first_name, last_name')
-          .order('last_name', { ascending: true });
+          .eq('user_id', currentUser.id); // Filter by user_id
         
         if (error) {
           throw error;
         }
         
-        setPatients(data || []);
-      } catch (err) {
-        console.error('Error fetching patients:', err);
-        setError('Failed to load patients. Please try again.');
+        if (data && !isSelectQueryError(data)) {
+          const formattedPatients: Patient[] = data.map((patient) => ({
+            id: String(patient.id),
+            first_name: String(patient.first_name),
+            last_name: String(patient.last_name)
+          }));
+          setPatients(formattedPatients);
+        }
+      } catch (error) {
+        console.error("Error loading patients:", error);
+        toast({
+          title: "Error",
+          description: "Could not load patients.",
+          variant: "destructive",
+        });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
-    }
+    };
     
     fetchPatients();
-  }, []);
-
+  }, [currentUser]);
+  
+  // Populate form if editData is provided
   useEffect(() => {
-    if (date) {
-      checkBookedTimeSlots(date);
+    if (editData) {
+      if (editData.date) setDate(new Date(editData.date));
+      if (editData.time) setTime(editData.time);
+      if (editData.type) setType(editData.type);
+      if (editData.patientId) setPatientId(editData.patientId);
     }
-  }, [date]);
-
-  const checkBookedTimeSlots = async (selectedDate: Date) => {
-    setIsCheckingAvailability(true);
-    setValidationError(null);
+  }, [editData]);
+  
+  // Check for time slot availability when date changes
+  useEffect(() => {
+    const checkTimeSlots = async () => {
+      if (!date || !currentUser) return;
+      
+      try {
+        const dateStr = format(date, "yyyy-MM-dd");
+        
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('appointment_time')
+          .eq('appointment_date', dateStr)
+          .eq('user_id', currentUser.id);  // Filter by user_id
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && !isSelectQueryError(data)) {
+          const times = data.map(item => item.appointment_time);
+          setTakenSlots(times);
+        }
+      } catch (error) {
+        console.error("Error checking time slots:", error);
+      }
+    };
+    
+    checkTimeSlots();
+  }, [date, currentUser]);
+  
+  const isTimeSlotAvailable = (slot: string) => {
+    return !takenSlots.includes(slot);
+  };
+  
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!date || !time || !type || !patientId) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create appointments.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+      setLoading(true);
       
+      const dateStr = format(date, "yyyy-MM-dd");
+      
+      // Add the appointment with user_id
       const { data, error } = await supabase
         .from('appointments')
-        .select('appointment_time')
-        .eq('appointment_date', formattedDate);
+        .insert({
+          patient_id: patientId,
+          appointment_date: dateStr,
+          appointment_time: time,
+          appointment_type: type,
+          user_id: currentUser.id, // Include the user_id
+          doctor: "Dr. Default" // Placeholder, could be from practice settings
+        })
+        .select();
       
       if (error) {
         throw error;
       }
       
-      const bookedTimes = data?.map(appointment => appointment.appointment_time) || [];
-      const available = TIME_SLOTS.filter(slot => !bookedTimes.includes(slot));
-      
-      setAvailableTimeSlots(available);
-      
-      if (time && bookedTimes.includes(time)) {
-        setTime("");
-        setValidationError("Your previously selected time is no longer available");
-      }
-    } catch (err) {
-      console.error('Error checking appointment availability:', err);
-      setError('Failed to check appointment availability. Please try again.');
-    } finally {
-      setIsCheckingAvailability(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setValidationError(null);
-    
-    if (!date || !time || !patientId || !appointmentType) {
-      setValidationError("Please fill in all required fields");
-      return;
-    }
-
-    if (!currentUser?.id) {
-      setValidationError("You must be logged in to create an appointment");
-      return;
-    }
-    
-    try {
-      const formattedDate = format(date, 'yyyy-MM-dd');
-      
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('appointment_date', formattedDate)
-        .eq('appointment_time', time)
-        .single();
-      
-      if (data) {
-        setValidationError("This time slot has just been booked. Please select another time.");
-        await checkBookedTimeSlots(date);
-        return;
-      }
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
       const selectedPatient = patients.find(p => p.id === patientId);
+      const patientName = selectedPatient 
+        ? `${selectedPatient.first_name} ${selectedPatient.last_name}`
+        : "Unknown Patient";
       
-      const appointmentData = {
+      onSubmit({
+        id: data[0].id,
+        patientId,
+        patientName,
         date,
         time,
-        patientId,
-        patientName: selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : '',
-        appointmentType,
-        formattedDate: format(date, 'yyyy-MM-dd')
-      };
+        type
+      });
       
-      const { error: insertError } = await supabase
-        .from('appointments')
-        .insert({
-          patient_id: patientId,
-          appointment_date: format(date, 'yyyy-MM-dd'),
-          appointment_time: time,
-          appointment_type: appointmentType,
-          doctor_id: currentUser.id
-        });
-      
-      if (insertError) {
-        console.error('Error inserting appointment:', insertError);
-        if (insertError.code === '23505') {
-          setValidationError("This time slot has just been booked. Please select another time.");
-          await checkBookedTimeSlots(date);
-          return;
-        }
-        throw insertError;
-      }
-      
-      onSubmit(appointmentData);
-    } catch (err) {
-      console.error('Error saving appointment:', err);
-      setValidationError("Failed to save appointment. Please try again.");
+    } catch (error: any) {
+      console.error("Error saving appointment:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save appointment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
-
+  
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
       <div className="space-y-2">
-        <Label htmlFor="date">Date</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, "PPP") : <span>Select date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              initialFocus
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="time">Appointment Time</Label>
-        {isCheckingAvailability && (
-          <div className="text-sm text-muted-foreground">
-            Checking available time slots...
-          </div>
-        )}
-        <Select onValueChange={setTime} value={time} disabled={isCheckingAvailability}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select appointment time">
-              {time ? (
-                <div className="flex items-center">
-                  <Clock className="mr-2 h-4 w-4" />
-                  {time}
-                </div>
-              ) : (
-                "Select appointment time"
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {availableTimeSlots.length > 0 ? (
-              availableTimeSlots.map((slot) => (
-                <SelectItem key={slot} value={slot}>
-                  {slot}
-                </SelectItem>
-              ))
-            ) : (
-              <div className="px-2 py-4 text-center text-sm">
-                No available time slots for this date
-              </div>
-            )}
-          </SelectContent>
-        </Select>
-        <div className="text-xs text-muted-foreground">
-          Appointments are scheduled in 1-hour blocks
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="patientId">Patient Name</Label>
-        {error && (
-          <div className="flex items-center text-destructive text-sm mb-2">
-            <AlertCircle className="h-4 w-4 mr-1" />
-            {error}
-          </div>
-        )}
-        <Select onValueChange={setPatientId} value={patientId}>
-          <SelectTrigger className="w-full" disabled={isLoading}>
-            <SelectValue placeholder={isLoading ? "Loading patients..." : "Select patient"} />
+        <Label>Patient</Label>
+        <Select value={patientId} onValueChange={setPatientId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a patient" />
           </SelectTrigger>
           <SelectContent>
             {patients.map((patient) => (
@@ -284,10 +221,74 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="appointmentType">Type of Visit</Label>
-        <Select onValueChange={setAppointmentType} value={appointmentType}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select appointment type" />
+        <Label>Date</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date ? format(date, "PPP") : <span>Pick a date</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              initialFocus
+              disabled={(date) => date < startOfToday()}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      
+      <div className="space-y-2">
+        <Label>Time</Label>
+        <Select value={time} onValueChange={setTime}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a time">
+              {time ? (
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  {time}
+                </div>
+              ) : (
+                "Select a time"
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {APPOINTMENT_TIMES.map((slot) => (
+              <SelectItem 
+                key={slot} 
+                value={slot} 
+                disabled={!isTimeSlotAvailable(slot)}
+                className="relative"
+              >
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  {slot}
+                  {time === slot && <Check className="ml-auto h-4 w-4" />}
+                  {!isTimeSlotAvailable(slot) && (
+                    <span className="ml-auto text-xs text-destructive">Taken</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label>Appointment Type</Label>
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
             {APPOINTMENT_TYPES.map((type) => (
@@ -299,27 +300,12 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
         </Select>
       </div>
       
-      {validationError && (
-        <div className="flex items-center text-destructive text-sm">
-          <AlertCircle className="h-4 w-4 mr-1" />
-          {validationError}
-        </div>
-      )}
-      
-      <div className="flex justify-end space-x-2 pt-4">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel}
-        >
+      <div className="flex justify-end space-x-2 pt-2">
+        <Button variant="outline" type="button" onClick={onCancel}>
           Cancel
         </Button>
-        <Button 
-          type="submit"
-          className="btn-hover"
-          disabled={isLoading || isCheckingAvailability || !patientId || !time || !appointmentType}
-        >
-          Create Appointment
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Appointment"}
         </Button>
       </div>
     </form>

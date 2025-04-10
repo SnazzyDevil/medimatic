@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, isToday, addDays, isTomorrow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isSelectQueryError } from "@/utils/supabaseHelpers";
 
 interface Appointment {
   id: string;
@@ -16,15 +17,28 @@ interface Appointment {
   appointment_time: string;
   appointment_type: string;
   status: string;
+  user_id?: string;
   avatar?: string;
-  displayDate?: string; // Add this property to fix the type error
+  displayDate?: string;
 }
 
 export function UpcomingAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data.user);
+    };
+
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    
     const fetchAppointments = async () => {
       try {
         setLoading(true);
@@ -34,10 +48,11 @@ export function UpcomingAppointments() {
         const todayStr = format(today, "yyyy-MM-dd");
         const nextWeekStr = format(addDays(today, 7), "yyyy-MM-dd");
         
-        // Fetch upcoming appointments for the next 7 days
+        // Fetch upcoming appointments for the next 7 days - FILTERED BY USER_ID
         const { data: appointmentsData, error } = await supabase
           .from('appointments')
-          .select('id, patient_id, appointment_date, appointment_time, appointment_type')
+          .select('id, patient_id, appointment_date, appointment_time, appointment_type, user_id')
+          .eq('user_id', currentUser.id) // Filter by current user
           .gte('appointment_date', todayStr)
           .lte('appointment_date', nextWeekStr)
           .order('appointment_date', { ascending: true })
@@ -55,12 +70,13 @@ export function UpcomingAppointments() {
           return;
         }
         
-        // Fetch patient details for each appointment
+        // Fetch patient details for each appointment - ALSO FILTERED BY USER_ID
         const patientIds = appointmentsData.map(app => app.patient_id);
         const { data: patientsData, error: patientsError } = await supabase
           .from('patients')
           .select('id, first_name, last_name')
-          .in('id', patientIds);
+          .in('id', patientIds)
+          .eq('user_id', currentUser.id); // Filter by current user
           
         if (patientsError) {
           console.error("Error fetching patient details:", patientsError);
@@ -68,10 +84,15 @@ export function UpcomingAppointments() {
         }
         
         // Create a map of patient IDs to names
-        const patientMap = patientsData ? patientsData.reduce((acc, patient) => {
-          acc[patient.id] = `${patient.first_name} ${patient.last_name}`;
-          return acc;
-        }, {}) : {};
+        const patientMap: Record<string, string> = {};
+        
+        if (patientsData && !isSelectQueryError(patientsData)) {
+          patientsData.forEach(patient => {
+            if (patient && patient.id && patient.first_name && patient.last_name) {
+              patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+            }
+          });
+        }
         
         // Transform the data for display
         const formattedAppointments = appointmentsData.map(app => {
@@ -96,9 +117,10 @@ export function UpcomingAppointments() {
             appointment_date: app.appointment_date,
             appointment_time: app.appointment_time,
             appointment_type: app.appointment_type,
-            displayDate: dateDisplay, // Ensure this property is added to the return object
+            displayDate: dateDisplay,
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
-            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
+            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`,
+            user_id: app.user_id
           };
         });
         
@@ -111,7 +133,7 @@ export function UpcomingAppointments() {
     };
     
     fetchAppointments();
-  }, []);
+  }, [currentUser]);
 
   return (
     <Card className="border-none shadow-md bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">

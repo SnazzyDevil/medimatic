@@ -21,6 +21,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   appointment_type: string;
+  user_id?: string; // Add user_id
   patientName?: string;
   color?: string;
   day?: number;
@@ -30,6 +31,17 @@ const Scheduler = () => {
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Get the current user when the component mounts
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data.user);
+    };
+
+    getCurrentUser();
+  }, []);
 
   const handleNewAppointment = () => {
     setShowAppointmentForm(true);
@@ -85,6 +97,7 @@ const Scheduler = () => {
               <AppointmentForm 
                 onSubmit={handleFormSubmit}
                 onCancel={handleFormCancel}
+                currentUser={currentUser} // Pass the current user to the form
               />
             </DialogContent>
           </Dialog>
