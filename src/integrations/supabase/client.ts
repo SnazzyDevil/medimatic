@@ -19,8 +19,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    // Allowing unverified email logins temporarily for testing
-    // Remove this or set to false in production to enforce email verification
+    // Allow unverified email logins - users can login without verifying their email
     allowUnverifiedEmails: true
   }
 });

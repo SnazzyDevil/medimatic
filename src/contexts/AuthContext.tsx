@@ -101,12 +101,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        // Allow login even with unverified emails (temporary for testing)
+        // Login successful - even with unverified emails due to allowUnverifiedEmails: true
         console.log("Successful login:", data.user.id);
         
         toast({
           title: "Login successful",
-          description: "Welcome back!",
+          description: "Welcome to MediMatic!",
         });
         navigate("/dashboard");
       }
@@ -142,9 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         toast({
           title: "Registration successful",
-          description: "Please check your email to verify your account before logging in.",
+          description: "Your account has been created. You may now log in.",
         });
-        // Don't automatically navigate to dashboard - user needs to verify email first
+        // Navigate to login screen for the user to sign in
         navigate("/");
       }
     } catch (error: any) {
