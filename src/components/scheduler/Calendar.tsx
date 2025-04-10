@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
-import { isSelectQueryError } from "@/utils/supabaseHelpers";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = [
@@ -122,7 +121,7 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       }
       
       const patientMap: Record<string, string> = {};
-      if (patientsData && !isSelectQueryError(patientsData)) {
+      if (patientsData) {
         patientsData.forEach(patient => {
           if (patient && patient.id && patient.first_name && patient.last_name) {
             patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
@@ -145,6 +144,7 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       setAppointments(processedAppointments);
     } catch (error) {
       console.error("Error fetching appointments:", error);
+      setAppointments([]);
     } finally {
       setLoading(false);
     }

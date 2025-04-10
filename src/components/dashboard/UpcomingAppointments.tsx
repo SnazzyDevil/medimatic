@@ -61,6 +61,8 @@ export function UpcomingAppointments() {
         
         if (error) {
           console.error("Error fetching appointments:", error);
+          setAppointments([]);
+          setLoading(false);
           return;
         }
         
@@ -80,13 +82,15 @@ export function UpcomingAppointments() {
           
         if (patientsError) {
           console.error("Error fetching patient details:", patientsError);
+          setAppointments([]);
+          setLoading(false);
           return;
         }
         
         // Create a map of patient IDs to names
         const patientMap: Record<string, string> = {};
         
-        if (patientsData && !isSelectQueryError(patientsData)) {
+        if (patientsData) {
           patientsData.forEach(patient => {
             if (patient && patient.id && patient.first_name && patient.last_name) {
               patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
@@ -127,6 +131,7 @@ export function UpcomingAppointments() {
         setAppointments(formattedAppointments);
       } catch (error) {
         console.error("Error processing appointments data:", error);
+        setAppointments([]);
       } finally {
         setLoading(false);
       }
