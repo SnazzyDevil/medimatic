@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PracticeService } from "@/services/practiceService";
+import { PracticeInformation } from "@/types/practice";
 
 // Create a hook to manage doctor settings
 export const useDoctorSettings = () => {
@@ -21,6 +23,7 @@ export const useDoctorSettings = () => {
     image: "https://i.pravatar.cc/100?img=11", // Default image
     practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png", // Practice image
   });
+  const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -34,6 +37,30 @@ export const useDoctorSettings = () => {
         console.error("Error parsing stored settings:", error);
       }
     }
+    
+    // Also fetch practice info from database
+    const fetchPracticeInfo = async () => {
+      try {
+        const info = await PracticeService.getCurrentPractice();
+        if (info) {
+          setPracticeInfo(info);
+          
+          // Update doctor settings with the most recent information from database
+          const updatedSettings = {
+            ...doctorSettings,
+            name: info.doctorName || doctorSettings.name,
+            practiceName: info.name || doctorSettings.practiceName,
+            email: info.email || doctorSettings.email
+          };
+          setDoctorSettings(updatedSettings);
+          localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
+        }
+      } catch (error) {
+        console.error("Error fetching practice information in header:", error);
+      }
+    };
+    
+    fetchPracticeInfo();
   }, []);
 
   // Update settings function - improved to ensure settings are saved properly
@@ -53,12 +80,16 @@ export const useDoctorSettings = () => {
     }
   };
 
-  return { doctorSettings, updateDoctorSettings };
+  return { doctorSettings, updateDoctorSettings, practiceInfo };
 };
 
 export function Header() {
-  const { doctorSettings } = useDoctorSettings();
+  const { doctorSettings, practiceInfo } = useDoctorSettings();
   const [unreadNotifications, setUnreadNotifications] = useState(3);
+  
+  // Use practice info when available, fallback to doctorSettings
+  const practiceName = practiceInfo?.name || doctorSettings.practiceName;
+  const practiceImage = practiceInfo?.practiceImageUrl || doctorSettings.practiceImage;
   
   return (
     <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in">
@@ -119,11 +150,11 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative flex items-center gap-2 pl-2 pr-2 hover:bg-white/20">
-              <span className="hidden sm:inline text-sm text-white">{doctorSettings.practiceName}</span>
+              <span className="hidden sm:inline text-sm text-white">{practiceName}</span>
               <Avatar className="h-8 w-8 border border-white/30">
-                <AvatarImage src={doctorSettings.practiceImage} alt={doctorSettings.practiceName} />
+                <AvatarImage src={practiceImage} alt={practiceName} />
                 <AvatarFallback className="bg-white/20 text-white">
-                  {doctorSettings.practiceName.split(' ').map(n => n[0]).join('')}
+                  {practiceName.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
             </Button>

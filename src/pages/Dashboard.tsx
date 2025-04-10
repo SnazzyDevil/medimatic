@@ -1,3 +1,4 @@
+
 import { Settings, Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
@@ -11,15 +12,37 @@ import { Header, useDoctorSettings } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { PracticeService } from "@/services/practiceService";
+import { PracticeInformation } from "@/types/practice";
 
 const Dashboard = () => {
   const { doctorSettings } = useDoctorSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch practice information to display the correct doctor name
+  useEffect(() => {
+    const fetchPracticeInfo = async () => {
+      try {
+        setLoading(true);
+        const info = await PracticeService.getCurrentPractice();
+        setPracticeInfo(info);
+        console.log("Fetched practice info for dashboard:", info);
+      } catch (error) {
+        console.error("Error fetching practice information:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPracticeInfo();
+  }, []);
   
   // Log doctor settings to verify they're being loaded correctly
   useEffect(() => {
@@ -44,6 +67,9 @@ const Dashboard = () => {
     }
   };
   
+  // Get the doctor name from practice info or fallback to settings
+  const doctorName = practiceInfo?.doctorName || doctorSettings.name;
+  
   return (
     <div className="min-h-screen flex w-full bg-[#f8fafc]">
       <Sidebar />
@@ -54,7 +80,7 @@ const Dashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="font-bold text-3xl mb-2">
-                  Good morning, {doctorSettings.name}
+                  Good morning, {doctorName}
                 </h1>
                 <p className="text-violet-100">Here are your important tasks, updates and alerts for today</p>
               </div>
@@ -69,9 +95,9 @@ const Dashboard = () => {
                   <span className="sr-only">Logout</span>
                 </Button>
                 <Avatar className="h-12 w-12 border-2 border-white/30">
-                  <AvatarImage src={doctorSettings.practiceImage} alt={doctorSettings.practiceName} />
+                  <AvatarImage src={doctorSettings.practiceImage} alt={practiceInfo?.name || doctorSettings.practiceName} />
                   <AvatarFallback className="bg-white/20 text-white">
-                    {doctorSettings.practiceName.split(' ').map(n => n[0]).join('')}
+                    {(practiceInfo?.name || doctorSettings.practiceName).split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
               </div>
