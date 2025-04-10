@@ -20,6 +20,7 @@ export default function Settings() {
   const [updatedPracticeInfo, setUpdatedPracticeInfo] = useState<Partial<PracticeInformation>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [creatingDefault, setCreatingDefault] = useState(false);
 
   // Get current user ID
   useEffect(() => {
@@ -65,6 +66,7 @@ export default function Settings() {
   
   const createDefaultPractice = async () => {
     try {
+      setCreatingDefault(true);
       const defaultPractice = {
         name: "New Practice",
         practiceType: "medical" as const,
@@ -85,6 +87,7 @@ export default function Settings() {
         isActive: true
       };
       
+      console.log("Creating default practice with data:", defaultPractice);
       const createdPractice = await PracticeService.create(defaultPractice);
       console.log("Created default practice:", createdPractice);
       setPracticeInfo(createdPractice);
@@ -93,13 +96,15 @@ export default function Settings() {
         title: "New Practice Created",
         description: "A default practice has been created for you to customize.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating default practice:", error);
       toast({
         title: "Error",
-        description: "Failed to create default practice",
+        description: `Failed to create default practice: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
+    } finally {
+      setCreatingDefault(false);
     }
   };
 
@@ -143,11 +148,11 @@ export default function Settings() {
         title: "Success",
         description: "Settings updated successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating settings:", error);
       toast({
         title: "Error",
-        description: "Failed to update settings. Please make sure you're logged in.",
+        description: `Failed to update settings: ${error.message || 'Please make sure you\'re logged in.'}`,
         variant: "destructive",
       });
     } finally {
@@ -182,12 +187,21 @@ export default function Settings() {
           </p>
         </div>
         
-        <PracticeInformationForm 
-          practiceInfo={practiceInfo}
-          loading={loading}
-          onSave={handleUpdatePracticeInfo}
-          hideButton={true}
-        />
+        {creatingDefault ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="text-center">
+              <div className="spinner mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+              <p>Creating default practice...</p>
+            </div>
+          </div>
+        ) : (
+          <PracticeInformationForm 
+            practiceInfo={practiceInfo}
+            loading={loading}
+            onSave={handleUpdatePracticeInfo}
+            hideButton={true}
+          />
+        )}
         
         <NotificationSettings />
         
@@ -207,7 +221,7 @@ export default function Settings() {
         <div className="pt-6 border-t">
           <Button 
             onClick={handleSaveAllSettings} 
-            disabled={isSaving || Object.keys(updatedPracticeInfo).length === 0}
+            disabled={isSaving || Object.keys(updatedPracticeInfo).length === 0 || loading || creatingDefault}
             className="bg-blue-500 hover:bg-blue-600"
             size="lg"
           >

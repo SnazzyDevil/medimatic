@@ -100,7 +100,39 @@ export function transformQueryData<T, R>(
   return data.map(item => transformer(item));
 }
 
+/**
+ * Ensures that the given data is always returned as an array
+ */
 export function ensureArray<T>(data: T | T[] | null | undefined): T[] {
   if (data === null || data === undefined) return [];
   return Array.isArray(data) ? data : [data];
+}
+
+/**
+ * Formats PostgreSQL errors into readable messages
+ */
+export function formatPostgresError(error: PostgrestError | Error | unknown): string {
+  if (isPostgrestError(error)) {
+    // Handle known Postgres error codes
+    switch (error.code) {
+      case '23505':
+        return 'A record with this information already exists.';
+      case '23503':
+        return 'This operation would violate referential integrity (foreign key constraint).';
+      case '23502':
+        return 'Required field is missing.';
+      case '42P01':
+        return 'The database table does not exist.';
+      case '42703':
+        return 'Column referenced does not exist.';
+      default:
+        return error.message || 'An unknown database error occurred.';
+    }
+  }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  return 'An unknown error occurred.';
 }
