@@ -51,7 +51,7 @@ export function UpcomingAppointments() {
         // Fetch upcoming appointments for the next 7 days - FILTERED BY USER_ID
         const { data: appointmentsData, error } = await supabase
           .from('appointments')
-          .select('id, patient_id, appointment_date, appointment_time, appointment_type, user_id')
+          .select('id, patient_id, appointment_date, appointment_time, appointment_type')
           .eq('user_id', currentUser.id) // Filter by current user
           .gte('appointment_date', todayStr)
           .lte('appointment_date', nextWeekStr)
@@ -123,8 +123,7 @@ export function UpcomingAppointments() {
             appointment_type: app.appointment_type,
             displayDate: dateDisplay,
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
-            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`,
-            user_id: app.user_id
+            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
           };
         });
         

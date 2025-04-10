@@ -91,7 +91,7 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       // Add user_id filter to only fetch appointments for the current user
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
-        .select('id, patient_id, appointment_date, appointment_time, appointment_type, user_id')
+        .select('id, patient_id, appointment_date, appointment_time, appointment_type')
         .gte('appointment_date', startDateStr)
         .lte('appointment_date', endDateStr)
         .eq('user_id', currentUser.id); // Filter by current user ID
@@ -133,12 +133,18 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
         const appointmentDate = parseISO(app.appointment_date);
         const dayIndex = (appointmentDate.getDay() === 0) ? 6 : appointmentDate.getDay() - 1;
         
-        return {
-          ...app,
+        const result: Appointment = {
+          id: app.id,
+          patient_id: app.patient_id,
+          appointment_date: app.appointment_date,
+          appointment_time: app.appointment_time,
+          appointment_type: app.appointment_type,
           patientName: patientMap[app.patient_id] || "Unknown Patient",
           color: APPOINTMENT_TYPE_COLORS[app.appointment_type as keyof typeof APPOINTMENT_TYPE_COLORS] || APPOINTMENT_TYPE_COLORS.Other,
           day: dayIndex,
         };
+        
+        return result;
       });
       
       setAppointments(processedAppointments);
