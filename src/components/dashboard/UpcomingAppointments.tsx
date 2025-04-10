@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SecureDataService } from "@/services/secureDataService";
 
+// Define simple interfaces with exact shapes
 interface Appointment {
   id: string;
   patient_id: string;
@@ -21,8 +22,8 @@ interface Appointment {
   displayDate?: string;
 }
 
-// Define simple interfaces for data from database
-interface AppointmentData {
+// Raw data from database
+interface RawAppointment {
   id: string;
   patient_id: string;
   appointment_date: string;
@@ -30,7 +31,7 @@ interface AppointmentData {
   appointment_type: string;
 }
 
-interface PatientData {
+interface RawPatient {
   id: string;
   first_name: string;
   last_name: string;
@@ -63,7 +64,7 @@ export function UpcomingAppointments() {
         const nextWeekStr = format(addDays(today, 7), "yyyy-MM-dd");
         
         // Fetch upcoming appointments for the next 7 days - FILTERED BY USER_ID
-        const { data: appointmentsData, error } = await supabase
+        const appointmentsResponse = await supabase
           .from('appointments')
           .select('id, patient_id, appointment_date, appointment_time, appointment_type')
           .eq('user_id', currentUser.id) // Filter by current user
@@ -72,60 +73,59 @@ export function UpcomingAppointments() {
           .order('appointment_date', { ascending: true })
           .order('appointment_time', { ascending: true })
           .limit(3); // Only show the next 3 appointments
+          
+        if (appointmentsResponse.error) {
+          console.error("Error fetching appointments:", appointmentsResponse.error);
+          setAppointments([]);
+          setLoading(false);
+          return;
+        }
+
+        // Safely cast the data
+        const appointmentsData: RawAppointment[] = appointmentsResponse.data || [];
         
-        if (error) {
-          console.error("Error fetching appointments:", error);
+        if (appointmentsData.length === 0) {
           setAppointments([]);
           setLoading(false);
           return;
         }
         
-        if (!appointmentsData || !Array.isArray(appointmentsData) || appointmentsData.length === 0) {
+        // Extract patient IDs
+        const patientIds: string[] = appointmentsData
+          .map(app => app.patient_id)
+          .filter(Boolean);
+        
+        if (patientIds.length === 0) {
           setAppointments([]);
           setLoading(false);
           return;
         }
         
-        // Fetch patient details for each appointment - ALSO FILTERED BY USER_ID
-        const patientIds: string[] = [];
-        for (const app of appointmentsData) {
-          if (app && app.patient_id) {
-            patientIds.push(app.patient_id);
-          }
-        }
-        
-        // Using direct query instead of isSelectQueryError to avoid type issues
-        const { data: patientsData, error: patientsError } = await supabase
+        // Fetch patient details
+        const patientsResponse = await supabase
           .from('patients')
           .select('id, first_name, last_name')
           .in('id', patientIds)
-          .eq('user_id', currentUser.id); // Filter by current user
+          .eq('user_id', currentUser.id);
           
-        if (patientsError) {
-          console.error("Error fetching patient details:", patientsError);
+        if (patientsResponse.error) {
+          console.error("Error fetching patient details:", patientsResponse.error);
           setAppointments([]);
           setLoading(false);
           return;
         }
         
-        // Create a map of patient IDs to names
-        const patientMap: Record<string, string> = {};
+        // Safely cast the patients data
+        const patientsData: RawPatient[] = patientsResponse.data || [];
         
-        if (patientsData && Array.isArray(patientsData)) {
-          for (const patient of patientsData) {
-            if (patient && patient.id && patient.first_name && patient.last_name) {
-              patientMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
-            }
-          }
-        }
+        // Create lookup map for patient names
+        const patientNameMap: Record<string, string> = {};
+        patientsData.forEach(patient => {
+          patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+        });
         
-        // Transform the data for display - avoiding complex type inferences that cause TS2589
-        const formattedAppointments: Appointment[] = [];
-        
-        for (let i = 0; i < appointmentsData.length; i++) {
-          const app = appointmentsData[i] as AppointmentData;
-          if (!app) continue;
-          
+        // Transform appointment data
+        const formattedAppointments: Appointment[] = appointmentsData.map(app => {
           const appointmentDate = new Date(app.appointment_date);
           let dateDisplay = '';
           
@@ -137,21 +137,20 @@ export function UpcomingAppointments() {
             dateDisplay = format(appointmentDate, 'EEE, MMM d');
           }
           
-          // Get avatar placeholder for this patient
           const avatarIndex = Math.floor(Math.random() * 10) + 1;
           
-          formattedAppointments.push({
+          return {
             id: app.id,
             patient_id: app.patient_id,
-            patientName: patientMap[app.patient_id] || "Unknown Patient",
+            patientName: patientNameMap[app.patient_id] || "Unknown Patient",
             appointment_date: app.appointment_date,
             appointment_time: app.appointment_time,
             appointment_type: app.appointment_type,
             displayDate: dateDisplay,
             status: isToday(appointmentDate) ? "Confirmed" : "Pending",
             avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-          });
-        }
+          };
+        });
         
         setAppointments(formattedAppointments);
       } catch (error) {

@@ -74,6 +74,14 @@ export function ScheduleAppointmentDialog({
     setIsSubmitting(true);
     
     try {
+      // Get current user to add to appointment
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+      
       // Save to Supabase
       const { data, error } = await supabase
         .from('appointments')
@@ -83,6 +91,7 @@ export function ScheduleAppointmentDialog({
           appointment_time: appointmentData.time,
           appointment_type: appointmentData.type,
           doctor: appointmentData.doctor,
+          user_id: userId // Add user_id to link appointment to current user
         });
       
       if (error) throw error;
