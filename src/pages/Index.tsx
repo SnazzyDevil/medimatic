@@ -117,7 +117,7 @@ const Index = () => {
               <div className="flex flex-col items-center space-y-6">
                 <div className="w-full h-40 mb-4 flex items-center justify-center">
                   <AspectRatio ratio={16 / 10} className="w-[250px] bg-white/50 rounded">
-                    <img src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" alt="Medryx" className="h-full w-full object-contain" />
+                    <img src="/public/lovable-uploads/8cdd7fd3-3b66-4bea-b8e3-a55c48362786.png" alt="Medryx" className="h-full w-full object-scale-down" />
                   </AspectRatio>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 text-center">Welcome to MediMatic</h2>
