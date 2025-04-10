@@ -16,6 +16,7 @@ export type Database = {
           appointment_type: string
           created_at: string | null
           doctor: string | null
+          doctor_id: string | null
           id: string
           patient_id: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           appointment_type: string
           created_at?: string | null
           doctor?: string | null
+          doctor_id?: string | null
           id?: string
           patient_id: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           appointment_type?: string
           created_at?: string | null
           doctor?: string | null
+          doctor_id?: string | null
           id?: string
           patient_id?: string
         }

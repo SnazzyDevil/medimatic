@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
@@ -47,8 +46,16 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(TIME_SLOTS);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data.user);
+    };
+
+    getCurrentUser();
+
     async function fetchPatients() {
       setIsLoading(true);
       setError(null);
@@ -122,6 +129,11 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
       setValidationError("Please fill in all required fields");
       return;
     }
+
+    if (!currentUser?.id) {
+      setValidationError("You must be logged in to create an appointment");
+      return;
+    }
     
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
@@ -160,7 +172,8 @@ export function AppointmentForm({ onSubmit, onCancel }: AppointmentFormProps) {
           patient_id: patientId,
           appointment_date: format(date, 'yyyy-MM-dd'),
           appointment_time: time,
-          appointment_type: appointmentType
+          appointment_type: appointmentType,
+          doctor_id: currentUser.id
         });
       
       if (insertError) {

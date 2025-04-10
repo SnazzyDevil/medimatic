@@ -51,6 +51,20 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
   const [formattedWeek, setFormattedWeek] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data.user);
+      
+      if (data.user) {
+        console.log("Fetching appointments for user:", data.user.id);
+      }
+    };
+
+    getCurrentUser();
+  }, []);
   
   useEffect(() => {
     const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday
@@ -58,8 +72,10 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
     
     setFormattedWeek(`${format(weekStart, "MMMM d")} - ${format(weekEnd, "d, yyyy")}`);
     
-    fetchAppointments(weekStart, weekEnd);
-  }, [currentWeek, refreshTrigger]);
+    if (currentUser?.id) {
+      fetchAppointments(weekStart, weekEnd);
+    }
+  }, [currentWeek, refreshTrigger, currentUser]);
   
   const fetchAppointments = async (startDate: Date, endDate: Date) => {
     setLoading(true);
@@ -67,6 +83,8 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
     try {
       const startDateStr = format(startDate, "yyyy-MM-dd");
       const endDateStr = format(endDate, "yyyy-MM-dd");
+      
+      console.log("Fetching appointments between", startDateStr, "and", endDateStr);
       
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
@@ -77,6 +95,8 @@ export function SchedulerCalendar({ onNewAppointment, refreshTrigger = 0 }: Sche
       if (appointmentsError) {
         throw appointmentsError;
       }
+      
+      console.log("Fetched appointments:", appointmentsData?.length || 0);
       
       if (!appointmentsData || appointmentsData.length === 0) {
         setAppointments([]);
