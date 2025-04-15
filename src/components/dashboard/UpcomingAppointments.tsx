@@ -7,45 +7,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, isToday, isTomorrow, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Define interfaces with explicit types
-interface AppointmentData {
-  id: string;
-  patient_id: string;
-  patientName: string;
-  appointment_date: string;
-  appointment_time: string;
-  appointment_type: string;
-  status: string;
-  avatar?: string;
-  displayDate?: string;
-}
-
-// Raw data types that directly match the database structure
-interface DatabaseAppointment {
-  id: string;
-  patient_id: string;
-  appointment_date: string;
-  appointment_time: string;
-  appointment_type: string;
-  doctor?: string | null;
-}
-
-interface DatabasePatient {
-  id: string;
-  first_name: string;
-  last_name: string;
-}
+import { DatabaseAppointment, DatabasePatient, FormattedAppointment } from "./AppointmentTypes";
 
 export function UpcomingAppointments() {
-  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
+  const [appointments, setAppointments] = useState<FormattedAppointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data } = await supabase.auth.getUser();
-      setCurrentUser(data.user);
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
     };
 
     getCurrentUser();
@@ -88,13 +62,10 @@ export function UpcomingAppointments() {
           return;
         }
         
-        // Extract patient IDs safely
-        const patientIds: string[] = [];
-        for (const app of appointmentsData) {
-          if (app.patient_id) {
-            patientIds.push(app.patient_id);
-          }
-        }
+        // Extract patient IDs using standard array methods to avoid type recursion
+        const patientIds: string[] = appointmentsData
+          .filter(app => app.patient_id)
+          .map(app => app.patient_id);
         
         if (patientIds.length === 0) {
           setAppointments([]);
@@ -119,38 +90,42 @@ export function UpcomingAppointments() {
         // Create a lookup map for patient names
         const patientNameMap: Record<string, string> = {};
         if (patientsData && Array.isArray(patientsData)) {
-          for (const patient of patientsData) {
+          patientsData.forEach((patient: DatabasePatient) => {
             patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
-          }
+          });
         }
         
-        // Transform appointment data using standard for loop to avoid type recursion issues
-        const formattedAppointments: AppointmentData[] = [];
-        for (const app of appointmentsData) {
-          const appointmentDate = new Date(app.appointment_date);
-          let dateDisplay = '';
-          
-          if (isToday(appointmentDate)) {
-            dateDisplay = 'Today';
-          } else if (isTomorrow(appointmentDate)) {
-            dateDisplay = 'Tomorrow';
-          } else {
-            dateDisplay = format(appointmentDate, 'EEE, MMM d');
+        // Transform appointment data using standard techniques to avoid type recursion
+        const formattedAppointments: FormattedAppointment[] = [];
+        
+        if (Array.isArray(appointmentsData)) {
+          for (let i = 0; i < appointmentsData.length; i++) {
+            const app = appointmentsData[i];
+            const appointmentDate = new Date(app.appointment_date);
+            let dateDisplay = '';
+            
+            if (isToday(appointmentDate)) {
+              dateDisplay = 'Today';
+            } else if (isTomorrow(appointmentDate)) {
+              dateDisplay = 'Tomorrow';
+            } else {
+              dateDisplay = format(appointmentDate, 'EEE, MMM d');
+            }
+            
+            const avatarIndex = Math.floor(Math.random() * 10) + 1;
+            
+            formattedAppointments.push({
+              id: app.id,
+              patient_id: app.patient_id,
+              patientName: patientNameMap[app.patient_id] || "Unknown Patient",
+              appointment_date: app.appointment_date,
+              appointment_time: app.appointment_time,
+              appointment_type: app.appointment_type,
+              displayDate: dateDisplay,
+              status: isToday(appointmentDate) ? "Confirmed" : "Pending",
+              avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
+            });
           }
-          
-          const avatarIndex = Math.floor(Math.random() * 10) + 1;
-          
-          formattedAppointments.push({
-            id: app.id,
-            patient_id: app.patient_id,
-            patientName: patientNameMap[app.patient_id] || "Unknown Patient",
-            appointment_date: app.appointment_date,
-            appointment_time: app.appointment_time,
-            appointment_type: app.appointment_type,
-            displayDate: dateDisplay,
-            status: isToday(appointmentDate) ? "Confirmed" : "Pending",
-            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-          });
         }
         
         setAppointments(formattedAppointments);
