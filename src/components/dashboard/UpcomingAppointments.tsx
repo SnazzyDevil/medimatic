@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar, Clock, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,10 +61,13 @@ export function UpcomingAppointments() {
           return;
         }
         
-        // Extract patient IDs using standard array methods to avoid type recursion
-        const patientIds: string[] = appointmentsData
-          .filter(app => app.patient_id)
-          .map(app => app.patient_id);
+        // Safely extract patient IDs
+        const patientIds: string[] = [];
+        for (let i = 0; i < appointmentsData.length; i++) {
+          if (appointmentsData[i].patient_id) {
+            patientIds.push(appointmentsData[i].patient_id);
+          }
+        }
         
         if (patientIds.length === 0) {
           setAppointments([]);
@@ -90,42 +92,41 @@ export function UpcomingAppointments() {
         // Create a lookup map for patient names
         const patientNameMap: Record<string, string> = {};
         if (patientsData && Array.isArray(patientsData)) {
-          patientsData.forEach((patient: DatabasePatient) => {
+          for (let i = 0; i < patientsData.length; i++) {
+            const patient = patientsData[i];
             patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
-          });
+          }
         }
         
-        // Transform appointment data using standard techniques to avoid type recursion
+        // Transform appointment data safely
         const formattedAppointments: FormattedAppointment[] = [];
         
-        if (Array.isArray(appointmentsData)) {
-          for (let i = 0; i < appointmentsData.length; i++) {
-            const app = appointmentsData[i];
-            const appointmentDate = new Date(app.appointment_date);
-            let dateDisplay = '';
-            
-            if (isToday(appointmentDate)) {
-              dateDisplay = 'Today';
-            } else if (isTomorrow(appointmentDate)) {
-              dateDisplay = 'Tomorrow';
-            } else {
-              dateDisplay = format(appointmentDate, 'EEE, MMM d');
-            }
-            
-            const avatarIndex = Math.floor(Math.random() * 10) + 1;
-            
-            formattedAppointments.push({
-              id: app.id,
-              patient_id: app.patient_id,
-              patientName: patientNameMap[app.patient_id] || "Unknown Patient",
-              appointment_date: app.appointment_date,
-              appointment_time: app.appointment_time,
-              appointment_type: app.appointment_type,
-              displayDate: dateDisplay,
-              status: isToday(appointmentDate) ? "Confirmed" : "Pending",
-              avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
-            });
+        for (let i = 0; i < appointmentsData.length; i++) {
+          const app = appointmentsData[i];
+          const appointmentDate = new Date(app.appointment_date);
+          let dateDisplay = '';
+          
+          if (isToday(appointmentDate)) {
+            dateDisplay = 'Today';
+          } else if (isTomorrow(appointmentDate)) {
+            dateDisplay = 'Tomorrow';
+          } else {
+            dateDisplay = format(appointmentDate, 'EEE, MMM d');
           }
+          
+          const avatarIndex = Math.floor(Math.random() * 10) + 1;
+          
+          formattedAppointments.push({
+            id: app.id,
+            patient_id: app.patient_id,
+            patientName: patientNameMap[app.patient_id] || "Unknown Patient",
+            appointment_date: app.appointment_date,
+            appointment_time: app.appointment_time,
+            appointment_type: app.appointment_type,
+            displayDate: dateDisplay,
+            status: isToday(appointmentDate) ? "Confirmed" : "Pending",
+            avatar: `https://i.pravatar.cc/100?img=${avatarIndex}`
+          });
         }
         
         setAppointments(formattedAppointments);

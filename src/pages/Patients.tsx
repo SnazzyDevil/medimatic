@@ -1,6 +1,5 @@
 
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PatientList } from "@/components/patients/PatientList";
@@ -8,7 +7,7 @@ import { PatientList } from "@/components/patients/PatientList";
 const Patients = () => {
   const navigate = useNavigate();
   
-  const handlePatientSelect = (id) => {
+  const handlePatientSelect = (id: string) => {
     navigate(`/patients/${id}`);
   };
   

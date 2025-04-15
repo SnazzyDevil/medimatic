@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,10 +92,22 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
       return;
     }
 
+    // Check if the user is authenticated
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to add a patient.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // Insert data to Supabase
+      console.log("Current user ID:", user.id);
+      
+      // Insert data to Supabase with explicit user_id
       const { data, error } = await supabase
         .from('patients')
         .insert({
@@ -108,11 +119,12 @@ export function PatientForm({ onSubmit, isLoading = false }: PatientFormProps) {
           email: formData.email || null,
           allergies: formData.allergies || null,
           alternate_contact: formData.alternateContact || null,
-          user_id: user?.id // Automatically insert the authenticated user's ID
+          user_id: user.id // Explicitly add the user_id field
         })
         .select();
 
       if (error) {
+        console.error("Supabase error:", error);
         throw error;
       }
 
