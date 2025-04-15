@@ -21,7 +21,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   appointment_type: string;
-  user_id?: string; // Add user_id
+  user_id?: string;
   patientName?: string;
   color?: string;
   day?: number;
@@ -37,7 +37,13 @@ const Scheduler = () => {
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data } = await supabase.auth.getUser();
-      setCurrentUser(data.user);
+      if (data?.user) {
+        setCurrentUser({
+          id: data.user.id,
+          email: data.user.email
+        });
+        console.log("Current user set:", data.user.id);
+      }
     };
 
     getCurrentUser();

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -50,7 +49,6 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
   const [loading, setLoading] = useState(false);
   const [takenSlots, setTakenSlots] = useState<string[]>([]);
   
-  // Fetch patients for this user only
   useEffect(() => {
     const fetchPatients = async () => {
       if (!currentUser) return;
@@ -66,6 +64,8 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
           throw error;
         }
         
+        console.log("Fetched patients:", data); // Add logging
+        
         if (data && !isSelectQueryError(data)) {
           const formattedPatients: Patient[] = data.map((patient) => ({
             id: String(patient.id),
@@ -73,6 +73,7 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
             last_name: String(patient.last_name)
           }));
           setPatients(formattedPatients);
+          console.log("Formatted patients:", formattedPatients); // Add logging
         }
       } catch (error) {
         console.error("Error loading patients:", error);
@@ -89,7 +90,6 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
     fetchPatients();
   }, [currentUser]);
   
-  // Populate form if editData is provided
   useEffect(() => {
     if (editData) {
       if (editData.date) setDate(new Date(editData.date));
@@ -99,7 +99,6 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
     }
   }, [editData]);
   
-  // Check for time slot availability when date changes
   useEffect(() => {
     const checkTimeSlots = async () => {
       if (!date || !currentUser) return;
@@ -159,7 +158,6 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
       
       const dateStr = format(date, "yyyy-MM-dd");
       
-      // Add the appointment with user_id
       const { data, error } = await supabase
         .from('appointments')
         .insert({
