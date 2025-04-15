@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar, Clock, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ export function UpcomingAppointments() {
     const getCurrentUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (data?.user) {
-        setCurrentUser(data.user);
+        setCurrentUser({ id: data.user.id });
       }
     };
 
@@ -39,7 +40,7 @@ export function UpcomingAppointments() {
         // Fetch upcoming appointments for the next 7 days - FILTERED BY USER_ID
         const { data: appointmentsData, error: appointmentsError } = await supabase
           .from('appointments')
-          .select('id, patient_id, appointment_date, appointment_time, appointment_type, doctor')
+          .select('*')
           .eq('user_id', currentUser.id) // Filter by current user
           .gte('appointment_date', todayStr)
           .lte('appointment_date', nextWeekStr)
@@ -61,10 +62,10 @@ export function UpcomingAppointments() {
           return;
         }
         
-        // Safely extract patient IDs
+        // Extract patient IDs
         const patientIds: string[] = [];
         for (let i = 0; i < appointmentsData.length; i++) {
-          if (appointmentsData[i].patient_id) {
+          if (appointmentsData[i]?.patient_id) {
             patientIds.push(appointmentsData[i].patient_id);
           }
         }
@@ -94,15 +95,19 @@ export function UpcomingAppointments() {
         if (patientsData && Array.isArray(patientsData)) {
           for (let i = 0; i < patientsData.length; i++) {
             const patient = patientsData[i];
-            patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+            if (patient && patient.id) {
+              patientNameMap[patient.id] = `${patient.first_name} ${patient.last_name}`;
+            }
           }
         }
         
-        // Transform appointment data safely
+        // Transform appointment data
         const formattedAppointments: FormattedAppointment[] = [];
         
         for (let i = 0; i < appointmentsData.length; i++) {
           const app = appointmentsData[i];
+          if (!app) continue;
+          
           const appointmentDate = new Date(app.appointment_date);
           let dateDisplay = '';
           
