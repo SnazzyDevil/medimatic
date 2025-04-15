@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -61,23 +60,24 @@ const Inventory = () => {
     item_code: "",
     category: "",
     supplier_name: "",
-    unit_cost: "000.00",
+    unit_cost: "",
     stock: 0,
     threshold: 0,
     expiry_date: null,
   });
 
-  const formatUnitCost = (value: string) => {
-    const numericValue = value.replace(/[^\d.]/g, '');
-    const [integerPart, decimalPart] = numericValue.split('.');
-    const paddedInteger = integerPart.padStart(3, '0').slice(-3);
-    const formattedDecimal = (decimalPart || '00').slice(0, 2).padEnd(2, '0');
-    return `${paddedInteger}.${formattedDecimal}`;
+  const handleUnitCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value.replace(/[^\d.]/g, '');
+    setNewItem({ ...newItem, unit_cost: inputValue });
   };
 
-  const handleUnitCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatUnitCost(e.target.value);
-    setNewItem({ ...newItem, unit_cost: formattedValue });
+  const formatUnitCostForDisplay = (value: string): string => {
+    if (!value || value === "") return "";
+    
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) return "";
+    
+    return numericValue.toFixed(2);
   };
 
   useEffect(() => {
@@ -128,7 +128,7 @@ const Inventory = () => {
       item_code: "",
       category: "",
       supplier_name: "",
-      unit_cost: "000.00",
+      unit_cost: "",
       stock: 0,
       threshold: 0,
       expiry_date: null,
@@ -222,7 +222,6 @@ const Inventory = () => {
         return;
       }
 
-      // Convert unit_cost from string to number
       const numericUnitCost = parseFloat(newItem.unit_cost);
       
       const { data, error } = await supabase
@@ -253,7 +252,7 @@ const Inventory = () => {
         item_code: "",
         category: "",
         supplier_name: "",
-        unit_cost: "000.00",
+        unit_cost: "",
         stock: 0,
         threshold: 0,
         expiry_date: null,
@@ -301,7 +300,6 @@ const Inventory = () => {
     
     const createNewItem = async () => {
       try {
-        // Convert unit_cost from string to number
         const numericUnitCost = parseFloat(newItem.unit_cost);
         
         const { data, error } = await supabase
@@ -402,7 +400,7 @@ const Inventory = () => {
                           <TableCell>{item.item_code}</TableCell>
                           <TableCell>{item.category}</TableCell>
                           <TableCell>{item.supplier_name}</TableCell>
-                          <TableCell>{item.unit_cost}</TableCell>
+                          <TableCell>{formatUnitCostForDisplay(item.unit_cost)}</TableCell>
                           <TableCell>
                             {item.stock}
                             {item.stock <= item.threshold && (
@@ -566,7 +564,7 @@ const Inventory = () => {
                     value={newItem.unit_cost}
                     onChange={handleUnitCostChange}
                     className="col-span-3"
-                    placeholder="000.00"
+                    placeholder="0.00"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
