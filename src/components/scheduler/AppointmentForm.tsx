@@ -1,3 +1,4 @@
+
 import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -55,25 +56,35 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
       
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        
+        // Modified query to handle both cases: with user_id filter or without
+        let query = supabase
           .from('patients')
-          .select('id, first_name, last_name')
-          .eq('user_id', currentUser.id); // Filter by user_id
+          .select('id, first_name, last_name');
+        
+        // Only add the filter if user_id is not undefined or null
+        if (currentUser.id) {
+          query = query.eq('user_id', currentUser.id);
+        }
+        
+        const { data, error } = await query;
         
         if (error) {
           throw error;
         }
         
-        console.log("Fetched patients:", data); // Add logging
+        console.log("Fetched patients:", data); 
         
-        if (data && !isSelectQueryError(data)) {
+        if (data && !isSelectQueryError(data) && data.length > 0) {
           const formattedPatients: Patient[] = data.map((patient) => ({
             id: String(patient.id),
             first_name: String(patient.first_name),
             last_name: String(patient.last_name)
           }));
           setPatients(formattedPatients);
-          console.log("Formatted patients:", formattedPatients); // Add logging
+          console.log("Formatted patients:", formattedPatients);
+        } else {
+          console.log("No patients found or empty result");
         }
       } catch (error) {
         console.error("Error loading patients:", error);
@@ -165,7 +176,7 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
           appointment_date: dateStr,
           appointment_time: time,
           appointment_type: type,
-          user_id: currentUser.id, // Include the user_id
+          user_id: currentUser.id, 
           doctor: "Dr. Default" // Placeholder, could be from practice settings
         })
         .select();
