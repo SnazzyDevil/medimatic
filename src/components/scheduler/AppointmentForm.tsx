@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format, startOfToday } from "date-fns";
-import { CalendarIcon, Clock, Check } from "lucide-react";
+import { CalendarIcon, Clock, Check, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -48,26 +48,21 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
   const [patientId, setPatientId] = useState<string>("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(false);
   const [takenSlots, setTakenSlots] = useState<string[]>([]);
   
+  // Fetch patients when the component mounts
   useEffect(() => {
     const fetchPatients = async () => {
       if (!currentUser) return;
       
       try {
-        setLoading(true);
+        setLoadingPatients(true);
         
-        // Modified query to handle both cases: with user_id filter or without
-        let query = supabase
+        // Query all patients
+        const { data, error } = await supabase
           .from('patients')
           .select('id, first_name, last_name');
-        
-        // Only add the filter if user_id is not undefined or null
-        if (currentUser.id) {
-          query = query.eq('user_id', currentUser.id);
-        }
-        
-        const { data, error } = await query;
         
         if (error) {
           throw error;
@@ -94,7 +89,7 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setLoadingPatients(false);
       }
     };
     
@@ -217,14 +212,25 @@ export function AppointmentForm({ onSubmit, onCancel, currentUser, editData }: A
         <Label>Patient</Label>
         <Select value={patientId} onValueChange={setPatientId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a patient" />
+            <SelectValue placeholder={loadingPatients ? "Loading patients..." : "Select a patient"} />
           </SelectTrigger>
-          <SelectContent>
-            {patients.map((patient) => (
-              <SelectItem key={patient.id} value={patient.id}>
-                {patient.first_name} {patient.last_name}
-              </SelectItem>
-            ))}
+          <SelectContent className="max-h-60 overflow-y-auto">
+            {loadingPatients ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading patients...
+              </div>
+            ) : patients.length > 0 ? (
+              patients.map((patient) => (
+                <SelectItem key={patient.id} value={patient.id}>
+                  {patient.first_name} {patient.last_name}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No patients found
+              </div>
+            )}
           </SelectContent>
         </Select>
       </div>
