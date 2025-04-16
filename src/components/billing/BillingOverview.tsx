@@ -394,11 +394,11 @@ export function BillingOverview() {
             ) : (
               <div className="space-y-2">
                 <div className="text-3xl font-bold">
-                  R {revenueData?.currentMonthRevenue.toFixed(2)}
+                  R {revenueData?.currentMonthRevenue !== undefined ? revenueData.currentMonthRevenue.toFixed(2) : '0.00'}
                 </div>
                 <div className="flex items-center text-sm text-healthcare-success">
                   <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                  <span>{revenueData?.percentChange.toFixed(1)}% from last month</span>
+                  <span>{revenueData?.percentChange !== undefined ? revenueData.percentChange.toFixed(1) : '0.0'}% from last month</span>
                 </div>
                 <div className="pt-4 h-24 flex items-end space-x-2">
                   {revenueData?.monthlyRevenue.map((item) => {
@@ -446,28 +446,28 @@ export function BillingOverview() {
                 <div className="bg-healthcare-highlight rounded-lg p-3">
                   <div className="text-sm text-healthcare-gray">Paid</div>
                   <div className="text-xl font-bold text-healthcare-primary">
-                    R {paymentSummary?.paidAmount.toFixed(2)}
+                    R {paymentSummary?.paidAmount !== undefined ? paymentSummary.paidAmount.toFixed(2) : '0.00'}
                   </div>
                   <div className="text-xs text-healthcare-gray mt-1">
-                    {paymentSummary?.paidCount} invoices
+                    {paymentSummary?.paidCount || 0} invoices
                   </div>
                 </div>
                 <div className="bg-healthcare-secondary rounded-lg p-3">
                   <div className="text-sm text-healthcare-gray">Pending</div>
                   <div className="text-xl font-bold">
-                    R {paymentSummary?.pendingAmount.toFixed(2)}
+                    R {paymentSummary?.pendingAmount !== undefined ? paymentSummary.pendingAmount.toFixed(2) : '0.00'}
                   </div>
                   <div className="text-xs text-healthcare-gray mt-1">
-                    {paymentSummary?.pendingCount} invoices
+                    {paymentSummary?.pendingCount || 0} invoices
                   </div>
                 </div>
                 <div className="col-span-2 bg-red-50 rounded-lg p-3">
                   <div className="text-sm text-healthcare-danger">Overdue</div>
                   <div className="text-xl font-bold text-healthcare-danger">
-                    R {paymentSummary?.overdueAmount.toFixed(2)}
+                    R {paymentSummary?.overdueAmount !== undefined ? paymentSummary.overdueAmount.toFixed(2) : '0.00'}
                   </div>
                   <div className="text-xs text-healthcare-gray mt-1">
-                    {paymentSummary?.overdueCount} invoice{paymentSummary?.overdueCount !== 1 ? 's' : ''}
+                    {paymentSummary?.overdueCount || 0} invoice{paymentSummary?.overdueCount !== 1 ? 's' : ''}
                   </div>
                 </div>
               </div>
