@@ -12,7 +12,8 @@ import {
   TrendingUp, 
   User,
   X,
-  MoreHorizontal 
+  MoreHorizontal,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -48,6 +49,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 
 interface Invoice {
   id: string;
@@ -58,58 +61,147 @@ interface Invoice {
   service: string;
 }
 
-// Fixed the invoices data to use proper typed status values
-const invoices: Invoice[] = [
-  {
-    id: "INV-2023-001",
-    patientName: "Sarah Johnson",
-    date: "June 10, 2023",
-    amount: 150.00,
-    status: "paid",
-    service: "Check-up"
-  },
-  {
-    id: "INV-2023-002",
-    patientName: "Michael Chen",
-    date: "June 8, 2023",
-    amount: 220.00,
-    status: "paid",
-    service: "Follow-up + Lab Tests"
-  },
-  {
-    id: "INV-2023-003",
-    patientName: "Emma Wilson",
-    date: "June 5, 2023",
-    amount: 185.50,
-    status: "pending",
-    service: "Consultation"
-  },
-  {
-    id: "INV-2023-004",
-    patientName: "David Miller",
-    date: "June 2, 2023",
-    amount: 310.75,
-    status: "overdue",
-    service: "Physical"
-  },
-  {
-    id: "INV-2023-005",
-    patientName: "Olivia Davis",
-    date: "May 28, 2023",
-    amount: 150.00,
-    status: "paid",
-    service: "Check-up"
-  },
-];
+// Function to format date to readable string
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return format(date, "MMMM d, yyyy");
+  } catch (error) {
+    return dateString;
+  }
+};
 
-const revenueData = [
-  { month: "Jan", amount: 4200 },
-  { month: "Feb", amount: 4800 },
-  { month: "Mar", amount: 5100 },
-  { month: "Apr", amount: 4900 },
-  { month: "May", amount: 5400 },
-  { month: "Jun", amount: 8200 },
-];
+// Function to fetch invoices from Supabase
+const fetchInvoices = async () => {
+  const { data: invoicesData, error: invoicesError } = await supabase
+    .from('invoices')
+    .select(`
+      id,
+      invoice_date,
+      due_date,
+      total_amount,
+      paid_amount,
+      status,
+      notes,
+      patients(first_name, last_name)
+    `)
+    .order('invoice_date', { ascending: false });
+
+  if (invoicesError) throw new Error(invoicesError.message);
+
+  // Get invoice items to determine services
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('invoice_items')
+    .select('invoice_id, description');
+
+  if (itemsError) throw new Error(itemsError.message);
+  
+  // Create a map of invoice_id to service descriptions
+  const serviceMap: Record<string, string> = {};
+  itemsData.forEach(item => {
+    if (!serviceMap[item.invoice_id]) {
+      serviceMap[item.invoice_id] = item.description;
+    }
+  });
+
+  // Format invoices data
+  return invoicesData.map(invoice => ({
+    id: invoice.id,
+    patientName: `${invoice.patients?.first_name || ''} ${invoice.patients?.last_name || ''}`.trim(),
+    date: formatDate(invoice.invoice_date),
+    amount: Number(invoice.total_amount),
+    status: invoice.status as "paid" | "pending" | "overdue",
+    service: serviceMap[invoice.id] || "Consultation"
+  }));
+};
+
+// Function to fetch revenue data from Supabase
+const fetchRevenueData = async () => {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const months = [];
+  
+  // Generate the last 6 months including current month
+  for (let i = 5; i >= 0; i--) {
+    const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push({
+      month: format(month, "MMM"),
+      year: month.getFullYear(),
+      monthIndex: month.getMonth()
+    });
+  }
+  
+  // Fetch all paid invoices for the current year
+  const { data: invoicesData, error: invoicesError } = await supabase
+    .from('invoices')
+    .select('invoice_date, paid_amount, status')
+    .gte('invoice_date', `${currentYear}-01-01`)
+    .lte('invoice_date', `${currentYear}-12-31`);
+  
+  if (invoicesError) throw new Error(invoicesError.message);
+  
+  // Calculate monthly revenue
+  const monthlyRevenue = months.map(monthData => {
+    const amount = invoicesData
+      .filter(invoice => {
+        const invoiceDate = new Date(invoice.invoice_date);
+        return (
+          invoiceDate.getMonth() === monthData.monthIndex &&
+          invoiceDate.getFullYear() === monthData.year &&
+          (invoice.status === 'paid' || Number(invoice.paid_amount) > 0)
+        );
+      })
+      .reduce((sum, invoice) => sum + Number(invoice.paid_amount), 0);
+    
+    return {
+      month: monthData.month,
+      amount
+    };
+  });
+  
+  // Calculate percentage change from previous month if available
+  let percentChange = 0;
+  if (monthlyRevenue.length >= 2) {
+    const currentMonth = monthlyRevenue[monthlyRevenue.length - 1].amount;
+    const prevMonth = monthlyRevenue[monthlyRevenue.length - 2].amount;
+    
+    if (prevMonth > 0) {
+      percentChange = ((currentMonth - prevMonth) / prevMonth) * 100;
+    }
+  }
+  
+  return {
+    monthlyRevenue,
+    currentMonthRevenue: monthlyRevenue[monthlyRevenue.length - 1]?.amount || 0,
+    percentChange
+  };
+};
+
+// Function to fetch payment summary data
+const fetchPaymentSummary = async () => {
+  const { data: invoicesData, error: invoicesError } = await supabase
+    .from('invoices')
+    .select('status, total_amount, paid_amount');
+  
+  if (invoicesError) throw new Error(invoicesError.message);
+  
+  const paidInvoices = invoicesData.filter(invoice => invoice.status === 'paid');
+  const pendingInvoices = invoicesData.filter(invoice => invoice.status === 'pending');
+  const overdueInvoices = invoicesData.filter(invoice => invoice.status === 'overdue');
+  
+  const paidAmount = paidInvoices.reduce((sum, invoice) => sum + Number(invoice.paid_amount), 0);
+  const pendingAmount = pendingInvoices.reduce((sum, invoice) => sum + Number(invoice.total_amount) - Number(invoice.paid_amount), 0);
+  const overdueAmount = overdueInvoices.reduce((sum, invoice) => sum + Number(invoice.total_amount) - Number(invoice.paid_amount), 0);
+  
+  return {
+    paidAmount,
+    pendingAmount,
+    overdueAmount,
+    paidCount: paidInvoices.length,
+    pendingCount: pendingInvoices.length,
+    overdueCount: overdueInvoices.length
+  };
+};
 
 export function BillingOverview() {
   const { toast } = useToast();
@@ -124,8 +216,69 @@ export function BillingOverview() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [localInvoices, setLocalInvoices] = useState<Invoice[]>(invoices);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState<string | null>(null);
+
+  // Fetch invoices data using React Query
+  const { 
+    data: invoices, 
+    isLoading: invoicesLoading, 
+    error: invoicesError 
+  } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: fetchInvoices
+  });
+
+  // Fetch revenue data using React Query
+  const { 
+    data: revenueData, 
+    isLoading: revenueLoading,
+    error: revenueError
+  } = useQuery({
+    queryKey: ['revenue'],
+    queryFn: fetchRevenueData
+  });
+
+  // Fetch payment summary data using React Query
+  const { 
+    data: paymentSummary, 
+    isLoading: paymentSummaryLoading,
+    error: paymentSummaryError
+  } = useQuery({
+    queryKey: ['payment-summary'],
+    queryFn: fetchPaymentSummary
+  });
+
+  // Apply filters to invoices
+  const filteredInvoices = invoices ? invoices.filter(invoice => {
+    if (activeTab !== 'all' && invoice.status !== activeTab) {
+      return false;
+    }
+
+    const matchesSearch = searchQuery.trim() === '' || 
+      invoice.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.service.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let matchesCustomFilters = true;
+    
+    if (filterOptions.minAmount && parseFloat(filterOptions.minAmount) > invoice.amount) {
+      matchesCustomFilters = false;
+    }
+    
+    if (filterOptions.maxAmount && parseFloat(filterOptions.maxAmount) < invoice.amount) {
+      matchesCustomFilters = false;
+    }
+    
+    if (filterOptions.date && !invoice.date.includes(filterOptions.date)) {
+      matchesCustomFilters = false;
+    }
+    
+    if (filterOptions.service && !invoice.service.includes(filterOptions.service)) {
+      matchesCustomFilters = false;
+    }
+    
+    return matchesSearch && matchesCustomFilters;
+  }) : [];
 
   const applyFilters = () => {
     const newFilters: string[] = [];
@@ -177,37 +330,6 @@ export function BillingOverview() {
     setShowFilters(newFilters.length > 0);
   };
 
-  const filteredInvoices = localInvoices.filter(invoice => {
-    if (activeTab !== 'all' && invoice.status !== activeTab) {
-      return false;
-    }
-
-    const matchesSearch = searchQuery.trim() === '' || 
-      invoice.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.service.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let matchesCustomFilters = true;
-    
-    if (filterOptions.minAmount && parseFloat(filterOptions.minAmount) > invoice.amount) {
-      matchesCustomFilters = false;
-    }
-    
-    if (filterOptions.maxAmount && parseFloat(filterOptions.maxAmount) < invoice.amount) {
-      matchesCustomFilters = false;
-    }
-    
-    if (filterOptions.date && !invoice.date.includes(filterOptions.date)) {
-      matchesCustomFilters = false;
-    }
-    
-    if (filterOptions.service && !invoice.service.includes(filterOptions.service)) {
-      matchesCustomFilters = false;
-    }
-    
-    return matchesSearch && matchesCustomFilters;
-  });
-
   const handleExport = () => {
     toast({
       title: "Export started",
@@ -219,25 +341,25 @@ export function BillingOverview() {
     setStatusUpdateLoading(invoiceId);
     
     try {
-      if (invoiceId.length === 36) {
-        const { error } = await supabase
-          .from('invoices')
-          .update({ status: newStatus })
-          .eq('id', invoiceId);
+      const { error } = await supabase
+        .from('invoices')
+        .update({ status: newStatus })
+        .eq('id', invoiceId);
           
-        if (error) throw error;
-      }
-      
-      setLocalInvoices(prevInvoices => 
-        prevInvoices.map(invoice => 
-          invoice.id === invoiceId ? { ...invoice, status: newStatus } : invoice
-        )
-      );
+      if (error) throw error;
       
       toast({
         title: "Status updated",
-        description: `Invoice ${invoiceId} status changed to ${newStatus}`,
+        description: `Invoice status changed to ${newStatus}`,
       });
+
+      // Refresh queries
+      await Promise.all([
+        fetchInvoices(),
+        fetchPaymentSummary(),
+        fetchRevenueData()
+      ]);
+      
     } catch (error) {
       console.error("Error updating invoice status:", error);
       toast({
@@ -261,27 +383,45 @@ export function BillingOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold">R 8,200</div>
-              <div className="flex items-center text-sm text-healthcare-success">
-                <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                <span>+12% from last month</span>
+            {revenueLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-6 w-6 animate-spin text-healthcare-primary" />
               </div>
-              <div className="pt-4 h-24 flex items-end space-x-2">
-                {revenueData.map((item) => (
-                  <div key={item.month} className="flex flex-col items-center flex-1">
-                    <div 
-                      className="w-full bg-healthcare-primary rounded-t-sm transition-all animate-pulse-subtle" 
-                      style={{ 
-                        height: `${(item.amount / 10000) * 80}px`,
-                        opacity: item.month === "Jun" ? 1 : 0.6 
-                      }}
-                    />
-                    <div className="text-xs mt-1 text-healthcare-gray">{item.month}</div>
-                  </div>
-                ))}
+            ) : revenueError ? (
+              <div className="text-center text-red-500 py-4">
+                Failed to load revenue data
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-3xl font-bold">
+                  R {revenueData?.currentMonthRevenue.toFixed(2)}
+                </div>
+                <div className="flex items-center text-sm text-healthcare-success">
+                  <TrendingUp className="h-3.5 w-3.5 mr-1" />
+                  <span>{revenueData?.percentChange.toFixed(1)}% from last month</span>
+                </div>
+                <div className="pt-4 h-24 flex items-end space-x-2">
+                  {revenueData?.monthlyRevenue.map((item) => {
+                    const maxRevenue = Math.max(...revenueData.monthlyRevenue.map(i => i.amount));
+                    const heightPercentage = maxRevenue > 0 ? (item.amount / maxRevenue) * 80 : 0;
+                    const isCurrentMonth = item.month === revenueData.monthlyRevenue[revenueData.monthlyRevenue.length - 1].month;
+                    
+                    return (
+                      <div key={item.month} className="flex flex-col items-center flex-1">
+                        <div 
+                          className="w-full bg-healthcare-primary rounded-t-sm transition-all animate-pulse-subtle" 
+                          style={{ 
+                            height: `${heightPercentage}px`,
+                            opacity: isCurrentMonth ? 1 : 0.6 
+                          }}
+                        />
+                        <div className="text-xs mt-1 text-healthcare-gray">{item.month}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -293,23 +433,45 @@ export function BillingOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-healthcare-highlight rounded-lg p-3">
-                <div className="text-sm text-healthcare-gray">Paid</div>
-                <div className="text-xl font-bold text-healthcare-primary">R 7,650</div>
-                <div className="text-xs text-healthcare-gray mt-1">12 invoices</div>
+            {paymentSummaryLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-6 w-6 animate-spin text-healthcare-primary" />
               </div>
-              <div className="bg-healthcare-secondary rounded-lg p-3">
-                <div className="text-sm text-healthcare-gray">Pending</div>
-                <div className="text-xl font-bold">R 550</div>
-                <div className="text-xs text-healthcare-gray mt-1">3 invoices</div>
+            ) : paymentSummaryError ? (
+              <div className="text-center text-red-500 py-4">
+                Failed to load payment data
               </div>
-              <div className="col-span-2 bg-red-50 rounded-lg p-3">
-                <div className="text-sm text-healthcare-danger">Overdue</div>
-                <div className="text-xl font-bold text-healthcare-danger">R 310.75</div>
-                <div className="text-xs text-healthcare-gray mt-1">1 invoice</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-healthcare-highlight rounded-lg p-3">
+                  <div className="text-sm text-healthcare-gray">Paid</div>
+                  <div className="text-xl font-bold text-healthcare-primary">
+                    R {paymentSummary?.paidAmount.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-healthcare-gray mt-1">
+                    {paymentSummary?.paidCount} invoices
+                  </div>
+                </div>
+                <div className="bg-healthcare-secondary rounded-lg p-3">
+                  <div className="text-sm text-healthcare-gray">Pending</div>
+                  <div className="text-xl font-bold">
+                    R {paymentSummary?.pendingAmount.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-healthcare-gray mt-1">
+                    {paymentSummary?.pendingCount} invoices
+                  </div>
+                </div>
+                <div className="col-span-2 bg-red-50 rounded-lg p-3">
+                  <div className="text-sm text-healthcare-danger">Overdue</div>
+                  <div className="text-xl font-bold text-healthcare-danger">
+                    R {paymentSummary?.overdueAmount.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-healthcare-gray mt-1">
+                    {paymentSummary?.overdueCount} invoice{paymentSummary?.overdueCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
         
@@ -321,26 +483,42 @@ export function BillingOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {invoices.slice(0, 3).map((invoice) => (
-                <div key={invoice.id} className="flex items-center p-2 rounded-lg hover:bg-healthcare-secondary transition-colors">
-                  <div className="h-8 w-8 rounded-full bg-healthcare-gray-light flex items-center justify-center mr-3">
-                    <File className="h-4 w-4 text-healthcare-gray" />
-                  </div>
-                  <div className="flex-grow">
-                    <div className="text-sm font-medium">{invoice.patientName}</div>
-                    <div className="flex justify-between">
-                      <div className="text-xs text-healthcare-gray">{invoice.date}</div>
-                      <div className="text-xs font-medium">R {invoice.amount.toFixed(2)}</div>
+            {invoicesLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-6 w-6 animate-spin text-healthcare-primary" />
+              </div>
+            ) : invoicesError ? (
+              <div className="text-center text-red-500 py-4">
+                Failed to load activity data
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invoices && invoices.length > 0 ? (
+                  invoices.slice(0, 3).map((invoice) => (
+                    <div key={invoice.id} className="flex items-center p-2 rounded-lg hover:bg-healthcare-secondary transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-healthcare-gray-light flex items-center justify-center mr-3">
+                        <File className="h-4 w-4 text-healthcare-gray" />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="text-sm font-medium">{invoice.patientName}</div>
+                        <div className="flex justify-between">
+                          <div className="text-xs text-healthcare-gray">{invoice.date}</div>
+                          <div className="text-xs font-medium">R {invoice.amount.toFixed(2)}</div>
+                        </div>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No recent activity
                   </div>
-                </div>
-              ))}
-              <Button variant="ghost" size="sm" className="w-full justify-between mt-2">
-                View all transactions
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+                )}
+                <Button variant="ghost" size="sm" className="w-full justify-between mt-2">
+                  View all transactions
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -441,108 +619,120 @@ export function BillingOverview() {
           )}
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice ID</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.length === 0 ? (
+          {invoicesLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-healthcare-primary" />
+            </div>
+          ) : invoicesError ? (
+            <div className="text-center py-8 text-red-500">
+              Error loading invoice data
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                    No invoices found matching your filters
-                  </TableCell>
+                  <TableHead>Invoice ID</TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ) : (
-                filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">{invoice.id}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 mr-2 text-healthcare-gray" />
-                        {invoice.patientName}
-                      </div>
-                    </TableCell>
-                    <TableCell>{invoice.service}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2 text-healthcare-gray" />
-                        {invoice.date}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Banknote className="h-4 w-4 mr-1 text-healthcare-gray" />
-                        R {invoice.amount.toFixed(2)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          invoice.status === "paid" 
-                            ? "default" 
-                            : invoice.status === "pending" 
-                              ? "outline" 
-                              : "destructive"
-                        }
-                      >
-                        {invoice.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            className="h-8 w-8 p-0"
-                            disabled={statusUpdateLoading === invoice.id}
-                          >
-                            {statusUpdateLoading === invoice.id ? (
-                              <div className="h-4 w-4 border-2 border-t-transparent border-healthcare-primary animate-spin rounded-full"></div>
-                            ) : (
-                              <MoreHorizontal className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => updateInvoiceStatus(invoice.id, "paid")}
-                            disabled={invoice.status === "paid"}
-                            className={invoice.status === "paid" ? "bg-gray-100" : ""}
-                          >
-                            Mark as Paid
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => updateInvoiceStatus(invoice.id, "pending")}
-                            disabled={invoice.status === "pending"}
-                            className={invoice.status === "pending" ? "bg-gray-100" : ""}
-                          >
-                            Mark as Pending
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => updateInvoiceStatus(invoice.id, "overdue")}
-                            disabled={invoice.status === "overdue"}
-                            className={invoice.status === "overdue" ? "bg-gray-100" : ""}
-                          >
-                            Mark as Overdue
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                      No invoices found matching your filters
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">
+                        {invoice.id.substring(0, 8).toUpperCase()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2 text-healthcare-gray" />
+                          {invoice.patientName || "Unknown Patient"}
+                        </div>
+                      </TableCell>
+                      <TableCell>{invoice.service}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-healthcare-gray" />
+                          {invoice.date}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Banknote className="h-4 w-4 mr-1 text-healthcare-gray" />
+                          R {invoice.amount.toFixed(2)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            invoice.status === "paid" 
+                              ? "default" 
+                              : invoice.status === "pending" 
+                                ? "outline" 
+                                : "destructive"
+                          }
+                        >
+                          {invoice.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              disabled={statusUpdateLoading === invoice.id}
+                            >
+                              {statusUpdateLoading === invoice.id ? (
+                                <div className="h-4 w-4 border-2 border-t-transparent border-healthcare-primary animate-spin rounded-full"></div>
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => updateInvoiceStatus(invoice.id, "paid")}
+                              disabled={invoice.status === "paid"}
+                              className={invoice.status === "paid" ? "bg-gray-100" : ""}
+                            >
+                              Mark as Paid
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => updateInvoiceStatus(invoice.id, "pending")}
+                              disabled={invoice.status === "pending"}
+                              className={invoice.status === "pending" ? "bg-gray-100" : ""}
+                            >
+                              Mark as Pending
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => updateInvoiceStatus(invoice.id, "overdue")}
+                              disabled={invoice.status === "overdue"}
+                              className={invoice.status === "overdue" ? "bg-gray-100" : ""}
+                            >
+                              Mark as Overdue
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
       
@@ -591,8 +781,18 @@ export function BillingOverview() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all-dates">All dates</SelectItem>
-                  <SelectItem value="May">May 2023</SelectItem>
-                  <SelectItem value="June">June 2023</SelectItem>
+                  <SelectItem value="January">January {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="February">February {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="March">March {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="April">April {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="May">May {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="June">June {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="July">July {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="August">August {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="September">September {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="October">October {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="November">November {new Date().getFullYear()}</SelectItem>
+                  <SelectItem value="December">December {new Date().getFullYear()}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

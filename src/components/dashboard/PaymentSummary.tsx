@@ -1,5 +1,5 @@
 
-import { ArrowRight, CreditCard, Banknote, Receipt, TrendingUp } from "lucide-react";
+import { ArrowRight, CreditCard, Banknote, Receipt, TrendingUp, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -23,7 +23,8 @@ const fetchPaymentSummary = async () => {
   
   const currentWeekRevenue = invoicesData.reduce((sum, invoice) => {
     const invoiceDate = new Date(invoice.invoice_date);
-    if (invoiceDate >= startOfWeek && invoiceDate <= today) {
+    if (invoiceDate >= startOfWeek && invoiceDate <= today && 
+        (invoice.status === 'paid' || Number(invoice.paid_amount) > 0)) {
       return sum + Number(invoice.paid_amount);
     }
     return sum;
@@ -37,7 +38,8 @@ const fetchPaymentSummary = async () => {
   
   const prevWeekRevenue = invoicesData.reduce((sum, invoice) => {
     const invoiceDate = new Date(invoice.invoice_date);
-    if (invoiceDate >= startOfPrevWeek && invoiceDate <= endOfPrevWeek) {
+    if (invoiceDate >= startOfPrevWeek && invoiceDate <= endOfPrevWeek && 
+        (invoice.status === 'paid' || Number(invoice.paid_amount) > 0)) {
       return sum + Number(invoice.paid_amount);
     }
     return sum;
@@ -51,7 +53,7 @@ const fetchPaymentSummary = async () => {
   
   // Get patient data for recent payments
   const paidInvoices = invoicesData
-    .filter(invoice => invoice.status === 'paid' || invoice.paid_amount > 0)
+    .filter(invoice => invoice.status === 'paid' || Number(invoice.paid_amount) > 0)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 2);
   
@@ -74,19 +76,40 @@ const fetchPaymentSummary = async () => {
     }
   }
   
+  // Get invoice items for service information
+  const invoiceIds = paidInvoices.map(invoice => invoice.id);
+  let itemMap = {};
+  
+  if (invoiceIds.length > 0) {
+    const { data: itemData, error: itemError } = await supabase
+      .from('invoice_items')
+      .select('invoice_id, description')
+      .in('invoice_id', invoiceIds);
+      
+    if (!itemError && itemData) {
+      itemMap = itemData.reduce((acc, item) => {
+        if (!acc[item.invoice_id]) {
+          acc[item.invoice_id] = item.description;
+        }
+        return acc;
+      }, {});
+    }
+  }
+  
   // Format recent payments
   const recentPayments = paidInvoices.map(invoice => ({
     id: invoice.id,
     invoiceNumber: `INV-${invoice.id.substring(0, 8)}`,
     date: new Date(invoice.invoice_date).toLocaleDateString(),
     amount: invoice.paid_amount,
-    patientName: patientMap[invoice.patient_id] || "Patient"
+    patientName: patientMap[invoice.patient_id] || "Patient",
+    service: itemMap[invoice.id] || "Medical Service"
   }));
   
   return {
     revenue: currentWeekRevenue,
     percentChange: percentChange.toFixed(1),
-    totalPayments: invoicesData.filter(invoice => invoice.status === 'paid' || invoice.paid_amount > 0).length,
+    totalPayments: invoicesData.filter(invoice => invoice.status === 'paid' || Number(invoice.paid_amount) > 0).length,
     recentPayments
   };
 };
@@ -109,7 +132,7 @@ export function PaymentSummary() {
       <CardContent className="pt-4">
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+            <Loader2 className="animate-spin h-8 w-8 text-emerald-500" />
           </div>
         ) : isError ? (
           <div className="text-center py-8 text-red-500">
