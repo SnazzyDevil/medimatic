@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -33,6 +33,7 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Dispensing = () => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedMedication, setSelectedMedication] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,16 +62,13 @@ const Dispensing = () => {
   });
 
   useEffect(() => {
-    // Verify user is authenticated
     const checkAuth = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
-        // Redirect to login if not authenticated
         window.location.href = '/';
         return;
       }
       
-      // Fetch data once authenticated
       fetchMedications();
       fetchInventory();
       fetchPatients();
@@ -135,7 +133,6 @@ const Dispensing = () => {
       
       setPatientsData(data);
       if (data.length > 0) {
-        // Set the first patient as the default
         setPatientData({
           id: data[0].id,
           name: `${data[0].first_name} ${data[0].last_name}`,
@@ -319,6 +316,18 @@ const Dispensing = () => {
       toast({
         title: "Error",
         description: "Failed to add prescription",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleViewPatientProfile = () => {
+    if (patientData && patientData.id) {
+      navigate(`/patients/${patientData.id}`);
+    } else {
+      toast({
+        title: "Patient ID not found",
+        description: "Unable to find patient information to view profile",
         variant: "destructive"
       });
     }
@@ -730,7 +739,7 @@ const Dispensing = () => {
                   <Button variant="outline" onClick={handleBackToList}>
                     Dispense Another Medication
                   </Button>
-                  <Button>
+                  <Button onClick={handleViewPatientProfile}>
                     <User className="h-4 w-4 mr-2" />
                     View Patient Profile
                   </Button>
