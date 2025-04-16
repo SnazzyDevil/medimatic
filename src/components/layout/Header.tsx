@@ -1,15 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Bell, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PracticeService } from "@/services/practiceService";
 import { PracticeInformation } from "@/types/practice";
@@ -20,8 +12,9 @@ export const useDoctorSettings = () => {
     name: "Dr. Jane Smith",
     email: "info@medicare-clinic.com",
     practiceName: "MediCare Clinic",
-    image: "https://i.pravatar.cc/100?img=11", // Default image
-    practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png", // Practice image
+    image: "https://i.pravatar.cc/100?img=11",
+    // Default image
+    practiceImage: "/lovable-uploads/54b4c6e4-26d2-43bd-89bf-2488dc489f30.png" // Practice image
   });
   const [practiceInfo, setPracticeInfo] = useState<PracticeInformation | null>(null);
 
@@ -37,14 +30,14 @@ export const useDoctorSettings = () => {
         console.error("Error parsing stored settings:", error);
       }
     }
-    
+
     // Also fetch practice info from database
     const fetchPracticeInfo = async () => {
       try {
         const info = await PracticeService.getCurrentPractice();
         if (info) {
           setPracticeInfo(info);
-          
+
           // Update doctor settings with the most recent information from database
           const updatedSettings = {
             ...doctorSettings,
@@ -59,18 +52,20 @@ export const useDoctorSettings = () => {
         console.error("Error fetching practice information in header:", error);
       }
     };
-    
     fetchPracticeInfo();
   }, []);
 
   // Update settings function - improved to ensure settings are saved properly
-  const updateDoctorSettings = (newSettings) => {
-    const updatedSettings = { ...doctorSettings, ...newSettings };
+  const updateDoctorSettings = newSettings => {
+    const updatedSettings = {
+      ...doctorSettings,
+      ...newSettings
+    };
     console.log("Updating doctor settings:", updatedSettings);
-    
+
     // First update state
     setDoctorSettings(updatedSettings);
-    
+
     // Then save to localStorage
     try {
       localStorage.setItem("doctorSettings", JSON.stringify(updatedSettings));
@@ -79,20 +74,23 @@ export const useDoctorSettings = () => {
       console.error("Error saving settings to localStorage:", error);
     }
   };
-
-  return { doctorSettings, updateDoctorSettings, practiceInfo };
+  return {
+    doctorSettings,
+    updateDoctorSettings,
+    practiceInfo
+  };
 };
-
 export function Header() {
-  const { doctorSettings, practiceInfo } = useDoctorSettings();
+  const {
+    doctorSettings,
+    practiceInfo
+  } = useDoctorSettings();
   const [unreadNotifications, setUnreadNotifications] = useState(3);
-  
+
   // Use practice info when available, fallback to doctorSettings
   const practiceName = practiceInfo?.name || doctorSettings.practiceName;
   const practiceImage = practiceInfo?.practiceImageUrl || doctorSettings.practiceImage;
-  
-  return (
-    <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in">
+  return <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in my-0 mx-[19px]">
       <div className="flex items-center">
         <h1 className="font-semibold text-xl text-white">Medimatic</h1>
         <span className="text-xs text-white/80 ml-2 px-2 py-0.5 bg-white/20 rounded-full">Beta</span>
@@ -103,9 +101,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/20">
               <Bell className="h-5 w-5" />
-              {unreadNotifications > 0 && (
-                <span className="absolute top-0.5 right-0.5 h-2 w-2 bg-rose-500 rounded-full"></span>
-              )}
+              {unreadNotifications > 0 && <span className="absolute top-0.5 right-0.5 h-2 w-2 bg-rose-500 rounded-full"></span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 mt-2">
@@ -177,6 +173,5 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
-  );
+    </header>;
 }
