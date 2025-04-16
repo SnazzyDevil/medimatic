@@ -107,7 +107,7 @@ const fetchPaymentSummary = async () => {
   }));
   
   return {
-    revenue: currentWeekRevenue,
+    revenue: currentWeekRevenue || 0,
     percentChange: percentChange.toFixed(1),
     totalPayments: invoicesData.filter(invoice => invoice.status === 'paid' || Number(invoice.paid_amount) > 0).length,
     recentPayments
@@ -145,7 +145,7 @@ export function PaymentSummary() {
                 <div className="text-sm text-gray-600">Revenue</div>
                 <div className="text-xl font-bold text-emerald-700 flex items-center">
                   <Banknote className="h-4 w-4 mr-1" />
-                  R {paymentData?.revenue.toFixed(2) || '0.00'}
+                  R {paymentData?.revenue !== undefined ? paymentData.revenue.toFixed(2) : '0.00'}
                 </div>
                 <div className="flex items-center text-xs text-emerald-600 mt-1">
                   <TrendingUp className="h-3 w-3 mr-1" />
@@ -156,7 +156,7 @@ export function PaymentSummary() {
                 <div className="text-sm text-gray-600">Payments</div>
                 <div className="text-xl font-bold text-blue-700 flex items-center">
                   <CreditCard className="h-4 w-4 mr-1" />
-                  R {paymentData?.revenue.toFixed(2) || '0.00'}
+                  R {paymentData?.revenue !== undefined ? paymentData.revenue.toFixed(2) : '0.00'}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{paymentData?.totalPayments || 0} transactions</div>
               </div>
