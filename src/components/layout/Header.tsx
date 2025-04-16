@@ -90,7 +90,7 @@ export function Header() {
   // Use practice info when available, fallback to doctorSettings
   const practiceName = practiceInfo?.name || doctorSettings.practiceName;
   const practiceImage = practiceInfo?.practiceImageUrl || doctorSettings.practiceImage;
-  return <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between px-6 sticky top-0 z-10 animate-fade-in my-0 mx-[19px]">
+  return <header className="h-16 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex items-center justify-between sticky top-0 z-10 animate-fade-in mx-[19px] px-[29px] py-0 rounded my-[12px]">
       <div className="flex items-center">
         <h1 className="font-semibold text-xl text-white">Medimatic</h1>
         <span className="text-xs text-white/80 ml-2 px-2 py-0.5 bg-white/20 rounded-full">Beta</span>
